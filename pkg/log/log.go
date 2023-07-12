@@ -46,6 +46,12 @@ func (l zeroLogWrapper) Error(msg string, keyVals ...interface{}) {
 	l.Logger.Error().Fields(keyVals).Msg(msg)
 }
 
+// Warn takes a message and a set of key/value pairs and logs with level WARN.
+// The key of the tuple must be a string.
+func (l zeroLogWrapper) Warn(msg string, keyVals ...interface{}) {
+	l.Logger.Warn().Fields(keyVals).Msg(msg)
+}
+
 // Debug takes a message and a set of key/value pairs and logs with level ERR.
 // The key of the tuple must be a string.
 func (l zeroLogWrapper) Debug(msg string, keyVals ...interface{}) {
@@ -64,6 +70,8 @@ func (l zeroLogWrapper) Impl() interface{} {
 	return l.Logger
 }
 
+// NewLogger creates a new logger with the given writer and runner name.
+// The logger is a wrapper around zerolog.
 func NewLogger(dst io.Writer, runner string) Logger {
 	output := zerolog.ConsoleWriter{Out: dst, TimeFormat: time.Kitchen}
 	logger := zerolog.New(output).With().Timestamp().Str("logger", runner).Logger()

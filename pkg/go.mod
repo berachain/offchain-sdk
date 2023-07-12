@@ -1,4 +1,4 @@
-module github.com/berachain/offchain-sdk
+module github.com/berachain/offchain-sdk/pkg
 
 go 1.20
 
