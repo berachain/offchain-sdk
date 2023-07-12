@@ -30,6 +30,8 @@ type Logger interface {
 	Impl() any
 }
 
+// zeroLogWrapper is the implementation of the Logger interface.
+// It wraps a zerolog logger.
 type zeroLogWrapper struct {
 	*zerolog.Logger
 }
