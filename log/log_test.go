@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/berachain/offchain-sdk/pkg/log"
+	"github.com/berachain/offchain-sdk/log"
 )
 
 func TestLogger(t *testing.T) {
