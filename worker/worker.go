@@ -6,7 +6,7 @@ import (
 )
 
 type Executor interface {
-	Execute() any
+	Execute() Resulter
 }
 
 type Resulter interface {
