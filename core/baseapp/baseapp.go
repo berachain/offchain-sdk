@@ -1,7 +1,6 @@
 package baseapp
 
-type db interface {}
-
+type db interface{}
 
 type baseapp struct {
 	// thread pool
@@ -9,12 +8,6 @@ type baseapp struct {
 
 }
 
-
 func NewBaseApp(db_ db) *baseapp {
 	return &baseapp{}
 }
-
-
-
-func Base
-f
