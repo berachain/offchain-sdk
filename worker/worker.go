@@ -2,7 +2,8 @@ package worker
 
 import (
 	"errors"
-	"fmt"
+
+	"github.com/berachain/offchain-sdk/log"
 )
 
 type Executor interface {
@@ -22,32 +23,38 @@ type worker struct {
 	newRes chan (Resulter)
 	// Notify the worker to stop.
 	stop chan struct{}
+	// logger represents our logger
+	logger log.Logger
 }
 
 // NewWorker creates a new worker
 func NewWorker(
 	newPayload chan Executor,
 	newRes chan Resulter,
+	logger log.Logger,
 ) *worker {
 	return &worker{
+		logger:     logger,
 		newPayload: newPayload,
 		newRes:     newRes,
+		stop:       make(chan struct{}),
 	}
 }
 
 // Start starts the worker
 func (w *worker) Start() error {
+	w.logger.Info("starting worker")
 	for {
-		fmt.Println("WAITING FOR JOB")
 		select {
 		case executor, ok := <-w.newPayload:
 			if !ok {
 				return errors.New("bad payload")
 			}
 			// fan-in job execution multiplexing results into the results channel
+			w.logger.Info("executing job")
 			w.newRes <- executor.Execute()
 		case <-w.stop:
-			fmt.Printf("cancelled worker")
+			w.logger.Info("stopping worker")
 			return errors.New("cancelled worker")
 		}
 	}
