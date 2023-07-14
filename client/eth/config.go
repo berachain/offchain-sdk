@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/viper"
 )
 
+// Config is the configuration for the eth client.
 type Config struct {
 	EthHTTPURL string `mapstructure:"ETH_RPC_URL"`
 	EthWSURL   string `mapstructure:"ETH_WS_RUL"`

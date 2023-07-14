@@ -18,7 +18,6 @@ type worker struct {
 	stop chan struct{}
 	// logger represents our logger
 	logger log.Logger
-
 	// wg is used to wait for the worker to stop.
 	wg *sync.WaitGroup
 }
