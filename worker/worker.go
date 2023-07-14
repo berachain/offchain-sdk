@@ -1,6 +1,8 @@
 package worker
 
 import (
+	"sync"
+
 	"github.com/berachain/offchain-sdk/log"
 )
 
@@ -14,6 +16,9 @@ type worker struct {
 	stop chan struct{}
 	// logger represents our logger
 	logger log.Logger
+
+	// wg is used to wait for the worker to stop.
+	wg *sync.WaitGroup
 }
 
 // NewWorker creates a new worker.
@@ -21,11 +26,13 @@ func newWorker(
 	newExecutor chan Executor,
 	newRes chan Resultor,
 	logger log.Logger,
+	wg *sync.WaitGroup,
 ) *worker {
 	return &worker{
 		logger:      logger,
 		newExecutor: newExecutor,
 		newRes:      newRes,
+		wg:          wg,
 	}
 }
 
@@ -33,6 +40,7 @@ func newWorker(
 func (w *worker) Start() {
 	// Manage stopping the worker.
 	w.stop = make(chan struct{}, 1)
+	w.wg.Add(1)
 	defer close(w.stop)
 
 	w.logger.Info("starting worker")
@@ -40,10 +48,12 @@ func (w *worker) Start() {
 		select {
 		case <-w.stop:
 			w.logger.Info("stopping worker")
+			w.wg.Done()
 			return
 		case executor, ok := <-w.newExecutor:
 			if !ok {
-				w.logger.Info("payload closed")
+				w.logger.Error("worker stopped because of error")
+				w.wg.Done()
 				return
 			}
 			w.logger.Info("executing job")
