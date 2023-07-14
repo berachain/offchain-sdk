@@ -35,6 +35,10 @@ build:; go build
 lint: |
 	go run github.com/golangci/golangci-lint/cmd/golangci-lint run
 
+# Test
+test: |
+	go test -v ./...
+
 # Format
 format: |
 	go run github.com/golangci/golangci-lint/cmd/golangci-lint run --fix
