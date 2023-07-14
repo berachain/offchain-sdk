@@ -4,11 +4,6 @@ import (
 	"github.com/berachain/offchain-sdk/log"
 )
 
-type Worker interface {
-	Start()
-	Stop()
-}
-
 // worker is a worker thread that executes jobs.
 type worker struct {
 	// Gets jobs fed to it.

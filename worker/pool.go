@@ -7,6 +7,7 @@ import (
 	"github.com/berachain/offchain-sdk/log"
 )
 
+// Pool represents a pool of workers.
 type Pool interface {
 	Start()
 	Stop()
