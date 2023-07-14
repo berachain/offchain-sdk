@@ -10,6 +10,27 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// AppBuilder is a builder for an app. It follows a basic factory pattern.
+type AppBuilder interface {
+	AppName() string
+	BuildApp(log.Logger, *eth.Config) *baseapp.BaseApp
+}
+
+// BuildBasicRootCmd builds a root command.
+func BuildBasicRootCmd(ab AppBuilder) *cobra.Command {
+	rootCmd := BuildRootCommand(
+		"cron",
+		"cron does crons",
+		cobra.NoArgs,
+	)
+
+	rootCmd.AddCommand(
+		BuildStartCommand(ab, cobra.ExactArgs(0)),
+	)
+
+	return rootCmd
+}
+
 // BuildRootCommand builds the root command.
 func BuildRootCommand(name, short string, args cobra.PositionalArgs) *cobra.Command {
 	var rootCmd = &cobra.Command{
@@ -27,23 +48,33 @@ func BuildRootCommand(name, short string, args cobra.PositionalArgs) *cobra.Comm
 }
 
 // BuildStartCommand builds the start command.
-func BuildStartCommand(appname string, args cobra.PositionalArgs) *cobra.Command {
+func BuildStartCommand(appBuilder AppBuilder, args cobra.PositionalArgs) *cobra.Command {
 	return &cobra.Command{
 		Use:   "start",
-		Short: "Starts " + appname,
+		Short: "Starts " + appBuilder.AppName(),
 		Args:  args,
 		Run: func(cmd *cobra.Command, args []string) {
+
+			// Setup channel to manage shutdown signal from the os.
 			signalChan := make(chan os.Signal, 1)
 			signal.Notify(signalChan, os.Interrupt)
-			logger := log.NewBlankLogger(os.Stdout)
-			ethConfig := eth.LoadConfig("")
-			baseapp := baseapp.New(appname, logger, &ethConfig)
-			baseapp.Start()
 
-			// Wait for a signal to stop
+			// Create a logger
+			logger := log.NewBlankLogger(os.Stdout)
+
+			// Load the eth config
+			ethConfig := eth.LoadConfig("")
+
+			// Build the baseapp
+			app := appBuilder.BuildApp(logger, &ethConfig)
+
+			// Start the app
+			app.Start()
+
+			// Wait for a signal to shutdown the app
 			for range signalChan {
-				baseapp.Stop()
-				logger.Info(appname + " stopped gracefully")
+				app.Stop()
+				logger.Info(appBuilder.AppName() + " stopped gracefully")
 				return
 			}
 		},

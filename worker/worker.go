@@ -54,12 +54,12 @@ func (w *worker) Start() {
 	for {
 		select {
 		case <-w.stop:
-			w.logger.Info("stopping worker")
+			w.Logger().Info("stopping worker")
 			w.wg.Done()
 			return
 		case executor, ok := <-w.newExecutor:
 			if !ok {
-				w.logger.Error("worker stopped because of error")
+				w.Logger().Error("worker stopped because of error")
 				w.wg.Done()
 				return
 			}
