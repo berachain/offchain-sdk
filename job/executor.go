@@ -1,0 +1,26 @@
+package job
+
+import (
+	"context"
+
+	"github.com/berachain/offchain-sdk/worker"
+)
+
+// Executor encapsulates a job and its input into a neat package to
+// be executed by another thread.
+type Executor[I, O any] struct {
+	// Pass basic job
+	Job Basic[I, O]
+
+	// ctx is the context of the job.
+	ctx context.Context
+
+	// args is the input function arguments.
+	args I
+}
+
+// Execute executes the job and returns the result.
+func (p Executor[I, O]) Execute() worker.Resultor {
+	res, err := p.Job.Execute(p.ctx, p.args)
+	return &Resultor{res: res, err: err}
+}
