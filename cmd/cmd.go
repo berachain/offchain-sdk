@@ -10,11 +10,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// BuildRootCommand builds the root command
+// BuildRootCommand builds the root command.
 func BuildRootCommand(name, short string, args cobra.PositionalArgs) *cobra.Command {
 	var rootCmd = &cobra.Command{
 		Use:   name,
 		Short: short,
+		Args:  args,
 		Run: func(cmd *cobra.Command, args []string) {
 
 		},
@@ -22,11 +23,12 @@ func BuildRootCommand(name, short string, args cobra.PositionalArgs) *cobra.Comm
 	return rootCmd
 }
 
-// BuildStartCommand builds the start command
+// BuildStartCommand builds the start command.
 func BuildStartCommand(appname string, args cobra.PositionalArgs) *cobra.Command {
 	return &cobra.Command{
 		Use:   "start",
 		Short: "Starts " + appname,
+		Args:  args,
 		Run: func(cmd *cobra.Command, args []string) {
 			signalChan := make(chan os.Signal, 1)
 			signal.Notify(signalChan, os.Interrupt)

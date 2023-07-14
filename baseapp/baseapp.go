@@ -34,7 +34,7 @@ func New(
 		ethCfg: *ethCfg,
 		workerPool: worker.NewPool(
 			"main",
-			16, // hardcode 16 workers for now
+			16, //nolint:gomnd // hardcode 16 workers for now
 			logger,
 		),
 	}

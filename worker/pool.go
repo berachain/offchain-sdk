@@ -2,6 +2,7 @@ package worker
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/berachain/offchain-sdk/log"
 )
@@ -21,6 +22,7 @@ type pool struct {
 	execCh  chan Executor
 	resCh   chan Resultor
 	workers []*worker
+	wg      *sync.WaitGroup
 }
 
 // NewPool creates a new pool of workers.
@@ -33,9 +35,10 @@ func NewPool(
 	p := &pool{
 		name:    name,
 		logger:  logger,
-		workers: make([]*worker, 0),
 		execCh:  make(chan Executor),
 		resCh:   make(chan Resultor),
+		workers: make([]*worker, 0),
+		wg:      &sync.WaitGroup{},
 	}
 
 	// Iterate through the number of workers and create them.
@@ -44,8 +47,8 @@ func NewPool(
 			i,
 			p.execCh,
 			p.resCh,
-			// TODO: don't hardcode stdout.
 			logger,
+			p.wg,
 		)
 		p.workers = append(p.workers, w)
 	}
@@ -74,6 +77,7 @@ func (p *pool) Stop() {
 	for _, w := range p.workers {
 		w.Stop()
 	}
+	p.wg.Wait()
 
 	// Ensure the channels get closed
 	close(p.execCh)
