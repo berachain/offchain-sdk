@@ -35,9 +35,9 @@ func NewPool(
 	p := &pool{
 		name:    name,
 		logger:  logger,
-		workers: make([]*worker, 0),
 		execCh:  make(chan Executor),
 		resCh:   make(chan Resultor),
+		workers: make([]*worker, 0),
 		wg:      &sync.WaitGroup{},
 	}
 
