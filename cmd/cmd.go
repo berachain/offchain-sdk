@@ -41,6 +41,7 @@ func BuildStartCommand(appname string, args cobra.PositionalArgs) *cobra.Command
 			// Wait for a signal to stop
 			for range signalChan {
 				baseapp.Stop()
+				logger.Info(appname + " stopped gracefully")
 				return
 			}
 		},
