@@ -37,7 +37,7 @@ func NewJobManager(
 		jobs:   jobs,
 		executionPool: worker.NewPool(
 			name+"-execution",
-			16, //nolint:gomnd // hardcode 16 workers for now
+			4, //nolint:gomnd // hardcode 4 workers for now
 			logger,
 		),
 	}
