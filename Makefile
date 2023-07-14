@@ -30,6 +30,11 @@ endif
 # Target for building the application in all directories
 build:; go build
 
-# Format the contracts (TODO add go formatting)
+
+# Format
+lint: |
+	go run github.com/golangci/golangci-lint/cmd/golangci-lint run
+
+# Format
 format: |
 	go run github.com/golangci/golangci-lint/cmd/golangci-lint run --fix
