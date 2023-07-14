@@ -2,7 +2,6 @@ package worker
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/berachain/offchain-sdk/log"
 )
@@ -17,6 +16,7 @@ type Pool interface {
 
 // pool is a pool of workers.
 type pool struct {
+	name    string
 	logger  log.Logger
 	execCh  chan Executor
 	resCh   chan Resultor
@@ -25,11 +25,13 @@ type pool struct {
 
 // NewPool creates a new pool of workers.
 func NewPool(
-	totalWorkers uint64,
+	name string,
+	totalWorkers uint32,
 	logger log.Logger,
 ) Pool {
 	// Intialize the pool.
 	p := &pool{
+		name:    name,
 		logger:  logger,
 		workers: make([]*worker, 0),
 		execCh:  make(chan Executor),
@@ -37,12 +39,13 @@ func NewPool(
 	}
 
 	// Iterate through the number of workers and create them.
-	for i := uint64(0); i < totalWorkers; i++ {
+	for i := uint32(0); i < totalWorkers; i++ {
 		w := newWorker(
+			i,
 			p.execCh,
 			p.resCh,
 			// TODO: don't hardcode stdout.
-			log.NewLogger(os.Stdout, fmt.Sprintf("worker-%d", i)),
+			logger,
 		)
 		p.workers = append(p.workers, w)
 	}
@@ -50,9 +53,15 @@ func NewPool(
 	return p
 }
 
+// Logger returns the logger for the worker.
+func (p *pool) Logger() log.Logger {
+	return p.logger.With("namespace", fmt.Sprintf("worker-pool-%s", p.name))
+}
+
 // Start starts the pool of workers.
 func (p *pool) Start() {
 	// Start all the workers.
+	p.Logger().Info("starting workers")
 	for _, w := range p.workers {
 		go w.Start()
 	}
@@ -61,7 +70,7 @@ func (p *pool) Start() {
 // Stop stops the pool of workers.
 func (p *pool) Stop() {
 	// Stop all the workers.
-	p.logger.Info("attemping to stop workers")
+	p.Logger().Info("attemping to stop workers")
 	for _, w := range p.workers {
 		w.Stop()
 	}
