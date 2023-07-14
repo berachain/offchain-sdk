@@ -42,7 +42,7 @@ func New(
 
 // Logger returns the logger for the baseapp.
 func (b *BaseApp) Logger() log.Logger {
-	return b.logger.With("namespace", "baseapp")
+	return b.logger.With("namespace", b.name+"-app")
 }
 
 // Start starts the baseapp.
