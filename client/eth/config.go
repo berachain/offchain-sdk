@@ -7,7 +7,7 @@ import (
 )
 
 type Config struct {
-	EthHttpURL string `mapstructure:"ETH_RPC_URL"`
+	EthHTTPURL string `mapstructure:"ETH_RPC_URL"`
 	EthWSURL   string `mapstructure:"ETH_WS_RUL"`
 }
 
