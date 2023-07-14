@@ -76,6 +76,14 @@ func (l zeroLogWrapper) Impl() interface{} {
 // The logger is a wrapper around zerolog.
 func NewLogger(dst io.Writer, runner string) Logger {
 	output := zerolog.ConsoleWriter{Out: dst, TimeFormat: time.Kitchen}
-	logger := zerolog.New(output).With().Timestamp().Str("id", runner).Logger()
+	logger := zerolog.New(output).With().Timestamp().Str("module", runner).Logger()
+	return zeroLogWrapper{&logger}
+}
+
+// NewBlankLogger creates a new logger with the given writer and runner name.
+// The logger is a wrapper around zerolog.
+func NewBlankLogger(dst io.Writer) Logger {
+	output := zerolog.ConsoleWriter{Out: dst, TimeFormat: time.Kitchen}
+	logger := zerolog.New(output).With().Timestamp().Logger()
 	return zeroLogWrapper{&logger}
 }

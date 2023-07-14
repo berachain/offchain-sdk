@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/berachain/offchain-sdk/log"
@@ -8,6 +9,7 @@ import (
 
 // worker is a worker thread that executes jobs.
 type worker struct {
+	id uint32
 	// Gets jobs fed to it.
 	newExecutor chan (Executor)
 	// Feeds results onto a channel.
@@ -23,17 +25,24 @@ type worker struct {
 
 // NewWorker creates a new worker.
 func newWorker(
+	id uint32,
 	newExecutor chan Executor,
 	newRes chan Resultor,
 	logger log.Logger,
 	wg *sync.WaitGroup,
 ) *worker {
 	return &worker{
+		id:          id,
 		logger:      logger,
 		newExecutor: newExecutor,
 		newRes:      newRes,
 		wg:          wg,
 	}
+}
+
+// Logger returns the logger for the worker.
+func (w *worker) Logger() log.Logger {
+	return w.logger.With("namespace", fmt.Sprintf("worker-%d", w.id))
 }
 
 // Start starts the worker.
@@ -42,8 +51,7 @@ func (w *worker) Start() {
 	w.stop = make(chan struct{}, 1)
 	w.wg.Add(1)
 	defer close(w.stop)
-
-	w.logger.Info("starting worker")
+	w.Logger().Info("starting")
 	for {
 		select {
 		case <-w.stop:
@@ -56,7 +64,7 @@ func (w *worker) Start() {
 				w.wg.Done()
 				return
 			}
-			w.logger.Info("executing job")
+			w.Logger().Info("executing job")
 			w.newRes <- executor.Execute()
 		}
 	}
@@ -64,6 +72,6 @@ func (w *worker) Start() {
 
 // Stop stops the worker.
 func (w *worker) Stop() {
-	w.logger.Info("triggering worker to stop")
+	w.Logger().Info("triggering worker to stop")
 	w.stop <- struct{}{}
 }

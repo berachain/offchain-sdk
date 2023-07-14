@@ -28,7 +28,7 @@ endif
 ########################################################
 
 # Target for building the application in all directories
-build:; go build
+build:; go build ./...
 
 
 # Format
