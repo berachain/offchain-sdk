@@ -19,8 +19,8 @@ type AppBuilder interface {
 // BuildBasicRootCmd builds a root command.
 func BuildBasicRootCmd(ab AppBuilder) *cobra.Command {
 	rootCmd := BuildRootCommand(
-		"cron",
-		"cron does crons",
+		ab.AppName(),
+		"Welcome to "+ab.AppName(),
 		cobra.NoArgs,
 	)
 
@@ -54,7 +54,6 @@ func BuildStartCommand(appBuilder AppBuilder, args cobra.PositionalArgs) *cobra.
 		Short: "Starts " + appBuilder.AppName(),
 		Args:  args,
 		Run: func(cmd *cobra.Command, args []string) {
-
 			// Setup channel to manage shutdown signal from the os.
 			signalChan := make(chan os.Signal, 1)
 			signal.Notify(signalChan, os.Interrupt)
