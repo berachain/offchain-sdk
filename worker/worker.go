@@ -1,66 +1,64 @@
 package worker
 
 import (
-	"errors"
-
 	"github.com/berachain/offchain-sdk/log"
 )
 
-type Executor interface {
-	Execute() Resulter
+type Worker interface {
+	Start()
+	Stop()
 }
 
-type Resulter interface {
-	Result() any
-	Error() error
-}
-
-// Subber needs a base job
+// worker is a worker thread that executes jobs.
 type worker struct {
 	// Gets jobs fed to it.
-	newPayload chan (Executor)
+	newExecutor chan (Executor)
 	// Feeds results onto a channel.
-	newRes chan (Resulter)
+	newRes chan (Resultor)
 	// Notify the worker to stop.
 	stop chan struct{}
 	// logger represents our logger
 	logger log.Logger
 }
 
-// NewWorker creates a new worker
-func NewWorker(
-	newPayload chan Executor,
-	newRes chan Resulter,
+// NewWorker creates a new worker.
+func newWorker(
+	newExecutor chan Executor,
+	newRes chan Resultor,
 	logger log.Logger,
 ) *worker {
 	return &worker{
-		logger:     logger,
-		newPayload: newPayload,
-		newRes:     newRes,
-		stop:       make(chan struct{}),
+		logger:      logger,
+		newExecutor: newExecutor,
+		newRes:      newRes,
 	}
 }
 
-// Start starts the worker
-func (w *worker) Start() error {
+// Start starts the worker.
+func (w *worker) Start() {
+	// Manage stopping the worker.
+	w.stop = make(chan struct{}, 1)
+	defer close(w.stop)
+
 	w.logger.Info("starting worker")
 	for {
 		select {
-		case executor, ok := <-w.newPayload:
-			if !ok {
-				return errors.New("bad payload")
-			}
-			// fan-in job execution multiplexing results into the results channel
-			w.logger.Info("executing job")
-			w.newRes <- executor.Execute()
 		case <-w.stop:
 			w.logger.Info("stopping worker")
-			return errors.New("cancelled worker")
+			return
+		case executor, ok := <-w.newExecutor:
+			if !ok {
+				w.logger.Info("payload closed")
+				return
+			}
+			w.logger.Info("executing job")
+			w.newRes <- executor.Execute()
 		}
 	}
 }
 
-// Stop stops the worker
+// Stop stops the worker.
 func (w *worker) Stop() {
+	w.logger.Info("triggering worker to stop")
 	w.stop <- struct{}{}
 }

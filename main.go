@@ -2,42 +2,47 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
-	"time"
+	"os/signal"
 
 	"github.com/berachain/offchain-sdk/job"
 	"github.com/berachain/offchain-sdk/log"
 	"github.com/berachain/offchain-sdk/worker"
 )
 
-type MyJob struct {
+// MyMockJob is a mock job.
+type MyMockJob struct{}
+
+// Execute executes the job and returns the result.
+func (m MyMockJob) Execute(_ context.Context, i int64) (int64, error) {
+	return i + 69, nil //nolint:gomnd // Mock job.
 }
 
-func (m MyJob) Execute(_ context.Context, i int64) (int64, error) {
-	fmt.Println("EXECUTING JOB EREEE")
-	return 69, nil
-}
+const numWorkers = 10
 
 func main() {
+	// Handle os.Signal for graceful shutdown
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, os.Interrupt)
+	logger := log.NewLogger(os.Stdout, "thread")
+	workerPool := worker.NewPool(numWorkers, logger)
 
-	// a := make(chan worker.Executor)
-	// b := make(chan worker.Resulter)
+	// Start the pool
+	workerPool.Start()
 
-	x := worker.NewPool(1, log.NewLogger(os.Stdout, "thread-pool"))
-
-	x.Start()
-	for i := 0; i < 100; i++ {
-		x.AddTask(job.Executor[int64, int64]{Job: MyJob{}})
+	// Add 1000 tasks to the pool
+	for i := 0; i < 1000; i++ {
+		workerPool.AddTask(job.Executor[int64, int64]{
+			Job: MyMockJob{}})
 	}
-	time.Sleep((time.Second * 1))
 
+	// Wait for a signal to stop
 	for {
 		select {
-		case res := <-x.RespChan():
-			fmt.Println(res.Result())
-		case _ = <-time.After(time.Second * 5):
-			x.Stop()
+		case res := <-workerPool.RespChan():
+			log.NewLogger(os.Stdout, "results").Info("result", "result", res.Result())
+		case <-signalChan:
+			workerPool.Stop()
 			return
 		}
 	}

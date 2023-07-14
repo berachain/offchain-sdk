@@ -35,5 +35,7 @@ func TestLogger(t *testing.T) {
 }
 
 func contains(s, substr string) bool {
-	return bytes.Contains([]byte(s), []byte(substr))
+	x := []byte(s)
+	y := []byte(substr)
+	return bytes.Contains(x, y)
 }

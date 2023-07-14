@@ -2,51 +2,9 @@ package job
 
 import (
 	"context"
-
-	"github.com/berachain/offchain-sdk/worker"
 )
 
-type HasContext[I any] interface {
-	Ctx() context.Context
-	Args() any
-	Execute(context.Context, any) any
-}
-
+// Basic represents a basic job.
 type Basic[I, O any] interface {
 	Execute(context.Context, I) (O, error)
-}
-
-// type Conditional[A, O any] interface {
-// 	Basic[A, O]
-// 	Condition() bool
-// }
-
-// Executor encapsulates a job and its input into a neat package to
-// be executed by another thread.
-type Executor[I, O any] struct {
-	// Pass basic job
-	Job Basic[I, O]
-
-	// And inputs
-	ctx  context.Context
-	args I
-}
-
-func (p Executor[I, O]) Execute() worker.Resulter {
-	res, err := p.Job.Execute(p.ctx, p.args)
-	return Resulter{res: res, err: err}
-}
-
-// Result encapsulates the result of a job execution.
-type Resulter struct {
-	res any
-	err error
-}
-
-func (r Resulter) Result() any {
-	return r.res
-}
-
-func (r Resulter) Error() error {
-	return r.err
 }
