@@ -1,41 +1,29 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 
 	"github.com/berachain/offchain-sdk/baseapp"
 	"github.com/berachain/offchain-sdk/cmd"
-	sdk "github.com/berachain/offchain-sdk/types"
+	wjob "github.com/berachain/offchain-sdk/examples/watcher/jobs"
+	jobs "github.com/berachain/offchain-sdk/x/jobs"
 )
 
-// Chain is building blocks.
-type EthEventJob struct {
-}
-
-func (j EthEventJob) Execute(ctx context.Context, args any) (any, error) {
-	// sCtx := sdk.UnwrapSdkContext(ctx)
-	fmt.Println("HELLO BLOCK 10 OR HIGHER")
-	return false, nil
-}
-
-func (j EthEventJob) Condition(ctx context.Context) bool {
-	fmt.Println("CHECKING CONDITION")
-	Sctx := sdk.UnwrapSdkContext(ctx)
-	chain := Sctx.Chain()
-	block, err := chain.CurrentBlock()
-	if err != nil || block.NumberU64() < 10 {
-		return false
-	}
-	return true
-}
-
+// This example shows how to watch for an event on the Ethereum blockchain.
+// The event is defined in the smart contract at: 0x18Df82C7E422A42D47345Ed86B0E935E9718eBda
+// The event is called: NumberChanged(uint256)
+// The event is emitted when the number is changed in the smart contract.
+// The event is watched by the offchain-sdk and when it is emitted, the execution function is called.
 func main() {
 	appBuilder := baseapp.NewAppBuilder("watcher", "")
 
 	appBuilder.RegisterJob(
-		EthEventJob{},
+		jobs.NewEthSub(
+			&wjob.Watcher{},
+			"0x18Df82C7E422A42D47345Ed86B0E935E9718eBda",
+			"NumberChanged(uint256)",
+		),
 	)
 
 	if err := cmd.BuildBasicRootCmd(appBuilder).Execute(); err != nil {
