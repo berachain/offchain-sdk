@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/berachain/offchain-sdk/log"
+	"cosmossdk.io/log"
 )
 
 // worker is a worker thread that executes jobs.

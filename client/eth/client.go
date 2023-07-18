@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"time"
 
+	"cosmossdk.io/log"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	ethcoretypes "github.com/ethereum/go-ethereum/core/types"
@@ -13,7 +14,7 @@ import (
 
 const (
 	MaxRetries       = 3
-	defaultRetryTime = 5 * time.Second
+	defaultRetryTime = 3 * time.Second
 )
 
 type Client interface {
@@ -53,20 +54,26 @@ type Writer interface {
 
 // client is the indexer eth client.
 type client struct {
+	logger     log.Logger
 	cfg        *Config
 	httpclient *ethclient.Client
 	wsclient   *ethclient.Client
 }
 
 // NewClient returns a new client. It has both reader and writer privilege.
-func NewClient(cfg *Config) Client {
+func NewClient(logger log.Logger, cfg *Config) Client {
 	client := &client{
-		cfg: cfg,
+		logger: logger,
+		cfg:    cfg,
 	}
 	if err := client.Dial(); err != nil {
 		panic(err)
 	}
 	return client
+}
+
+func (c *client) Logger() log.Logger {
+	return c.logger.With("module", "eth-client")
 }
 
 // ==================================================================
@@ -75,6 +82,7 @@ func NewClient(cfg *Config) Client {
 
 // Dial dials the client.
 func (c *client) Dial() error {
+	c.Logger().Info("dialing json-rpc server", "url", c.cfg.EthHTTPURL)
 	if c.httpclient != nil || c.wsclient != nil {
 		return ErrAlreadyDial
 	}
@@ -86,16 +94,19 @@ func (c *client) Dial() error {
 	for retries < MaxRetries {
 		retries++
 		httpclient, err = ethclient.DialContext(ctx, c.cfg.EthHTTPURL)
+		_, err := httpclient.ChainID(ctx)
 		if err == nil {
 			c.httpclient = httpclient
 			break
 		}
+		c.Logger().Error("failed to dial json-rpc server", "error", err)
 		time.Sleep(defaultRetryTime)
 	}
 	if err != nil {
 		panic(err)
 	}
 
+	c.Logger().Info("dialing json-rpc ws server", "url", c.cfg.EthWSURL)
 	retries = 0
 	for retries < MaxRetries {
 		retries++
@@ -104,6 +115,7 @@ func (c *client) Dial() error {
 			c.wsclient = wsethclient
 			break
 		}
+		c.Logger().Error("could not reach json-rpc ws server", "url", c.cfg.EthWSURL, "err", err)
 		time.Sleep(defaultRetryTime)
 	}
 	if err != nil {

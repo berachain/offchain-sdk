@@ -2,11 +2,10 @@ package baseapp
 
 import (
 	"context"
-	"os"
 
+	"cosmossdk.io/log"
 	"github.com/berachain/offchain-sdk/client/eth"
 	"github.com/berachain/offchain-sdk/job"
-	"github.com/berachain/offchain-sdk/log"
 	sdk "github.com/berachain/offchain-sdk/types"
 )
 
@@ -37,9 +36,10 @@ func New(
 ) *BaseApp {
 	return &BaseApp{
 		name:   name,
-		logger: log.NewBlankLogger(os.Stdout),
+		logger: logger,
 		ethCfg: *ethCfg,
 		ethClient: eth.NewClient(
+			logger,
 			ethCfg,
 		),
 		jobMgr: NewJobManager(
@@ -64,7 +64,7 @@ func (b *BaseApp) Start() {
 		context.Background(),
 		eth.NewContextualClient(
 			context.Background(),
-			eth.NewClient(&b.ethCfg),
+			eth.NewClient(b.logger, &b.ethCfg),
 		),
 		b.Logger(),
 	)
@@ -77,3 +77,8 @@ func (b *BaseApp) Stop() {
 	b.Logger().Info("stopping app")
 	b.jobMgr.executionPool.Stop()
 }
+
+// 1 ClientRouter -> 1 ConnectionPool -> N EthClients
+
+// ClientRouter is the same interface as the EthClient
+// It basically just grabs a client makes the call, returns the result and then puts the ethclient back into the pool

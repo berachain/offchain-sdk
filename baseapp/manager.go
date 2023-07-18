@@ -2,11 +2,10 @@ package baseapp
 
 import (
 	"context"
-	"os"
 	"time"
 
+	"cosmossdk.io/log"
 	"github.com/berachain/offchain-sdk/job"
-	"github.com/berachain/offchain-sdk/log"
 	"github.com/berachain/offchain-sdk/worker"
 )
 
@@ -28,7 +27,7 @@ func NewJobManager(
 	jobs []job.Basic,
 ) *JobManager {
 	return &JobManager{
-		logger: log.NewBlankLogger(os.Stdout),
+		logger: logger,
 		jobs:   jobs,
 		executionPool: worker.NewPool(
 			name+"-execution",

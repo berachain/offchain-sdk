@@ -1,9 +1,9 @@
 package baseapp
 
 import (
+	"cosmossdk.io/log"
 	"github.com/berachain/offchain-sdk/client/eth"
 	"github.com/berachain/offchain-sdk/job"
-	"github.com/berachain/offchain-sdk/log"
 )
 
 // AppBuilder is a builder for an app.

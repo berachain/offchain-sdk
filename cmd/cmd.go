@@ -4,9 +4,9 @@ import (
 	"os"
 	"os/signal"
 
+	"cosmossdk.io/log"
 	baseapp "github.com/berachain/offchain-sdk/baseapp"
 	"github.com/berachain/offchain-sdk/client/eth"
-	"github.com/berachain/offchain-sdk/log"
 	"github.com/spf13/cobra"
 )
 
@@ -59,8 +59,8 @@ func BuildStartCommand(appBuilder AppBuilder, args cobra.PositionalArgs) *cobra.
 			signalChan := make(chan os.Signal, 1)
 			signal.Notify(signalChan, os.Interrupt)
 
-			// Create a logger
-			logger := log.NewBlankLogger(os.Stdout)
+			// Create a logger. // todo: move to baseapp
+			logger := log.NewLogger(os.Stdout)
 
 			// Load the eth config
 			ethConfig := eth.LoadConfig(appBuilder.ConfigPath())
