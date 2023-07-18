@@ -14,9 +14,6 @@ type JobManager struct {
 	// logger is the logger for the baseapp
 	logger log.Logger
 
-	// listening for conditions
-	// conditionPool worker.Pool
-
 	// list of jobs
 	jobs []job.Basic
 

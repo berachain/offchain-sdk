@@ -68,7 +68,10 @@ func (w *worker) Start() {
 			// this was causing the issue since
 			// we weren't clearing the channel
 			// w.newRes <- executor.Execute()
-			executor.Execute()
+			w.newRes <- executor.Execute()
+			continue
+		case <-w.newRes:
+			w.Logger().Info("received result")
 			continue
 		}
 	}
