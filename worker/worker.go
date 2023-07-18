@@ -48,6 +48,8 @@ func (w *worker) Logger() log.Logger {
 func (w *worker) Start() {
 	// Manage stopping the worker.
 	w.stop = make(chan struct{})
+	// Add the worker to the wait group.
+	// On exiting, remove the worker from the wait group.
 	defer func() {
 		close(w.stop)
 		w.wg.Done()
@@ -65,9 +67,6 @@ func (w *worker) Start() {
 				return
 			}
 			w.Logger().Info("executing job")
-			// this was causing the issue since
-			// we weren't clearing the channel
-			// w.newRes <- executor.Execute()
 			w.newRes <- executor.Execute()
 			continue
 		case <-w.newRes:

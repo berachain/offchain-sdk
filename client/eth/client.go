@@ -58,28 +58,6 @@ type client struct {
 	wsclient   *ethclient.Client
 }
 
-// NewReader returns a new client.
-func NewReader(cfg *Config) Reader {
-	client := &client{
-		cfg: cfg,
-	}
-	if err := client.Dial(); err != nil {
-		panic(err)
-	}
-	return client
-}
-
-// NewWriter returns a new client.
-func NewWriter(cfg *Config) Writer {
-	client := &client{
-		cfg: cfg,
-	}
-	if err := client.Dial(); err != nil {
-		panic(err)
-	}
-	return client
-}
-
 // NewClient returns a new client. It has both reader and writer privilege.
 func NewClient(cfg *Config) Client {
 	client := &client{
