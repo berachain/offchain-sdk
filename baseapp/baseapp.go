@@ -33,7 +33,7 @@ func New(
 	name string,
 	logger log.Logger,
 	ethCfg *eth.Config,
-	jobs []job.Conditional,
+	jobs []job.Basic,
 ) *BaseApp {
 	return &BaseApp{
 		name:   name,
@@ -64,9 +64,10 @@ func (b *BaseApp) Start() {
 			Client: eth.NewClient(&b.ethCfg),
 			Ctx:    context.Background(),
 		},
+		b.Logger(),
 	)
-	b.jobMgr.Start(*ctx)
 	b.jobMgr.executionPool.Start()
+	b.jobMgr.Start(*ctx)
 }
 
 // Stop stops the baseapp.

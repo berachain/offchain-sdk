@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -10,16 +11,19 @@ import (
 )
 
 // Chain is building blocks.
-type EthEventJob struct{}
+type EthEventJob struct {
+}
 
-func (j EthEventJob) Execute(ctx sdk.Context, args any) (any, error) {
+func (j EthEventJob) Execute(ctx context.Context, args any) (any, error) {
+	// sCtx := sdk.UnwrapSdkContext(ctx)
 	fmt.Println("HELLO BLOCK 10 OR HIGHER")
 	return false, nil
 }
 
-func (j EthEventJob) Condition(ctx sdk.Context) bool {
+func (j EthEventJob) Condition(ctx context.Context) bool {
 	fmt.Println("CHECKING CONDITION")
-	chain := ctx.Chain()
+	Sctx := sdk.UnwrapSdkContext(ctx)
+	chain := Sctx.Chain()
 	block, err := chain.CurrentBlock()
 	if err != nil || block.NumberU64() < 10 {
 		return false

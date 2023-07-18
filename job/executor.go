@@ -1,7 +1,8 @@
 package job
 
 import (
-	sdk "github.com/berachain/offchain-sdk/types"
+	"context"
+
 	"github.com/berachain/offchain-sdk/worker"
 )
 
@@ -12,13 +13,13 @@ type Executor struct {
 	Job Basic
 
 	// ctx is the context of the job.
-	ctx sdk.Context
+	ctx context.Context
 
 	// args is the input function arguments.
 	args any
 }
 
-func NewExecutor(ctx sdk.Context, job Basic, args any) *Executor {
+func NewExecutor(ctx context.Context, job Basic, args any) *Executor {
 	return &Executor{
 		Job:  job,
 		ctx:  ctx,

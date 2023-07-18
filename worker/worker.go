@@ -47,8 +47,7 @@ func (w *worker) Logger() log.Logger {
 // Start starts the worker.
 func (w *worker) Start() {
 	// Manage stopping the worker.
-	w.stop = make(chan struct{}, 1)
-	w.wg.Add(1)
+	w.stop = make(chan struct{})
 	defer close(w.stop)
 	w.Logger().Info("starting")
 	for {
@@ -56,6 +55,7 @@ func (w *worker) Start() {
 		case <-w.stop:
 			w.Logger().Info("stopping worker")
 			w.wg.Done()
+			w.logger.Info("decrementing wait group")
 			return
 		case executor, ok := <-w.newExecutor:
 			if !ok {

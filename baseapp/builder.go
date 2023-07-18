@@ -9,14 +9,14 @@ import (
 // AppBuilder is a builder for an app.
 type AppBuilder struct {
 	appName string
-	jobs    []job.Conditional
+	jobs    []job.Basic
 }
 
 // NewAppBuilder creates a new app builder.
 func NewAppBuilder(appName string) *AppBuilder {
 	return &AppBuilder{
 		appName: appName,
-		jobs:    []job.Conditional{},
+		jobs:    []job.Basic{},
 	}
 }
 
@@ -26,7 +26,7 @@ func (ab *AppBuilder) AppName() string {
 }
 
 // AppName sets the name of the app.
-func (ab *AppBuilder) RegisterJob(job job.Conditional) {
+func (ab *AppBuilder) RegisterJob(job job.Basic) {
 	ab.jobs = append(ab.jobs, job)
 }
 

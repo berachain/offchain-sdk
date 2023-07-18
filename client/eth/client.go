@@ -229,7 +229,7 @@ func (c *client) SendTransaction(ctx context.Context, tx *ethcoretypes.Transacti
 }
 
 func (c *client) SubscribeFilterLogs(ctx context.Context, q ethereum.FilterQuery, ch chan<- ethcoretypes.Log) (ethereum.Subscription, error) {
-	return c.httpclient.SubscribeFilterLogs(ctx, q, ch)
+	return c.wsclient.SubscribeFilterLogs(ctx, q, ch)
 }
 
 func (c *client) SuggestGasPrice(ctx context.Context) (*big.Int, error) {

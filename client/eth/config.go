@@ -9,7 +9,7 @@ import (
 // Config is the configuration for the eth client.
 type Config struct {
 	EthHTTPURL string `mapstructure:"ETH_RPC_URL"`
-	EthWSURL   string `mapstructure:"ETH_WS_RUL"`
+	EthWSURL   string `mapstructure:"ETH_WS_URL"`
 }
 
 // LoadConfig loads the configuration from the config file.

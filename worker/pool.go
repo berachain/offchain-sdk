@@ -65,6 +65,7 @@ func (p *pool) Logger() log.Logger {
 func (p *pool) Start() {
 	// Start all the workers.
 	p.Logger().Info("starting workers")
+	p.wg.Add(len(p.workers))
 	for _, w := range p.workers {
 		go w.Start()
 	}
@@ -73,7 +74,7 @@ func (p *pool) Start() {
 // Stop stops the pool of workers.
 func (p *pool) Stop() {
 	// Stop all the workers.
-	p.Logger().Info("attemping to stop workers")
+	p.Logger().Info("attempting to stop workers")
 	for _, w := range p.workers {
 		w.Stop()
 	}

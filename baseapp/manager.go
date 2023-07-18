@@ -1,11 +1,10 @@
 package baseapp
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
-
-	sdk "github.com/berachain/offchain-sdk/types"
 
 	"github.com/berachain/offchain-sdk/job"
 	"github.com/berachain/offchain-sdk/log"
@@ -20,7 +19,7 @@ type JobManager struct {
 	// conditionPool worker.Pool
 
 	// list of jobs
-	jobs []job.Conditional
+	jobs []job.Basic
 
 	// worker pool
 	executionPool worker.Pool
@@ -30,7 +29,7 @@ type JobManager struct {
 func NewJobManager(
 	name string,
 	logger log.Logger,
-	jobs []job.Conditional,
+	jobs []job.Basic,
 ) *JobManager {
 	return &JobManager{
 		logger: log.NewBlankLogger(os.Stdout),
@@ -44,7 +43,7 @@ func NewJobManager(
 }
 
 // Start
-func (jm *JobManager) Start(ctx sdk.Context) {
+func (jm *JobManager) Start(ctx context.Context) {
 	for _, j := range jm.jobs {
 		fmt.Println("REEE")
 		if basic, ok := j.(job.Conditional); ok {
@@ -58,6 +57,41 @@ func (jm *JobManager) Start(ctx sdk.Context) {
 					}
 				}
 			}()
+		} else if basic, ok := j.(job.Subscribable); ok {
+			go func() {
+				for {
+					time.Sleep(50 * time.Millisecond)
+					ch := basic.Subscribe(ctx)
+					val := <-ch
+					switch val {
+					case nil:
+						continue
+					default:
+						jm.executionPool.AddTask(job.NewExecutor(ctx, j, val))
+					}
+				}
+			}()
+		} else if basic, ok := j.(job.EthSubscribable); ok {
+			go func() {
+				sub, ch := basic.Subscribe(ctx)
+				for {
+					time.Sleep(50 * time.Millisecond)
+					select {
+					case <-ctx.Done():
+						basic.Unsubscribe(ctx)
+						return
+					case val := <-ch:
+						jm.executionPool.AddTask(job.NewExecutor(ctx, j, val))
+					case err := <-sub.Err():
+						jm.logger.Error("error in subscription", "err", err)
+						// TODO: add retry mechanism
+						basic.Unsubscribe(ctx)
+						return
+					}
+				}
+			}()
+		} else {
+			panic("unknown job type")
 		}
 	}
 }
