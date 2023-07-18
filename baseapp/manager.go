@@ -71,22 +71,25 @@ func (jm *JobManager) Start(ctx context.Context) {
 					}
 				}
 			}()
-		} else if basic, ok := j.(job.EthSubscribable); ok {
+		} else if ethSubJob, ok := j.(job.EthSubscribable); ok {
+			fmt.Println("ETH SUBSCRIBABLE")
 			go func() {
-				sub, ch := basic.Subscribe(ctx)
+				sub, ch := ethSubJob.Subscribe(ctx)
 				for {
-					time.Sleep(50 * time.Millisecond)
 					select {
 					case <-ctx.Done():
-						basic.Unsubscribe(ctx)
+						fmt.Println("context done")
+						ethSubJob.Unsubscribe(ctx)
 						return
-					case val := <-ch:
-						jm.executionPool.AddTask(job.NewExecutor(ctx, j, val))
 					case err := <-sub.Err():
 						jm.logger.Error("error in subscription", "err", err)
 						// TODO: add retry mechanism
-						basic.Unsubscribe(ctx)
+						ethSubJob.Unsubscribe(ctx)
 						return
+					case val := <-ch:
+						fmt.Println("adding executing job")
+						jm.executionPool.AddTask(job.NewExecutor(ctx, ethSubJob, val))
+						continue
 					}
 				}
 			}()

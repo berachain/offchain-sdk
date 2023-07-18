@@ -20,7 +20,7 @@ func main() {
 		return nil, nil
 	}
 	appBuilder.RegisterJob(
-		job.NewEthSub(common.HexToAddress("0x9d76A095a076A565b319f9fc686bc71cFAe9956c"), "NumberChanged(uint256)", exec),
+		job.NewEthSub(common.HexToAddress("0x18Df82C7E422A42D47345Ed86B0E935E9718eBda"), "NumberChanged(uint256)", exec),
 	)
 
 	if err := cmd.BuildBasicRootCmd(appBuilder).Execute(); err != nil {

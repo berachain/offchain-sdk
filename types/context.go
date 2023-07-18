@@ -3,7 +3,6 @@ package types
 import (
 	"context"
 
-	"github.com/berachain/offchain-sdk/client/eth"
 	"github.com/berachain/offchain-sdk/log"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -24,33 +23,6 @@ type ChainReader interface {
 
 type ChainSubscriber interface {
 	SubscribeFilterLogs(q ethereum.FilterQuery, ch chan<- types.Log) (ethereum.Subscription, error)
-}
-
-var _ Chain = (*ContextEthClient)(nil)
-
-type ContextEthClient struct {
-	eth.Client
-	Ctx context.Context
-}
-
-func (c *ContextEthClient) CurrentBlock() (*types.Block, error) {
-	x, err := c.Client.BlockNumber(c.Ctx)
-	if err != nil {
-		return nil, err
-	}
-	return c.Client.GetBlockByNumber(c.Ctx, x)
-}
-
-func (c *ContextEthClient) GetBlockByNumber(number uint64) (*types.Block, error) {
-	return c.Client.GetBlockByNumber(c.Ctx, number)
-}
-
-func (c *ContextEthClient) SubscribeNewHead() (chan *types.Header, ethereum.Subscription, error) {
-	return c.Client.SubscribeNewHead(c.Ctx)
-}
-
-func (c *ContextEthClient) SubscribeFilterLogs(q ethereum.FilterQuery, ch chan<- types.Log) (ethereum.Subscription, error) {
-	return c.Client.SubscribeFilterLogs(c.Ctx, q, ch)
 }
 
 type Context struct {

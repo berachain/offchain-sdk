@@ -58,12 +58,14 @@ func (b *BaseApp) Logger() log.Logger {
 // Start starts the baseapp.
 func (b *BaseApp) Start() {
 	b.Logger().Info("starting app")
+
+	// TODO: create a new context for every job request / creation.
 	ctx := sdk.NewContext(
 		context.Background(),
-		&sdk.ContextEthClient{
-			Client: eth.NewClient(&b.ethCfg),
-			Ctx:    context.Background(),
-		},
+		eth.NewContextualClient(
+			context.Background(),
+			eth.NewClient(&b.ethCfg),
+		),
 		b.Logger(),
 	)
 	b.jobMgr.executionPool.Start()
