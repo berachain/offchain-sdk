@@ -28,8 +28,8 @@ func NewEthSub(contractAddr common.Address, event string, exec func(context.Cont
 }
 
 func (j *EthEventSub) Execute(ctx context.Context, args any) (any, error) {
-	Sctx := sdk.UnwrapSdkContext(ctx)
-	Sctx.Logger().Info("executing eth sub", "args", args)
+	sCtx := sdk.UnwrapSdkContext(ctx)
+	sCtx.Logger().Info("executing eth sub", "args", args)
 	return j.exec(ctx, args)
 }
 
@@ -46,6 +46,6 @@ func (j *EthEventSub) Subscribe(ctx context.Context) (ethereum.Subscription, cha
 	return sub, ch
 }
 
-func (j *EthEventSub) Unsubscribe(ctx context.Context) {
+func (j *EthEventSub) Unsubscribe(_ context.Context) {
 	j.sub.Unsubscribe()
 }

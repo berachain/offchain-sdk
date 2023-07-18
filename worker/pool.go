@@ -93,7 +93,6 @@ func (p *pool) AddTask(exec Executor) {
 
 // addTask adds a task to the pool.
 func (p *pool) addTask(exec Executor) {
-	fmt.Println("ADDING TASK")
 	p.execCh <- exec
 }
 

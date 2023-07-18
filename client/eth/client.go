@@ -2,7 +2,6 @@ package eth
 
 import (
 	"context"
-	"fmt"
 	"math/big"
 	"time"
 
@@ -12,7 +11,10 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
-const MaxRetries = 3
+const (
+	MaxRetries       = 3
+	defaultRetryTime = 5 * time.Second
+)
 
 type Client interface {
 	Dial() error
@@ -21,7 +23,7 @@ type Client interface {
 	Writer
 }
 
-// Reader is the eth reader interface
+// Reader is the eth reader interface.
 type Reader interface {
 	GetBlockByNumber(ctx context.Context, number uint64) (*ethcoretypes.Block, error)
 	GetReceipts(ctx context.Context, txs ethcoretypes.Transactions) (ethcoretypes.Receipts, error)
@@ -38,13 +40,15 @@ type Reader interface {
 	PendingCodeAt(ctx context.Context, account common.Address) ([]byte, error)
 	PendingNonceAt(ctx context.Context, account common.Address) (uint64, error)
 	SendTransaction(ctx context.Context, tx *ethcoretypes.Transaction) error
-	SubscribeFilterLogs(ctx context.Context, q ethereum.FilterQuery, ch chan<- ethcoretypes.Log) (ethereum.Subscription, error)
+	SubscribeFilterLogs(ctx context.Context, q ethereum.FilterQuery,
+		ch chan<- ethcoretypes.Log) (ethereum.Subscription, error)
 	SuggestGasPrice(ctx context.Context) (*big.Int, error)
 }
 
 type Writer interface {
 	SendTransaction(ctx context.Context, tx *ethcoretypes.Transaction) error
-	CallContract(ctx context.Context, msg ethereum.CallMsg, blockNumber *big.Int) ([]byte, error)
+	CallContract(ctx context.Context, msg ethereum.CallMsg,
+		blockNumber *big.Int) ([]byte, error)
 }
 
 // client is the indexer eth client.
@@ -108,8 +112,7 @@ func (c *client) Dial() error {
 			c.httpclient = httpclient
 			break
 		}
-		fmt.Println("failed to dial http client", err, "retrying in 5, retries - ", retries)
-		time.Sleep(5 * time.Second)
+		time.Sleep(defaultRetryTime)
 	}
 	if err != nil {
 		panic(err)
@@ -123,8 +126,7 @@ func (c *client) Dial() error {
 			c.wsclient = wsethclient
 			break
 		}
-		fmt.Println("failed to dial ws client", err, "retrying in 5, retries - ", retries)
-		time.Sleep(5 * time.Second)
+		time.Sleep(defaultRetryTime)
 	}
 	if err != nil {
 		panic(err)
@@ -228,7 +230,8 @@ func (c *client) SendTransaction(ctx context.Context, tx *ethcoretypes.Transacti
 	return c.httpclient.SendTransaction(ctx, tx)
 }
 
-func (c *client) SubscribeFilterLogs(ctx context.Context, q ethereum.FilterQuery, ch chan<- ethcoretypes.Log) (ethereum.Subscription, error) {
+func (c *client) SubscribeFilterLogs(ctx context.Context,
+	q ethereum.FilterQuery, ch chan<- ethcoretypes.Log) (ethereum.Subscription, error) {
 	return c.wsclient.SubscribeFilterLogs(ctx, q, ch)
 }
 
