@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	appBuilder := baseapp.NewAppBuilder("cron")
+	appBuilder := baseapp.NewAppBuilder("cron", "")
 
 	if err := cmd.BuildBasicRootCmd(appBuilder).Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Whoops. There was an error while executing your CLI '%s'", err)

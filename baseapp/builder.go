@@ -8,21 +8,28 @@ import (
 
 // AppBuilder is a builder for an app.
 type AppBuilder struct {
-	appName string
-	jobs    []job.Basic
+	appName    string
+	jobs       []job.Basic
+	configPath string
 }
 
 // NewAppBuilder creates a new app builder.
-func NewAppBuilder(appName string) *AppBuilder {
+func NewAppBuilder(appName string, configPath string) *AppBuilder {
 	return &AppBuilder{
-		appName: appName,
-		jobs:    []job.Basic{},
+		appName:    appName,
+		jobs:       []job.Basic{},
+		configPath: configPath,
 	}
 }
 
 // AppName returns the name of the app.
 func (ab *AppBuilder) AppName() string {
 	return ab.appName
+}
+
+// ConfigPath returns the path to the config file.
+func (ab *AppBuilder) ConfigPath() string {
+	return ab.configPath
 }
 
 // AppName sets the name of the app.

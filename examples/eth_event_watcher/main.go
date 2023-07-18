@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-	appBuilder := baseapp.NewAppBuilder("watcher")
+	appBuilder := baseapp.NewAppBuilder("watcher", "")
 	exec := func(ctx context.Context, args any) (any, error) {
 		logger := log.NewLogger(os.Stdout, "execution-logger")
 		logger.Info("executing event function", "args", args)

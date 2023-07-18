@@ -14,6 +14,7 @@ import (
 type AppBuilder interface {
 	AppName() string
 	BuildApp(log.Logger, *eth.Config) *baseapp.BaseApp
+	ConfigPath() string
 }
 
 // BuildBasicRootCmd builds a root command.

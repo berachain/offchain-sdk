@@ -32,7 +32,7 @@ func (j EthEventJob) Condition(ctx context.Context) bool {
 }
 
 func main() {
-	appBuilder := baseapp.NewAppBuilder("watcher")
+	appBuilder := baseapp.NewAppBuilder("watcher", "")
 
 	appBuilder.RegisterJob(
 		EthEventJob{},
