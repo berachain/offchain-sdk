@@ -31,10 +31,12 @@ func (c *ContextualClient) GetBlockByNumber(number uint64) (*types.Block, error)
 	return c.client.GetBlockByNumber(c.ctx, number)
 }
 
-func (c *ContextualClient) SubscribeNewHead() (chan *types.Header, ethereum.Subscription, error) {
+func (c *ContextualClient) SubscribeNewHead() (chan *types.Header,
+	ethereum.Subscription, error) {
 	return c.client.SubscribeNewHead(c.ctx)
 }
 
-func (c *ContextualClient) SubscribeFilterLogs(q ethereum.FilterQuery, ch chan<- types.Log) (ethereum.Subscription, error) {
+func (c *ContextualClient) SubscribeFilterLogs(q ethereum.FilterQuery,
+	ch chan<- types.Log) (ethereum.Subscription, error) {
 	return c.client.SubscribeFilterLogs(c.ctx, q, ch)
 }

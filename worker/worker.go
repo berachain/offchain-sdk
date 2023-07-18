@@ -71,7 +71,6 @@ func (w *worker) Start() {
 			executor.Execute()
 			continue
 		}
-
 	}
 }
 

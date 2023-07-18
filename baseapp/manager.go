@@ -2,7 +2,6 @@ package baseapp
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"time"
 
@@ -42,43 +41,40 @@ func NewJobManager(
 	}
 }
 
-// Start
+// Start.
+//
+//nolint:gocognit // todo: fix.
 func (jm *JobManager) Start(ctx context.Context) {
 	for _, j := range jm.jobs {
-		fmt.Println("REEE")
-		if basic, ok := j.(job.Conditional); ok {
-			fmt.Println("REEE")
+		if condJob, ok := j.(job.Conditional); ok {
 			go func() {
 				for {
-					time.Sleep(50 * time.Millisecond)
-					if basic.Condition(ctx) {
-						jm.executionPool.AddTask(job.NewExecutor(ctx, j, nil))
+					time.Sleep(50 * time.Millisecond) //nolint:gomnd // fix.
+					if condJob.Condition(ctx) {
+						jm.executionPool.AddTask(job.NewExecutor(ctx, condJob, nil))
 						return
 					}
 				}
 			}()
-		} else if basic, ok := j.(job.Subscribable); ok {
+		} else if subJob, ok := j.(job.Subscribable); ok { //nolint:govet // todo fix.
 			go func() {
 				for {
-					time.Sleep(50 * time.Millisecond)
-					ch := basic.Subscribe(ctx)
+					ch := subJob.Subscribe(ctx)
 					val := <-ch
 					switch val {
 					case nil:
 						continue
 					default:
-						jm.executionPool.AddTask(job.NewExecutor(ctx, j, val))
+						jm.executionPool.AddTask(job.NewExecutor(ctx, subJob, val))
 					}
 				}
 			}()
-		} else if ethSubJob, ok := j.(job.EthSubscribable); ok {
-			fmt.Println("ETH SUBSCRIBABLE")
+		} else if ethSubJob, ok := j.(job.EthSubscribable); ok { //nolint:govet // todo fix.
 			go func() {
 				sub, ch := ethSubJob.Subscribe(ctx)
 				for {
 					select {
 					case <-ctx.Done():
-						fmt.Println("context done")
 						ethSubJob.Unsubscribe(ctx)
 						return
 					case err := <-sub.Err():
@@ -87,7 +83,6 @@ func (jm *JobManager) Start(ctx context.Context) {
 						ethSubJob.Unsubscribe(ctx)
 						return
 					case val := <-ch:
-						fmt.Println("adding executing job")
 						jm.executionPool.AddTask(job.NewExecutor(ctx, ethSubJob, val))
 						continue
 					}
