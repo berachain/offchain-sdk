@@ -11,29 +11,27 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
+// Compile time check to ensure that EthEventSub implements job.EthSubscribable.
 var _ job.EthSubscribable = (*EthEventSub)(nil)
 
+// EthEventSub allows you to subscribe a basic job to an ethereum event.
 type EthEventSub struct {
-	exec            func(context.Context, any) (any, error)
+	job.Basic
 	contractAddress common.Address
 	event           string
 	sub             ethereum.Subscription
 }
 
-func NewEthSub(contractAddr common.Address, event string, exec func(context.Context, any) (any, error)) *EthEventSub {
+// NewEthSub creates a new EthEventSub.
+func NewEthSub(job job.Basic, contractAddr string, event string) *EthEventSub {
 	return &EthEventSub{
-		exec:            exec,
-		contractAddress: contractAddr,
+		Basic:           job,
+		contractAddress: common.HexToAddress(contractAddr),
 		event:           event,
 	}
 }
 
-func (j *EthEventSub) Execute(ctx context.Context, args any) (any, error) {
-	sCtx := sdk.UnwrapSdkContext(ctx)
-	sCtx.Logger().Info("executing eth sub", "args", args)
-	return j.exec(ctx, args)
-}
-
+// Subscribe subscribes to an ethereum event.
 func (j *EthEventSub) Subscribe(ctx context.Context) (ethereum.Subscription, chan coretypes.Log) {
 	sCtx := sdk.UnwrapSdkContext(ctx)
 	ch := make(chan coretypes.Log)
@@ -47,6 +45,7 @@ func (j *EthEventSub) Subscribe(ctx context.Context) (ethereum.Subscription, cha
 	return sub, ch
 }
 
+// Unsubscribe unsubscribes from an ethereum event.
 func (j *EthEventSub) Unsubscribe(_ context.Context) {
 	j.sub.Unsubscribe()
 }

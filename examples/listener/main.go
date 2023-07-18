@@ -1,15 +1,13 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 
 	"github.com/berachain/offchain-sdk/baseapp"
 	"github.com/berachain/offchain-sdk/cmd"
-	"github.com/berachain/offchain-sdk/log"
+	ljobs "github.com/berachain/offchain-sdk/examples/listener/jobs"
 	jobs "github.com/berachain/offchain-sdk/x/jobs"
-	"github.com/ethereum/go-ethereum/common"
 )
 
 // This example shows how to watch for an event on the Ethereum blockchain.
@@ -18,14 +16,14 @@ import (
 // The event is emitted when the number is changed in the smart contract.
 // The event is watched by the offchain-sdk and when it is emitted, the execution function is called.
 func main() {
-	appBuilder := baseapp.NewAppBuilder("watcher", "")
-	exec := func(ctx context.Context, args any) (any, error) {
-		logger := log.NewLogger(os.Stdout, "execution-logger")
-		logger.Info("executing event function", "args", args)
-		return nil, nil
-	}
+	appBuilder := baseapp.NewAppBuilder("listener", "")
+
 	appBuilder.RegisterJob(
-		jobs.NewEthSub(common.HexToAddress("0x18Df82C7E422A42D47345Ed86B0E935E9718eBda"), "NumberChanged(uint256)", exec),
+		jobs.NewEthSub(
+			&ljobs.Listener{},
+			"0x18Df82C7E422A42D47345Ed86B0E935E9718eBda",
+			"NumberChanged(uint256)",
+		),
 	)
 
 	if err := cmd.BuildBasicRootCmd(appBuilder).Execute(); err != nil {
