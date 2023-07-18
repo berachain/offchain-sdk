@@ -1,8 +1,9 @@
-package job
+package jobs
 
 import (
 	"context"
 
+	"github.com/berachain/offchain-sdk/job"
 	sdk "github.com/berachain/offchain-sdk/types"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
@@ -10,7 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
-var _ EthSubscribable = (*EthEventSub)(nil)
+var _ job.EthSubscribable = (*EthEventSub)(nil)
 
 type EthEventSub struct {
 	exec            func(context.Context, any) (any, error)
