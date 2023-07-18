@@ -7,14 +7,14 @@ import (
 	sdk "github.com/berachain/offchain-sdk/types"
 )
 
-// Compile time check to ensure that Watcher implements job.Basic.
-var _ job.Basic = &Watcher{}
+// Compile time check to ensure that Listener implements job.Basic.
+var _ job.Basic = &Listener{}
 
-// Watcher is a simple job that logs the current block when it is run.
-type Watcher struct{}
+// Listener is a simple job that logs the current block when it is run.
+type Listener struct{}
 
 // Execute implements job.Basic.
-func (w *Watcher) Execute(ctx context.Context, args any) (any, error) {
+func (w *Listener) Execute(ctx context.Context, args any) (any, error) {
 	sCtx := sdk.UnwrapSdkContext(ctx)
 	myBlock, _ := sCtx.Chain().CurrentBlock()
 	sCtx.Logger().Info("block", "block", myBlock.Transactions())
