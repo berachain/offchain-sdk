@@ -63,7 +63,7 @@ func BuildStartCommand(appBuilder AppBuilder, args cobra.PositionalArgs) *cobra.
 			logger := log.NewBlankLogger(os.Stdout)
 
 			// Load the eth config
-			ethConfig := eth.LoadConfig("")
+			ethConfig := eth.LoadConfig(appBuilder.ConfigPath())
 
 			// Build the baseapp
 			app := appBuilder.BuildApp(logger, &ethConfig)
