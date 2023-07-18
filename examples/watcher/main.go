@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	appBuilder := baseapp.NewAppBuilder("watcher")
+	appBuilder := baseapp.NewAppBuilder("watcher", "")
 
 	// appBuilder.AddJob(
 	// 	job.New
