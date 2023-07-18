@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-contract ToWatch {
+contract ToListen {
     uint256 public num;
 
     event NumberChanged(uint256 indexed newNum);
