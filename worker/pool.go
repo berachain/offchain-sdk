@@ -76,8 +76,9 @@ func (p *pool) Stop() {
 	// Stop all the workers.
 	p.Logger().Info("attempting to stop workers")
 	for _, w := range p.workers {
-		w.Stop()
+		go w.Stop()
 	}
+	// Getting stuck here on stop
 	p.wg.Wait()
 
 	// Ensure the channels get closed
@@ -92,6 +93,7 @@ func (p *pool) AddTask(exec Executor) {
 
 // addTask adds a task to the pool.
 func (p *pool) addTask(exec Executor) {
+	fmt.Println("ADDING TASK")
 	p.execCh <- exec
 }
 

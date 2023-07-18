@@ -48,24 +48,30 @@ func (w *worker) Logger() log.Logger {
 func (w *worker) Start() {
 	// Manage stopping the worker.
 	w.stop = make(chan struct{})
-	defer close(w.stop)
+	defer func() {
+		close(w.stop)
+		w.wg.Done()
+	}()
+
 	w.Logger().Info("starting")
 	for {
 		select {
 		case <-w.stop:
 			w.Logger().Info("stopping worker")
-			w.wg.Done()
-			w.logger.Info("decrementing wait group")
 			return
 		case executor, ok := <-w.newExecutor:
 			if !ok {
 				w.Logger().Error("worker stopped because of error")
-				w.wg.Done()
 				return
 			}
 			w.Logger().Info("executing job")
-			w.newRes <- executor.Execute()
+			// this was causing the issue since
+			// we weren't clearing the channel
+			// w.newRes <- executor.Execute()
+			executor.Execute()
+			continue
 		}
+
 	}
 }
 
