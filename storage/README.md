@@ -1,0 +1,3 @@
+# Storage
+
+For handling idempotency.

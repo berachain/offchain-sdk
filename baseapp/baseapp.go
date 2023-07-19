@@ -5,6 +5,7 @@ import (
 
 	"github.com/berachain/offchain-sdk/client/eth"
 	"github.com/berachain/offchain-sdk/log"
+	"github.com/berachain/offchain-sdk/storage"
 	"github.com/berachain/offchain-sdk/worker"
 )
 
@@ -21,6 +22,9 @@ type BaseApp struct {
 
 	// worker pool
 	workerPool worker.Pool
+
+	// storage client
+	storage storage.Storage
 }
 
 // New creates a new baseapp.
