@@ -1,0 +1,3 @@
+[submodule "examples/listener/contracts/lib/forge-std"]
+	path = examples/listener/contracts/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std

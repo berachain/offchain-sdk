@@ -14,6 +14,7 @@ import (
 type AppBuilder interface {
 	AppName() string
 	BuildApp(log.Logger, *eth.Config) *baseapp.BaseApp
+	ConfigPath() string
 }
 
 // BuildBasicRootCmd builds a root command.
@@ -62,7 +63,7 @@ func BuildStartCommand(appBuilder AppBuilder, args cobra.PositionalArgs) *cobra.
 			logger := log.NewBlankLogger(os.Stdout)
 
 			// Load the eth config
-			ethConfig := eth.LoadConfig("")
+			ethConfig := eth.LoadConfig(appBuilder.ConfigPath())
 
 			// Build the baseapp
 			app := appBuilder.BuildApp(logger, &ethConfig)
