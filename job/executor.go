@@ -2,8 +2,6 @@ package job
 
 import (
 	"context"
-
-	"github.com/berachain/offchain-sdk/worker"
 )
 
 // Executor encapsulates a job and its input into a neat package to
@@ -28,7 +26,7 @@ func NewExecutor(ctx context.Context, job Basic, args any) *Executor {
 }
 
 // Execute executes the job and returns the result.
-func (p Executor) Execute() worker.Resultor {
+func (p Executor) Execute() *Resultor {
 	res, err := p.Job.Execute(p.ctx, p.args)
 	return &Resultor{res: res, err: err}
 }
