@@ -30,6 +30,8 @@ endif
 # Target for building the application in all directories
 build:; go build ./...
 
+# Run the example applications
+run-%:; go run ./examples/$*/main.go start
 
 # Format
 lint: |
