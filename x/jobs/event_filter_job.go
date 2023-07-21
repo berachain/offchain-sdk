@@ -20,7 +20,7 @@ type EthFilterSub struct {
 }
 
 // NewEthFilterSub creates a new EthFilterSub
-// eventFilter is a ethereum.FilterQuery
+// eventFilter is a ethereum.FilterQuery.
 func NewEthFilterSub(job job.Basic, eventFilter ethereum.FilterQuery) *EthFilterSub {
 	return &EthFilterSub{
 		Basic:       job,
