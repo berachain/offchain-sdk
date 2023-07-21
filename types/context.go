@@ -29,7 +29,9 @@ type Context struct {
 	context.Context
 	chain  Chain
 	logger log.Logger
-	// chain Chain
+
+	// embed custom app inside baseApp which can be retrieved from context
+	customApp any
 }
 
 // UnwrapSdkContext unwraps the sdk context.
@@ -54,4 +56,8 @@ func (c *Context) Chain() Chain {
 
 func (c *Context) Logger() log.Logger {
 	return c.logger
+}
+
+func (c *Context) CustomApp() any {
+	return c.customApp
 }
