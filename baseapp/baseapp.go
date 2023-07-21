@@ -26,6 +26,8 @@ type BaseApp struct {
 
 	// ethClient is the client for communicating with the chain
 	ethClient eth.Client
+
+	rootMultiStore sdk.MultiStore
 }
 
 // New creates a new baseapp.
@@ -47,6 +49,7 @@ func New(
 			logger,
 			jobs,
 		),
+		rootMultiStore: sdk.NewMultiStore(),
 	}
 }
 
@@ -67,6 +70,7 @@ func (b *BaseApp) Start() {
 			eth.NewClient(&b.ethCfg),
 		),
 		b.Logger(),
+		b.rootMultiStore,
 	)
 	b.jobMgr.executionPool.Start()
 	b.jobMgr.Start(*ctx)

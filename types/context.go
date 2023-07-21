@@ -29,9 +29,7 @@ type Context struct {
 	context.Context
 	chain  Chain
 	logger log.Logger
-
-	// embed custom app inside baseApp which can be retrieved from context
-	customApp any
+	ms     MultiStore
 }
 
 // UnwrapSdkContext unwraps the sdk context.
@@ -42,11 +40,12 @@ func UnwrapSdkContext(ctx context.Context) Context {
 	panic("context is not sdk context")
 }
 
-func NewContext(ctx context.Context, chain Chain, logger log.Logger) *Context {
+func NewContext(ctx context.Context, chain Chain, logger log.Logger, ms MultiStore) *Context {
 	return &Context{
 		Context: ctx,
 		chain:   chain,
 		logger:  logger,
+		ms:      ms,
 	}
 }
 
@@ -58,6 +57,6 @@ func (c *Context) Logger() log.Logger {
 	return c.logger
 }
 
-func (c *Context) CustomApp() any {
-	return c.customApp
+func (c *Context) GetStore(name string) KVStore {
+	return c.ms.GetKVStore(name)
 }
