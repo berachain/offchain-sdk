@@ -39,6 +39,7 @@ func (j *EthEventSub) Subscribe(ctx context.Context) (ethereum.Subscription, cha
 		Addresses: []common.Address{j.contractAddress},
 		Topics:    [][]common.Hash{{crypto.Keccak256Hash([]byte(j.event))}},
 	}, ch)
+	j.sub = sub
 	if err != nil {
 		panic(err)
 	}
