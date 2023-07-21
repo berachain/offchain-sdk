@@ -26,6 +26,9 @@ type BaseApp struct {
 
 	// ethClient is the client for communicating with the chain
 	ethClient eth.Client
+
+	// nonceManager is the manager for managing nonces
+	nonceManager eth.NonceManager
 }
 
 // New creates a new baseapp.
@@ -70,6 +73,8 @@ func (b *BaseApp) Start() {
 	)
 	b.jobMgr.executionPool.Start()
 	b.jobMgr.Start(*ctx)
+
+	b.nonceManager = eth.NewNonceManager()
 }
 
 // Stop stops the baseapp.
