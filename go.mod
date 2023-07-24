@@ -5,6 +5,7 @@ go 1.20
 require (
 	github.com/ethereum/go-ethereum v1.12.0
 	github.com/golangci/golangci-lint v1.53.3
+	github.com/hashicorp/golang-lru/v2 v2.0.4
 	github.com/rs/zerolog v1.29.1
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.12.0
