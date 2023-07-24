@@ -29,10 +29,10 @@ func NewNonceManager() NonceManager {
 
 func (nm *nonceManager) GetNonce(ctx context.Context, address common.Address) (uint64, error) {
 	nm.mutex.Lock()
+	defer nm.mutex.Unlock()
 	if nonce, ok := nm.nonce[address]; ok {
 		return nonce, nil
 	}
-	nm.mutex.Unlock()
 	return nm.getNonceFromChain(ctx, address)
 }
 
