@@ -23,6 +23,7 @@ type Conditional interface {
 type Subscribable interface {
 	Basic
 	Subscribe(ctx context.Context) chan any
+	Unsubscribe(ctx context.Context)
 }
 
 // Polling represents a polling job.
