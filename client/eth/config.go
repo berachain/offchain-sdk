@@ -2,6 +2,7 @@ package eth
 
 import (
 	"log"
+	"math/big"
 
 	"github.com/spf13/viper"
 )
@@ -10,6 +11,8 @@ import (
 type Config struct {
 	EthHTTPURL string `mapstructure:"ETH_RPC_URL"`
 	EthWSURL   string `mapstructure:"ETH_WS_URL"`
+	ChainID    big.Int `mapstructure:"CHAIN_ID"`
+	PrivateKey string `mapstructure:"PRIVATE_KEY"`
 }
 
 // LoadConfig loads the configuration from the config file.
