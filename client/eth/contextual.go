@@ -2,6 +2,7 @@ package eth
 
 import (
 	"context"
+	"math/big"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -43,4 +44,8 @@ func (c *ContextualClient) SubscribeFilterLogs(q ethereum.FilterQuery,
 
 func (c *ContextualClient) SendTransaction(tx *types.Transaction) error {
 	return c.client.SendTransaction(c.ctx, tx)
+}
+
+func (c *ContextualClient) SuggestGasPrice() (*big.Int, error) {
+	return c.client.SuggestGasPrice(c.ctx)
 }
