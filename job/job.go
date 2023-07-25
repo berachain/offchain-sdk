@@ -2,6 +2,7 @@ package job
 
 import (
 	"context"
+	"time"
 
 	"github.com/ethereum/go-ethereum"
 	coretypes "github.com/ethereum/go-ethereum/core/types"
@@ -22,6 +23,12 @@ type Conditional interface {
 type Subscribable interface {
 	Basic
 	Subscribe(ctx context.Context) chan any
+}
+
+// Polling represents a polling job.
+type Polling interface {
+	Basic
+	IntervalTime(ctx context.Context) time.Duration
 }
 
 // EthSubscribable represents a subscription to an ethereum event.
