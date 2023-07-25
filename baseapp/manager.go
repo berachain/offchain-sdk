@@ -85,6 +85,13 @@ func (jm *JobManager) Start(ctx context.Context) {
 					}
 				}
 			}()
+		} else if pollingJob, ok := j.(job.Polling); ok { //nolint:govet // todo fix.
+			go func() {
+				for {
+					time.Sleep(pollingJob.IntervalTime(ctx))
+					jm.executionPool.AddTask(job.NewExecutor(ctx, pollingJob, nil))
+				}
+			}()
 		} else {
 			panic("unknown job type")
 		}
