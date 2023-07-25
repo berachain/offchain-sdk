@@ -26,7 +26,6 @@ func main() {
 	appBuilder := baseapp.NewAppBuilder("listener")
 	appConfig := config.LoadConfig(configPath)
 
-	fmt.Println(appConfig)
 	// regsiter jobs
 	appBuilder.RegisterJob(
 		jobs.NewEthSub(
