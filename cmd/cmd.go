@@ -5,7 +5,6 @@ import (
 	"os/signal"
 
 	baseapp "github.com/berachain/offchain-sdk/baseapp"
-	"github.com/berachain/offchain-sdk/client/eth"
 	"github.com/berachain/offchain-sdk/log"
 	"github.com/spf13/cobra"
 )
@@ -13,8 +12,7 @@ import (
 // AppBuilder is a builder for an app. It follows a basic factory pattern.
 type AppBuilder interface {
 	AppName() string
-	BuildApp(log.Logger, *eth.Config) *baseapp.BaseApp
-	ConfigPath() string
+	BuildApp(log.Logger) *baseapp.BaseApp
 }
 
 // BuildBasicRootCmd builds a root command.
@@ -62,11 +60,8 @@ func BuildStartCommand(appBuilder AppBuilder, args cobra.PositionalArgs) *cobra.
 			// Create a logger
 			logger := log.NewBlankLogger(os.Stdout)
 
-			// Load the eth config
-			ethConfig := eth.LoadConfig(appBuilder.ConfigPath())
-
 			// Build the baseapp
-			app := appBuilder.BuildApp(logger, &ethConfig)
+			app := appBuilder.BuildApp(logger)
 
 			// Start the app
 			app.Start()
