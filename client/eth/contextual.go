@@ -40,3 +40,7 @@ func (c *ContextualClient) SubscribeFilterLogs(q ethereum.FilterQuery,
 	ch chan<- types.Log) (ethereum.Subscription, error) {
 	return c.client.SubscribeFilterLogs(c.ctx, q, ch)
 }
+
+func (c *ContextualClient) SendTransaction(tx *types.Transaction) error {
+	return c.client.SendTransaction(c.ctx, tx)
+}

@@ -8,6 +8,7 @@ import (
 	"github.com/berachain/offchain-sdk/job"
 	"github.com/berachain/offchain-sdk/log"
 	sdk "github.com/berachain/offchain-sdk/types"
+	ethdb "github.com/ethereum/go-ethereum/ethdb"
 )
 
 // BaseApp is the base application.
@@ -18,35 +19,34 @@ type BaseApp struct {
 	// logger is the logger for the baseapp.
 	logger log.Logger
 
-	// contains filtered or unexported fields
-	ethCfg eth.Config
-
 	// jobMgr
 	jobMgr *JobManager
 
 	// ethClient is the client for communicating with the chain
 	ethClient eth.Client
+
+	// db KV store
+	db ethdb.KeyValueStore
 }
 
 // New creates a new baseapp.
 func New(
 	name string,
 	logger log.Logger,
-	ethCfg *eth.Config,
+	ethClient eth.Client,
 	jobs []job.Basic,
+	db ethdb.KeyValueStore,
 ) *BaseApp {
 	return &BaseApp{
-		name:   name,
-		logger: log.NewBlankLogger(os.Stdout),
-		ethCfg: *ethCfg,
-		ethClient: eth.NewClient(
-			ethCfg,
-		),
+		name:      name,
+		logger:    log.NewBlankLogger(os.Stdout),
+		ethClient: ethClient,
 		jobMgr: NewJobManager(
 			name,
 			logger,
 			jobs,
 		),
+		db: db,
 	}
 }
 
@@ -64,9 +64,10 @@ func (b *BaseApp) Start() {
 		context.Background(),
 		eth.NewContextualClient(
 			context.Background(),
-			eth.NewClient(&b.ethCfg),
+			b.ethClient,
 		),
 		b.Logger(),
+		b.db,
 	)
 	b.jobMgr.executionPool.Start()
 	b.jobMgr.Start(*ctx)
