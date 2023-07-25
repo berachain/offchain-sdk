@@ -36,6 +36,14 @@ func main() {
 		),
 	)
 
+	appBuilder.RegisterJob(
+		jobs.NewEthSub(
+			&ljobs.DbWriter{},
+			appConfig.AddressToListen,
+			appConfig.EventName,
+		),
+	)
+
 	// register db
 	appBuilder.RegisterDB(memdb.New())
 
