@@ -43,7 +43,7 @@ func NewJobManager(
 //nolint:gocognit // todo: fix.
 func (jm *JobManager) Start(ctx context.Context) {
 	for _, j := range jm.jobs {
-		if condJob, ok := j.(job.Conditional); ok {
+		if condJob, ok := j.(job.Conditional); ok { //nolint:gomnd // fix.
 			go func() {
 				for {
 					time.Sleep(50 * time.Millisecond) //nolint:gomnd // fix.
