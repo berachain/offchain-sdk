@@ -74,3 +74,7 @@ func (c *ContextualClient) FilterLogs(_ context.Context, query ethereum.FilterQu
 func (c *ContextualClient) ChainID(_ context.Context) (*big.Int, error) {
 	return c.client.ChainID(c.ctx)
 }
+
+func (c *ContextualClient) PendingNonceAt(_ context.Context, account common.Address) (uint64, error) {
+	return c.client.PendingNonceAt(c.ctx, account)
+}
