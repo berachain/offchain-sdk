@@ -77,4 +77,5 @@ func (b *BaseApp) Start() {
 func (b *BaseApp) Stop() {
 	b.Logger().Info("stopping app")
 	b.jobMgr.executionPool.Stop()
+	b.jobMgr.Stop()
 }
