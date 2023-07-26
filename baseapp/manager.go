@@ -47,6 +47,7 @@ func (jm *JobManager) Start(ctx context.Context) {
 			panic(err)
 		}
 
+		//nolint:nestif // todo fix.
 		if condJob, ok := j.(job.Conditional); ok {
 			go func() {
 				for {
