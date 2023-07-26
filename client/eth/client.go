@@ -43,6 +43,7 @@ type Reader interface {
 	SubscribeFilterLogs(ctx context.Context, q ethereum.FilterQuery,
 		ch chan<- ethcoretypes.Log) (ethereum.Subscription, error)
 	SuggestGasPrice(ctx context.Context) (*big.Int, error)
+	SuggestGasTipCap(ctx context.Context) (*big.Int, error)
 }
 
 type Writer interface {

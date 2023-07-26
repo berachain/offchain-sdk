@@ -3,13 +3,14 @@ package types
 import (
 	"context"
 
+	"github.com/berachain/offchain-sdk/client/eth"
 	"github.com/berachain/offchain-sdk/log"
 	"github.com/ethereum/go-ethereum/ethdb"
 )
 
 type Context struct {
 	context.Context
-	chain  Chain
+	chain  eth.Client
 	logger log.Logger
 	db     ethdb.KeyValueStore
 }
@@ -22,16 +23,16 @@ func UnwrapSdkContext(ctx context.Context) Context {
 	panic("context is not sdk context")
 }
 
-func NewContext(ctx context.Context, chain Chain, logger log.Logger, db ethdb.KeyValueStore) *Context {
+func NewContext(ctx context.Context, ethClient eth.Client, logger log.Logger, db ethdb.KeyValueStore) *Context {
 	return &Context{
 		Context: ctx,
-		chain:   chain,
+		chain:   ethClient,
 		logger:  logger,
 		db:      db,
 	}
 }
 
-func (c *Context) Chain() Chain {
+func (c *Context) Chain() eth.Client {
 	return c.chain
 }
 

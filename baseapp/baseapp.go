@@ -62,10 +62,7 @@ func (b *BaseApp) Start() {
 	// TODO: create a new context for every job request / creation.
 	ctx := sdk.NewContext(
 		context.Background(),
-		eth.NewContextualClient(
-			context.Background(),
-			b.ethClient,
-		),
+		b.ethClient,
 		b.Logger(),
 		b.db,
 	)

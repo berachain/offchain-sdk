@@ -43,7 +43,7 @@ func (c *ContextualClient) SubscribeFilterLogs(q ethereum.FilterQuery,
 	return c.client.SubscribeFilterLogs(c.ctx, q, ch)
 }
 
-func (c *ContextualClient) SendTransaction(tx *types.Transaction) error {
+func (c *ContextualClient) SendTransaction(_ context.Context, tx *types.Transaction) error {
 	return c.client.SendTransaction(c.ctx, tx)
 }
 

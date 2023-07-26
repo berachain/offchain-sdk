@@ -17,7 +17,7 @@ type Chain interface {
 
 type ChainWriter interface {
 	CallContract(ctx context.Context, call ethereum.CallMsg, blockNumber *big.Int) ([]byte, error)
-	SendTransaction(tx *types.Transaction) error
+	SendTransaction(ctx context.Context, tx *types.Transaction) error
 }
 
 type ChainReader interface {
