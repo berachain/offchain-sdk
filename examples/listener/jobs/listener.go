@@ -13,6 +13,14 @@ var _ job.Basic = &Listener{}
 // Listener is a simple job that logs the current block when it is run.
 type Listener struct{}
 
+func (w *Listener) Start() error {
+	return nil
+}
+
+func (w *Listener) Stop() error {
+	return nil
+}
+
 // Execute implements job.Basic.
 func (w *Listener) Execute(ctx context.Context, args any) (any, error) {
 	sCtx := sdk.UnwrapSdkContext(ctx)

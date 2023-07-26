@@ -10,6 +10,8 @@ import (
 
 // Basic represents a basic job.
 type Basic interface {
+	Start() error
+	Stop() error
 	Execute(context.Context, any) (any, error)
 }
 
