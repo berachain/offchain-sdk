@@ -43,6 +43,11 @@ func NewJobManager(
 //nolint:gocognit // todo: fix.
 func (jm *JobManager) Start(ctx context.Context) {
 	for _, j := range jm.jobs {
+		if err := j.Start(); err != nil {
+			panic(err)
+		}
+
+		//nolint:nestif // todo fix.
 		if condJob, ok := j.(job.Conditional); ok {
 			go func() {
 				for {
@@ -94,6 +99,15 @@ func (jm *JobManager) Start(ctx context.Context) {
 			}()
 		} else {
 			panic("unknown job type")
+		}
+	}
+}
+
+// Stop.
+func (jm *JobManager) Stop() {
+	for _, j := range jm.jobs {
+		if err := j.Stop(); err != nil {
+			panic(err)
 		}
 	}
 }
