@@ -2,9 +2,11 @@ package eth
 
 import (
 	"context"
+	"math/big"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 type ContextualClient struct {
@@ -43,4 +45,12 @@ func (c *ContextualClient) SubscribeFilterLogs(q ethereum.FilterQuery,
 
 func (c *ContextualClient) SendTransaction(tx *types.Transaction) error {
 	return c.client.SendTransaction(c.ctx, tx)
+}
+
+func (c *ContextualClient) CodeAt(_ context.Context, contract common.Address, blockNumber *big.Int) ([]byte, error) {
+	return c.client.CodeAt(c.ctx, contract, blockNumber)
+}
+
+func (c *ContextualClient) CallContract(_ context.Context,  msg ethereum.CallMsg, blockNumber *big.Int) ([]byte, error) {
+	return c.client.CallContract(c.ctx, msg, blockNumber)
 }
