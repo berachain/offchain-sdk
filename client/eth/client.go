@@ -217,3 +217,7 @@ func (c *client) SubscribeFilterLogs(ctx context.Context,
 func (c *client) SuggestGasPrice(ctx context.Context) (*big.Int, error) {
 	return c.httpclient.SuggestGasPrice(ctx)
 }
+
+func (c *client) SuggestGasTipCap(ctx context.Context) (*big.Int, error) {
+	return c.httpclient.SuggestGasTipCap(ctx)
+}
