@@ -2,8 +2,10 @@ package eth
 
 import (
 	"context"
+	"math/big"
 
 	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
@@ -41,6 +43,38 @@ func (c *ContextualClient) SubscribeFilterLogs(q ethereum.FilterQuery,
 	return c.client.SubscribeFilterLogs(c.ctx, q, ch)
 }
 
-func (c *ContextualClient) SendTransaction(tx *types.Transaction) error {
+func (c *ContextualClient) SendTransaction(_ context.Context, tx *types.Transaction) error {
 	return c.client.SendTransaction(c.ctx, tx)
+}
+
+func (c *ContextualClient) CodeAt(_ context.Context, contract common.Address, blockNumber *big.Int) ([]byte, error) {
+	return c.client.CodeAt(c.ctx, contract, blockNumber)
+}
+
+func (c *ContextualClient) CallContract(_ context.Context, msg ethereum.CallMsg, blockNumber *big.Int) ([]byte, error) {
+	return c.client.CallContract(c.ctx, msg, blockNumber)
+}
+
+func (c *ContextualClient) PendingCodeAt(_ context.Context, account common.Address) ([]byte, error) {
+	return c.client.PendingCodeAt(c.ctx, account)
+}
+
+func (c *ContextualClient) EstimateGas(_ context.Context, msg ethereum.CallMsg) (uint64, error) {
+	return c.client.EstimateGas(c.ctx, msg)
+}
+
+func (c *ContextualClient) HeaderByNumber(_ context.Context, number *big.Int) (*types.Header, error) {
+	return c.client.HeaderByNumber(c.ctx, number)
+}
+
+func (c *ContextualClient) FilterLogs(_ context.Context, query ethereum.FilterQuery) ([]types.Log, error) {
+	return c.client.FilterLogs(c.ctx, query)
+}
+
+func (c *ContextualClient) ChainID(_ context.Context) (*big.Int, error) {
+	return c.client.ChainID(c.ctx)
+}
+
+func (c *ContextualClient) PendingNonceAt(_ context.Context, account common.Address) (uint64, error) {
+	return c.client.PendingNonceAt(c.ctx, account)
 }

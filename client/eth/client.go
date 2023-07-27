@@ -43,6 +43,7 @@ type Reader interface {
 	SubscribeFilterLogs(ctx context.Context, q ethereum.FilterQuery,
 		ch chan<- ethcoretypes.Log) (ethereum.Subscription, error)
 	SuggestGasPrice(ctx context.Context) (*big.Int, error)
+	SuggestGasTipCap(ctx context.Context) (*big.Int, error)
 }
 
 type Writer interface {
@@ -215,4 +216,8 @@ func (c *client) SubscribeFilterLogs(ctx context.Context,
 
 func (c *client) SuggestGasPrice(ctx context.Context) (*big.Int, error) {
 	return c.httpclient.SuggestGasPrice(ctx)
+}
+
+func (c *client) SuggestGasTipCap(ctx context.Context) (*big.Int, error) {
+	return c.httpclient.SuggestGasTipCap(ctx)
 }

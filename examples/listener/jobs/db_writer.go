@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"context"
+	"math/big"
 
 	"github.com/berachain/offchain-sdk/job"
 	sdk "github.com/berachain/offchain-sdk/types"
@@ -24,14 +25,14 @@ func (w *DbWriter) Stop() error {
 // Execute implements job.Basic.
 func (w *DbWriter) Execute(ctx context.Context, args any) (any, error) {
 	sCtx := sdk.UnwrapSdkContext(ctx)
-	myBlock, _ := sCtx.Chain().CurrentBlock()
+	myBlock, _ := sCtx.Chain().BlockNumber(ctx)
 	db := sCtx.DB()
-	sCtx.Logger().Info("block", "block", myBlock.Transactions())
-	db.Put([]byte("block"), []byte(myBlock.Number().String()))
+	sCtx.Logger().Info("block", "block", new(big.Int).SetUint64(myBlock).String())
+	db.Put([]byte("block"), []byte(new(big.Int).SetUint64(myBlock).String()))
 	val, err := db.Get([]byte("block"))
 	if err != nil {
 		panic(err)
 	}
-	sCtx.Logger().Info("block read from DB", "block", string(val))
+	sCtx.Logger().Info("block read from DB", "block", new(big.Int).SetBytes(val).String())
 	return nil, nil
 }
