@@ -161,3 +161,10 @@ func (c *ChainProviderImpl) CallContract(
 	}
 	return nil, ErrClientNotFound
 }
+
+func (c *ChainProviderImpl) SuggestGasTipCap(ctx context.Context) (*big.Int, error) {
+	if client, ok := c.GetAnyChainClient(); ok {
+		return client.SuggestGasTipCap(ctx)
+	}
+	return nil, ErrClientNotFound
+}
