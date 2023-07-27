@@ -32,7 +32,7 @@ func NewContext(ctx context.Context, ethClient eth.Client, logger log.Logger, db
 	}
 }
 
-func (c *Context) Chain() eth.Client {
+func (c Context) Chain() eth.Client {
 	return c.chain
 }
 
