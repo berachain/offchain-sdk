@@ -32,7 +32,7 @@ func NewEthFilterSub(job job.Basic, eventFilter ethereum.FilterQuery) *EthFilter
 func (j *EthFilterSub) Subscribe(ctx context.Context) (ethereum.Subscription, chan coretypes.Log) {
 	sCtx := sdk.UnwrapSdkContext(ctx)
 	ch := make(chan coretypes.Log)
-	sub, err := sCtx.Chain().SubscribeFilterLogs(j.eventFilter, ch)
+	sub, err := sCtx.Chain().SubscribeFilterLogs(context.Background(), j.eventFilter, ch)
 	j.sub = sub
 	if err != nil {
 		panic(err)

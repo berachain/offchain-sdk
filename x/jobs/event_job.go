@@ -35,7 +35,7 @@ func NewEthSub(job job.Basic, contractAddr string, event string) *EthEventSub {
 func (j *EthEventSub) Subscribe(ctx context.Context) (ethereum.Subscription, chan coretypes.Log) {
 	sCtx := sdk.UnwrapSdkContext(ctx)
 	ch := make(chan coretypes.Log)
-	sub, err := sCtx.Chain().SubscribeFilterLogs(ethereum.FilterQuery{
+	sub, err := sCtx.Chain().SubscribeFilterLogs(context.Background(), ethereum.FilterQuery{
 		Addresses: []common.Address{j.contractAddress},
 		Topics:    [][]common.Hash{{crypto.Keccak256Hash([]byte(j.event))}},
 	}, ch)
