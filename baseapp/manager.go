@@ -43,7 +43,7 @@ func NewJobManager(
 //nolint:gocognit // todo: fix.
 func (jm *JobManager) Start(ctx context.Context) {
 	for _, j := range jm.jobs {
-		if err := j.Start(); err != nil {
+		if err := j.Start(ctx); err != nil {
 			panic(err)
 		}
 

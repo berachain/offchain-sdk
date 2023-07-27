@@ -14,7 +14,7 @@ var _ job.Basic = &Listener{}
 // Listener is a simple job that logs the current block when it is run.
 type Listener struct{}
 
-func (w *Listener) Start() error {
+func (w *Listener) Start(context.Context) error {
 	return nil
 }
 
