@@ -67,7 +67,9 @@ func (w *worker) Start() {
 				return
 			}
 			w.Logger().Info("executing job")
-			w.newRes <- executor.Execute()
+			// TODO: handle resCh later.
+			// w.newRes <- executor.Execute()
+			executor.Execute()
 			continue
 		case <-w.newRes:
 			w.Logger().Info("received result")
