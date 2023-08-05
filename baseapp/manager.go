@@ -28,13 +28,9 @@ func NewJobManager(
 	jobs []job.Basic,
 ) *JobManager {
 	return &JobManager{
-		logger: log.NewBlankLogger(os.Stdout),
-		jobs:   jobs,
-		executionPool: worker.NewPool(
-			name+"-execution",
-			4, //nolint:gomnd // hardcode 4 workers for now
-			logger,
-		),
+		logger:        log.NewBlankLogger(os.Stdout),
+		jobs:          jobs,
+		executionPool: *worker.NewWorkerPool(name+"-execution", 100, 100),
 	}
 }
 

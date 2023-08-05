@@ -66,7 +66,6 @@ func (b *BaseApp) Start() {
 		b.Logger(),
 		b.db,
 	)
-	b.jobMgr.executionPool.Start()
 	b.jobMgr.Start(*ctx)
 }
 
