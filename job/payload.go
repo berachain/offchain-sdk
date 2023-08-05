@@ -10,7 +10,7 @@ import (
 // be executed by another thread.
 type Payload struct {
 	// Pass basic job
-	Job Basic
+	job Basic
 
 	// ctx is the context of the job.
 	ctx context.Context
@@ -22,7 +22,7 @@ type Payload struct {
 // NewPayload creates a new payload to send to a worker.
 func NewPayload(ctx context.Context, job Basic, args any) *Payload {
 	return &Payload{
-		Job:  job,
+		job:  job,
 		ctx:  ctx,
 		args: args,
 	}
@@ -30,6 +30,6 @@ func NewPayload(ctx context.Context, job Basic, args any) *Payload {
 
 // Execute executes the job and returns the result.
 func (p Payload) Execute() worker.Resultor {
-	res, err := p.Job.Execute(p.ctx, p.args)
+	res, err := p.job.Execute(p.ctx, p.args)
 	return &Resultor{res: res, err: err}
 }

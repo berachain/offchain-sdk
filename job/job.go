@@ -10,8 +10,8 @@ import (
 
 // Basic represents a basic job.
 type Basic interface {
-	Start(ctx context.Context) error
-	Stop() error
+	Setup(context.Context) error
+	Teardown() error
 	Execute(context.Context, any) (any, error)
 }
 

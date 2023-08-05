@@ -44,7 +44,7 @@ type Pool struct {
 
 // NewPool creates a new pool.
 func NewPool(cfg *PoolConfig, logger log.Logger) *Pool {
-	return &Pool{
+	p := &Pool{
 		name:   cfg.Name,
 		logger: logger,
 		WorkerPool: pond.New(
@@ -54,6 +54,8 @@ func NewPool(cfg *PoolConfig, logger log.Logger) *Pool {
 			pond.MinWorkers(cfg.MinWorkers),
 		),
 	}
+	p.setupMetrics()
+	return p
 }
 
 // Logger returns the logger for the baseapp.

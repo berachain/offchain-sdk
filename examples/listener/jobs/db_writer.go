@@ -14,11 +14,11 @@ var _ job.Basic = &DbWriter{}
 // Listener is a simple job that logs the current block when it is run.
 type DbWriter struct{}
 
-func (w *DbWriter) Start(context.Context) error {
+func (w *DbWriter) Setup(context.Context) error {
 	return nil
 }
 
-func (w *DbWriter) Stop() error {
+func (w *DbWriter) Teardown() error {
 	return nil
 }
 
