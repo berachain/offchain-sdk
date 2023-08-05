@@ -24,12 +24,14 @@ type PoolConfig struct {
 }
 
 // DefaultPoolConfig is the default configuration for a pool.
-var DefaultPoolConfig = &PoolConfig{
-	Name:             "default",
-	MinWorkers:       4,  //nolint:gomnd // it's ok.
-	MaxWorkers:       32, //nolint:gomnd // it's ok.
-	ResizingStrategy: "balanced",
-	MaxQueuedJobs:    100, //nolint:gomnd // it's ok.
+func DefaultPoolConfig() *PoolConfig {
+	return &PoolConfig{
+		Name:             "default",
+		MinWorkers:       4,  //nolint:gomnd // it's ok.
+		MaxWorkers:       32, //nolint:gomnd // it's ok.
+		ResizingStrategy: "balanced",
+		MaxQueuedJobs:    100, //nolint:gomnd // it's ok.
+	}
 }
 
 // Pool is a wrapper around a pond.WorkerPool. We use this to add logging

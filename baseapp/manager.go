@@ -28,7 +28,7 @@ func NewJobManager(
 	jobs []job.Basic,
 ) *JobManager {
 	// TODO: read from config.
-	poolCfg := worker.DefaultPoolConfig
+	poolCfg := worker.DefaultPoolConfig()
 	poolCfg.Name = name
 	return &JobManager{
 		logger:        log.NewBlankLogger(os.Stdout),
@@ -59,14 +59,15 @@ func (jm *JobManager) Start(ctx context.Context) {
 			}()
 		} else if subJob, ok := j.(job.Subscribable); ok { //nolint:govet // todo fix.
 			go func() {
+				ch := subJob.Subscribe(ctx)
 				for {
-					ch := subJob.Subscribe(ctx)
-					val := <-ch
-					switch val {
-					case nil:
-						continue
-					default:
+					select {
+					case val := <-ch:
 						jm.executionPool.AddJob(job.NewPayload(ctx, subJob, val))
+					case <-ctx.Done():
+						return
+					default:
+						continue
 					}
 				}
 			}()
