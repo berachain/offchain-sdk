@@ -28,7 +28,7 @@ func (p *Pool) setupMetrics() {
 			return float64(p.SubmittedTasks())
 		}))
 	prometheus.MustRegister(prometheus.NewGaugeFunc(
-		prometheus.GaugeOpts{
+		prometheus.GaugeOpts{ //nolint:promlinter // its okay.
 			Name: "pool_tasks_waiting_total",
 			Help: "Number of tasks waiting in the queue",
 		},

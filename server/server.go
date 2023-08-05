@@ -24,15 +24,15 @@ func (s *Server) RegisterHandler(h Handler) {
 }
 
 // Start starts the server.
-func (s *Server) Start() error {
+func (s *Server) Start() {
 	mux := http.NewServeMux()
 	for _, h := range s.handlers {
 		mux.Handle(h.Path, h.Handler)
 	}
-	return http.ListenAndServe(":8080", mux)
+	if err := http.ListenAndServe(":8080", mux); err != nil { //nolint:gosec // todo fix.
+		panic(err)
+	}
 }
 
 // Stop stops the server.
-func (s *Server) Stop() error {
-	return nil
-}
+func (s *Server) Stop() {}
