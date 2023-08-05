@@ -1,8 +1,8 @@
 package worker
 
-// Executor encapsulates a job and its input into a neat package to
+// Payload encapsulates a job and its input into a neat package to
 // be executed by another thread.
-type Executor interface {
+type Payload interface {
 	Execute() Resultor
 }
 

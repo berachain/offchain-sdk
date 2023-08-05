@@ -27,10 +27,13 @@ func NewJobManager(
 	logger log.Logger,
 	jobs []job.Basic,
 ) *JobManager {
+	// TODO: read from config.
+	poolCfg := worker.DefaultPoolConfig
+	poolCfg.Name = name
 	return &JobManager{
 		logger:        log.NewBlankLogger(os.Stdout),
 		jobs:          jobs,
-		executionPool: *worker.NewWorkerPool(name+"-execution", 100, 100),
+		executionPool: *worker.NewPool(poolCfg, logger),
 	}
 }
 
@@ -49,7 +52,7 @@ func (jm *JobManager) Start(ctx context.Context) {
 				for {
 					time.Sleep(50 * time.Millisecond) //nolint:gomnd // fix.
 					if condJob.Condition(ctx) {
-						jm.executionPool.AddTask(job.NewExecutor(ctx, condJob, nil))
+						jm.executionPool.AddJob(job.NewPayload(ctx, condJob, nil))
 						return
 					}
 				}
@@ -63,7 +66,7 @@ func (jm *JobManager) Start(ctx context.Context) {
 					case nil:
 						continue
 					default:
-						jm.executionPool.AddTask(job.NewExecutor(ctx, subJob, val))
+						jm.executionPool.AddJob(job.NewPayload(ctx, subJob, val))
 					}
 				}
 			}()
@@ -81,7 +84,7 @@ func (jm *JobManager) Start(ctx context.Context) {
 						ethSubJob.Unsubscribe(ctx)
 						return
 					case val := <-ch:
-						jm.executionPool.AddTask(job.NewExecutor(ctx, ethSubJob, val))
+						jm.executionPool.AddJob(job.NewPayload(ctx, ethSubJob, val))
 						continue
 					}
 				}
@@ -90,7 +93,7 @@ func (jm *JobManager) Start(ctx context.Context) {
 			go func() {
 				for {
 					time.Sleep(pollingJob.IntervalTime(ctx))
-					jm.executionPool.AddTask(job.NewExecutor(ctx, pollingJob, nil))
+					jm.executionPool.AddJob(job.NewPayload(ctx, pollingJob, nil))
 				}
 			}()
 		} else {
