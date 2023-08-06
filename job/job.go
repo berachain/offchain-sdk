@@ -8,9 +8,17 @@ import (
 
 // Basic represents a basic job.
 type Basic interface {
-	Setup(context.Context) error
-	Teardown() error
 	Execute(context.Context, any) (any, error)
+}
+
+type Setupable interface {
+	Basic
+	Setup(context.Context) error
+}
+
+type Teardowanble interface {
+	Basic
+	Teardown() error
 }
 
 // Custom Jobs are jobs that defines their own producer function. This is useful

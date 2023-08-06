@@ -57,8 +57,10 @@ func NewJobManager(
 //nolint:gocognit // todo: fix.
 func (jm *JobManager) Start(ctx context.Context) {
 	for _, j := range jm.jobs {
-		if err := j.Setup(ctx); err != nil {
-			panic(err)
+		if sj, ok := j.(job.Setupable); ok {
+			if err := sj.Setup(ctx); err != nil {
+				panic(err)
+			}
 		}
 
 		if condJob, ok := j.(job.Conditional); ok { //nolint:nestif // todo:fix.
@@ -121,8 +123,10 @@ func (jm *JobManager) Start(ctx context.Context) {
 // Stop.
 func (jm *JobManager) Stop() {
 	for _, j := range jm.jobs {
-		if err := j.Teardown(); err != nil {
-			panic(err)
+		if tj, ok := j.(job.Teardowanble); ok {
+			if err := tj.Teardown(); err != nil {
+				panic(err)
+			}
 		}
 	}
 }
