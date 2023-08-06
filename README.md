@@ -10,8 +10,10 @@ It has not been audited for security purposes and should not be used in producti
 
 ```mermaid
   graph TD;
-      A-->B;
-      A-->C;
-      B-->D;
-      C-->D;
+      PROC1-->POOL;
+      PROC2-->POOL;
+      PROC3-->POOL;
+      POOL-->EXEC1;
+      POOL-->EXEC2;
+      POOL-->EXEC3;
 ```
