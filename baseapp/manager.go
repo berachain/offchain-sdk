@@ -17,8 +17,14 @@ type JobManager struct {
 	// list of jobs
 	jobs []job.Basic
 
-	// worker pool
-	executionPool worker.Pool
+	// Job producers are a pool of workers that produce jobs. These workers
+	// run in the background and produce jobs that are then consumed by the
+	// job executors.
+	jobProducers worker.Pool
+
+	// Job executors are a pool of workers that execute jobs. These workers
+	// are fed jobs by the job producers.
+	jobExecutors worker.Pool
 }
 
 // New creates a new baseapp.
@@ -30,10 +36,19 @@ func NewJobManager(
 	// TODO: read from config.
 	poolCfg := worker.DefaultPoolConfig()
 	poolCfg.Name = name
+	poolCfg.PrometheusPrefix = "job_executor"
 	return &JobManager{
-		logger:        log.NewBlankLogger(os.Stdout),
-		jobs:          jobs,
-		executionPool: *worker.NewPool(poolCfg, logger),
+		logger:       log.NewBlankLogger(os.Stdout),
+		jobs:         jobs,
+		jobExecutors: *worker.NewPool(poolCfg, logger),
+		jobProducers: *worker.NewPool(&worker.PoolConfig{
+			Name:             "job-producer",
+			PrometheusPrefix: "job_producer",
+			MinWorkers:       len(jobs),
+			MaxWorkers:       len(jobs),
+			ResizingStrategy: "balanced", // doesnt really matter, MinWkr == MaxWkr
+			MaxQueuedJobs:    1000,       //nolint:gomnd // TODO: paramterize
+		}, logger),
 	}
 }
 
@@ -48,31 +63,31 @@ func (jm *JobManager) Start(ctx context.Context) {
 
 		//nolint:nestif // todo fix.
 		if condJob, ok := j.(job.Conditional); ok {
-			go func() {
+			jm.jobProducers.Submit(func() {
 				for {
 					time.Sleep(50 * time.Millisecond) //nolint:gomnd // fix.
 					if condJob.Condition(ctx) {
-						jm.executionPool.AddJob(job.NewPayload(ctx, condJob, nil))
+						jm.jobExecutors.AddJob(job.NewPayload(ctx, condJob, nil))
 						return
 					}
 				}
-			}()
+			})
 		} else if subJob, ok := j.(job.Subscribable); ok { //nolint:govet // todo fix.
-			go func() {
+			jm.jobProducers.Submit(func() {
 				ch := subJob.Subscribe(ctx)
 				for {
 					select {
 					case val := <-ch:
-						jm.executionPool.AddJob(job.NewPayload(ctx, subJob, val))
+						jm.jobExecutors.AddJob(job.NewPayload(ctx, subJob, val))
 					case <-ctx.Done():
 						return
 					default:
 						continue
 					}
 				}
-			}()
+			})
 		} else if ethSubJob, ok := j.(job.EthSubscribable); ok { //nolint:govet // todo fix.
-			go func() {
+			jm.jobProducers.Submit(func() {
 				sub, ch := ethSubJob.Subscribe(ctx)
 				for {
 					select {
@@ -85,18 +100,18 @@ func (jm *JobManager) Start(ctx context.Context) {
 						ethSubJob.Unsubscribe(ctx)
 						return
 					case val := <-ch:
-						jm.executionPool.AddJob(job.NewPayload(ctx, ethSubJob, val))
+						jm.jobExecutors.AddJob(job.NewPayload(ctx, ethSubJob, val))
 						continue
 					}
 				}
-			}()
+			})
 		} else if pollingJob, ok := j.(job.Polling); ok { //nolint:govet // todo fix.
-			go func() {
+			jm.jobProducers.Submit(func() {
 				for {
 					time.Sleep(pollingJob.IntervalTime(ctx))
-					jm.executionPool.AddJob(job.NewPayload(ctx, pollingJob, nil))
+					jm.jobExecutors.AddJob(job.NewPayload(ctx, pollingJob, nil))
 				}
-			}()
+			})
 		} else {
 			panic("unknown job type")
 		}

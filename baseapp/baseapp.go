@@ -84,7 +84,6 @@ func (b *BaseApp) Start() {
 // Stop stops the baseapp.
 func (b *BaseApp) Stop() {
 	b.Logger().Info("stopping app")
-	b.jobMgr.executionPool.Stop()
 	b.jobMgr.Stop()
 	b.svr.Stop()
 }

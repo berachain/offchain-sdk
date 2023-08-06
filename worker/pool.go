@@ -9,6 +9,8 @@ import (
 type PoolConfig struct {
 	// Name is the name of the pool.
 	Name string
+	// PrometheusPrefix is the prefix for the prometheus metrics.
+	PrometheusPrefix string
 	// MinWorkers is the minimum number of workers that the resizer will
 	// shrink the pool down to .
 	MinWorkers int
@@ -27,6 +29,7 @@ type PoolConfig struct {
 func DefaultPoolConfig() *PoolConfig {
 	return &PoolConfig{
 		Name:             "default",
+		PrometheusPrefix: "default",
 		MinWorkers:       4,  //nolint:gomnd // it's ok.
 		MaxWorkers:       32, //nolint:gomnd // it's ok.
 		ResizingStrategy: "balanced",
@@ -54,7 +57,7 @@ func NewPool(cfg *PoolConfig, logger log.Logger) *Pool {
 			pond.MinWorkers(cfg.MinWorkers),
 		),
 	}
-	p.setupMetrics()
+	p.setupMetrics(cfg.PrometheusPrefix)
 	return p
 }
 

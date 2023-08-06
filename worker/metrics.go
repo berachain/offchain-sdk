@@ -2,10 +2,10 @@ package worker
 
 import "github.com/prometheus/client_golang/prometheus"
 
-func (p *Pool) setupMetrics() {
+func (p *Pool) setupMetrics(prefix string) {
 	prometheus.MustRegister(prometheus.NewGaugeFunc(
 		prometheus.GaugeOpts{
-			Name: "pool_workers_running",
+			Name: prefix + "_pool_workers_running",
 			Help: "Number of running worker goroutines",
 		},
 		func() float64 {
@@ -13,7 +13,7 @@ func (p *Pool) setupMetrics() {
 		}))
 	prometheus.MustRegister(prometheus.NewGaugeFunc(
 		prometheus.GaugeOpts{
-			Name: "pool_workers_idle",
+			Name: prefix + "_pool_workers_idle",
 			Help: "Number of idle worker goroutines",
 		},
 		func() float64 {
@@ -21,15 +21,15 @@ func (p *Pool) setupMetrics() {
 		}))
 	prometheus.MustRegister(prometheus.NewCounterFunc(
 		prometheus.CounterOpts{
-			Name: "pool_tasks_submitted_total",
+			Name: prefix + "_pool_tasks_submitted_total",
 			Help: "Number of tasks submitted",
 		},
 		func() float64 {
 			return float64(p.SubmittedTasks())
 		}))
 	prometheus.MustRegister(prometheus.NewGaugeFunc(
-		prometheus.GaugeOpts{ //nolint:promlinter // its okay.
-			Name: "pool_tasks_waiting_total",
+		prometheus.GaugeOpts{ 
+			Name: prefix + "_pool_tasks_waiting_total",
 			Help: "Number of tasks waiting in the queue",
 		},
 		func() float64 {
@@ -37,7 +37,7 @@ func (p *Pool) setupMetrics() {
 		}))
 	prometheus.MustRegister(prometheus.NewCounterFunc(
 		prometheus.CounterOpts{
-			Name: "pool_tasks_successful_total",
+			Name: prefix + "_pool_tasks_successful_total",
 			Help: "Number of tasks that completed successfully",
 		},
 		func() float64 {
@@ -45,7 +45,7 @@ func (p *Pool) setupMetrics() {
 		}))
 	prometheus.MustRegister(prometheus.NewCounterFunc(
 		prometheus.CounterOpts{
-			Name: "pool_tasks_failed_total",
+			Name: prefix + "_pool_tasks_failed_total",
 			Help: "Number of tasks that completed with panic",
 		},
 		func() float64 {
@@ -53,7 +53,7 @@ func (p *Pool) setupMetrics() {
 		}))
 	prometheus.MustRegister(prometheus.NewCounterFunc(
 		prometheus.CounterOpts{
-			Name: "pool_tasks_completed_total",
+			Name: prefix + "_pool_tasks_completed_total",
 			Help: "Number of tasks that completed either successfully or with panic",
 		},
 		func() float64 {

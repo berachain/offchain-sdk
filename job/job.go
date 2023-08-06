@@ -8,17 +8,15 @@ import (
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
+type WorkerPool interface {
+	AddJob(*Payload)
+}
+
 // Basic represents a basic job.
 type Basic interface {
 	Setup(context.Context) error
 	Teardown() error
 	Execute(context.Context, any) (any, error)
-}
-
-// Conditional represents a conditional job.
-type Conditional interface {
-	Basic
-	Condition(ctx context.Context) bool
 }
 
 // Subscribable represents a subscribable job.
