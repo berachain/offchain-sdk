@@ -2,15 +2,9 @@ package job
 
 import (
 	"context"
-	"time"
 
-	"github.com/ethereum/go-ethereum"
-	coretypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/berachain/offchain-sdk/worker"
 )
-
-type WorkerPool interface {
-	AddJob(*Payload)
-}
 
 // Basic represents a basic job.
 type Basic interface {
@@ -19,21 +13,14 @@ type Basic interface {
 	Execute(context.Context, any) (any, error)
 }
 
-// Subscribable represents a subscribable job.
-type Subscribable interface {
+// Custom Jobs are jobs that defines their own producer function. This is useful
+// for adding custom job types without having to make a change to the core `offchain-sdk`.
+type Custom interface {
 	Basic
-	Subscribe(ctx context.Context) chan any
+	HasProducer
 }
 
-// Polling represents a polling job.
-type Polling interface {
-	Basic
-	IntervalTime(ctx context.Context) time.Duration
-}
-
-// EthSubscribable represents a subscription to an ethereum event.
-type EthSubscribable interface {
-	Basic
-	Subscribe(ctx context.Context) (ethereum.Subscription, chan coretypes.Log)
-	Unsubscribe(ctx context.Context)
+// HasPorducer represents a struct that defines a producer.
+type HasProducer interface {
+	Producer(ctx context.Context, pool worker.Pool) error
 }

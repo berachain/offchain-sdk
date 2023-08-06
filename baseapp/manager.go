@@ -3,9 +3,9 @@ package baseapp
 import (
 	"context"
 	"os"
-	"time"
 
 	"github.com/berachain/offchain-sdk/job"
+	jobtypes "github.com/berachain/offchain-sdk/job/types"
 	"github.com/berachain/offchain-sdk/log"
 	"github.com/berachain/offchain-sdk/worker"
 )
@@ -45,9 +45,9 @@ func NewJobManager(
 			Name:             "job-producer",
 			PrometheusPrefix: "job_producer",
 			MinWorkers:       len(jobs),
-			MaxWorkers:       len(jobs),
-			ResizingStrategy: "balanced", // doesnt really matter, MinWkr == MaxWkr
-			MaxQueuedJobs:    1000,       //nolint:gomnd // TODO: paramterize
+			MaxWorkers:       len(jobs) + 1, // TODO: figure out why we need to +1
+			ResizingStrategy: "eager",
+			MaxQueuedJobs:    len(jobs),
 		}, logger),
 	}
 }
@@ -61,24 +61,31 @@ func (jm *JobManager) Start(ctx context.Context) {
 			panic(err)
 		}
 
-		//nolint:nestif // todo fix.
-		if condJob, ok := j.(job.Conditional); ok {
-			jm.jobProducers.Submit(func() {
-				for {
-					time.Sleep(50 * time.Millisecond) //nolint:gomnd // fix.
-					if condJob.Condition(ctx) {
-						jm.jobExecutors.AddJob(job.NewPayload(ctx, condJob, nil))
-						return
+		if condJob, ok := j.(job.Conditional); ok { //nolint:nestif // todo:fix.
+			wrappedJob := job.WrapConditional(condJob)
+			jm.jobProducers.Submit(
+				func() {
+					if err := wrappedJob.Producer(ctx, jm.jobExecutors); err != nil {
+						jm.logger.Error("error in job producer", "err", err)
 					}
-				}
-			})
+				},
+			)
+		} else if pollJob, ok := j.(job.Polling); ok { //nolint:govet // todo fix.
+			wrappedJob := job.WrapPolling(pollJob)
+			jm.jobProducers.Submit(
+				func() {
+					if err := wrappedJob.Producer(ctx, jm.jobExecutors); err != nil {
+						jm.logger.Error("error in job producer", "err", err)
+					}
+				},
+			)
 		} else if subJob, ok := j.(job.Subscribable); ok { //nolint:govet // todo fix.
 			jm.jobProducers.Submit(func() {
 				ch := subJob.Subscribe(ctx)
 				for {
 					select {
 					case val := <-ch:
-						jm.jobExecutors.AddJob(job.NewPayload(ctx, subJob, val))
+						jm.jobExecutors.AddJob(jobtypes.NewPayload(ctx, subJob, val))
 					case <-ctx.Done():
 						return
 					default:
@@ -100,16 +107,9 @@ func (jm *JobManager) Start(ctx context.Context) {
 						ethSubJob.Unsubscribe(ctx)
 						return
 					case val := <-ch:
-						jm.jobExecutors.AddJob(job.NewPayload(ctx, ethSubJob, val))
+						jm.jobExecutors.AddJob(jobtypes.NewPayload(ctx, ethSubJob, val))
 						continue
 					}
-				}
-			})
-		} else if pollingJob, ok := j.(job.Polling); ok { //nolint:govet // todo fix.
-			jm.jobProducers.Submit(func() {
-				for {
-					time.Sleep(pollingJob.IntervalTime(ctx))
-					jm.jobExecutors.AddJob(job.NewPayload(ctx, pollingJob, nil))
 				}
 			})
 		} else {

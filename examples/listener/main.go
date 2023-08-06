@@ -43,6 +43,10 @@ func main() {
 		),
 	)
 
+	appBuilder.RegisterJob(
+		&ljobs.Poller{},
+	)
+
 	// register db
 	appBuilder.RegisterDB(memdb.New())
 
