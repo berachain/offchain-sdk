@@ -9,6 +9,20 @@ import (
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
+// WrapJob wraps a basic job into a job that can be submitted to the worker pool.
+func WrapJob(j Basic) HasProducer {
+	var wrappedJob HasProducer
+	if condJob, ok := j.(Conditional); ok {
+		wrappedJob = WrapConditional(condJob)
+	} else if pollJob, ok := j.(Polling); ok {
+		wrappedJob = WrapPolling(pollJob)
+	} else {
+		// does not support wrapping. (temporary)
+		return nil
+	}
+	return wrappedJob
+}
+
 // After Basic jobs as explained in `job.go` the SDK currently
 // supports two other types of jobs, polling jobs and conditional jobs.
 
@@ -25,6 +39,7 @@ type Polling interface {
 
 // WrapPolling wraps a polling job into a conditional job, this is possible since,
 // polling jobs are simply conditional jobs where `Condition()` always returns true.
+// Cute little double wrap that allows us to re-use the producer from `conditional`.
 func WrapPolling(c Polling) HasProducer {
 	return &conditional{&polling{c}}
 }
@@ -37,7 +52,7 @@ type polling struct {
 	Polling
 }
 
-// Condition returns true.
+// Condition always returns true for polling jobs.
 func (p *polling) Condition(context.Context) bool {
 	return true
 }
@@ -70,6 +85,9 @@ func (cj *conditional) Producer(ctx context.Context, pool WorkerPool) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
+			// NOTE: for job producers, we can just register the default, pass all of
+			// them into `TaskGroups` have the context be shared and bobs your uncle
+			// we get all this for free.
 			// Sleep for a period of time.
 			time.Sleep(cj.IntervalTime(ctx))
 

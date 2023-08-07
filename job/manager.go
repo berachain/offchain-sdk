@@ -9,6 +9,7 @@ import (
 	workertypes "github.com/berachain/offchain-sdk/worker/types"
 )
 
+// Manager handles the job and worker lifecycle.
 type Manager struct {
 	// logger is the logger for the baseapp
 	logger log.Logger
@@ -53,7 +54,7 @@ func NewManager(
 
 // Start.
 //
-//nolint:gocognit // todo: fix.
+
 func (jm *Manager) Start(ctx context.Context) {
 	for _, j := range jm.jobs {
 		if sj, ok := j.(HasSetup); ok {
@@ -61,26 +62,40 @@ func (jm *Manager) Start(ctx context.Context) {
 				panic(err)
 			}
 		}
+	}
+}
 
-		if condJob, ok := j.(Conditional); ok { //nolint:nestif // todo:fix.
-			wrappedJob := WrapConditional(condJob)
-			jm.jobExecutors.Submit(
+// Stop.
+func (jm *Manager) Stop() {
+	for _, j := range jm.jobs {
+		if tj, ok := j.(HasTeardown); ok {
+			if err := tj.Teardown(); err != nil {
+				panic(err)
+			}
+		}
+	}
+}
+
+// RunProducers runs the job producers.
+//
+//nolint:gocognit // fix.
+func (jm *Manager) RunProducers(ctx context.Context) {
+	for _, j := range jm.jobs {
+		// Handle migrated jobs.
+		if wrappedJob := WrapJob(j); wrappedJob != nil {
+			jm.jobProducers.Submit(
 				func() {
 					if err := wrappedJob.Producer(ctx, &jm.jobExecutors); err != nil {
 						jm.logger.Error("error in job producer", "err", err)
 					}
 				},
 			)
-		} else if pollJob, ok := j.(Polling); ok { //nolint:govet // todo fix.
-			wrappedJob := WrapPolling(pollJob)
-			jm.jobExecutors.Submit(
-				func() {
-					if err := wrappedJob.Producer(ctx, &jm.jobExecutors); err != nil {
-						jm.logger.Error("error in job producer", "err", err)
-					}
-				},
-			)
-		} else if subJob, ok := j.(Subscribable); ok { //nolint:govet // todo fix.
+			continue
+		}
+
+		// Handle unmigrated jobs.
+
+		if subJob, ok := j.(Subscribable); ok {
 			jm.jobExecutors.Submit(func() {
 				ch := subJob.Subscribe(ctx)
 				for {
@@ -115,17 +130,6 @@ func (jm *Manager) Start(ctx context.Context) {
 			})
 		} else {
 			panic("unknown job type")
-		}
-	}
-}
-
-// Stop.
-func (jm *Manager) Stop() {
-	for _, j := range jm.jobs {
-		if tj, ok := j.(HasTeardown); ok {
-			if err := tj.Teardown(); err != nil {
-				panic(err)
-			}
 		}
 	}
 }

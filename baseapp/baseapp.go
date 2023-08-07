@@ -3,6 +3,7 @@ package baseapp
 import (
 	"context"
 	"os"
+	"os/signal"
 
 	"github.com/berachain/offchain-sdk/client/eth"
 	"github.com/berachain/offchain-sdk/job"
@@ -65,14 +66,22 @@ func (b *BaseApp) Logger() log.Logger {
 func (b *BaseApp) Start() {
 	b.Logger().Info("starting app")
 
+	// Create a context that will be cancelled when the user presses Ctrl+C (process receives termination signal).
+	ctx, _ := signal.NotifyContext(context.Background(), os.Interrupt)
+
+	// ctx := context.Background()
+
 	// TODO: create a new context for every job request / creation.
-	ctx := sdk.NewContext(
-		context.Background(),
+	ctx = sdk.NewContext(
+		ctx,
 		b.ethClient,
 		b.Logger(),
 		b.db,
 	)
-	b.jobMgr.Start(*ctx)
+
+	// TODO: Handle better.
+	b.jobMgr.Start(ctx)
+	b.jobMgr.RunProducers(ctx)
 
 	// TODO: create a nice way to register handlers.
 	b.svr.RegisterHandler(

@@ -16,10 +16,11 @@ type Context struct {
 }
 
 // UnwrapSdkContext unwraps the sdk context.
-func UnwrapSdkContext(ctx context.Context) Context {
-	if sdkCtx, ok := ctx.(Context); ok {
+func UnwrapSdkContext(ctx context.Context) *Context {
+	if sdkCtx, ok := ctx.(*Context); ok {
 		return sdkCtx
 	}
+
 	panic("context is not sdk context")
 }
 
@@ -32,7 +33,7 @@ func NewContext(ctx context.Context, ethClient eth.Client, logger log.Logger, db
 	}
 }
 
-func (c Context) Chain() eth.Client {
+func (c *Context) Chain() eth.Client {
 	return c.chain
 }
 
