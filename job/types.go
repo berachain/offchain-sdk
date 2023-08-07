@@ -4,16 +4,20 @@ import (
 	"context"
 	"time"
 
-	jobtypes "github.com/berachain/offchain-sdk/job/types"
+	workertypes "github.com/berachain/offchain-sdk/worker/types"
 	"github.com/ethereum/go-ethereum"
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
+
+// After Basic jobs as explained in `job.go` the SDK currently
+// supports two other types of jobs, polling jobs and conditional jobs.
 
 // ============================================
 // Polling Jobs
 // ============================================
 
-// Polling represents a polling job.
+// Polling represents a polling job. Polling jobs are jobs that are run
+// periodically at a given interval.
 type Polling interface {
 	Basic
 	IntervalTime(ctx context.Context) time.Duration
@@ -48,8 +52,7 @@ type Conditional interface {
 	Condition(ctx context.Context) bool
 }
 
-// Wrap Conditional, wraps a conditional job proivded by a user into a conditional job that
-// can be intialized by the job manager.
+// Wrap Conditional, wraps a conditional job to conform to the producer interface.
 func WrapConditional(c Conditional) HasProducer {
 	return &conditional{c}
 }
@@ -73,7 +76,7 @@ func (cj *conditional) Producer(ctx context.Context, pool WorkerPool) error {
 			// Check if the condition is true.
 			if cj.Condition(ctx) {
 				// If true add a job
-				_ = pool.SubmitJob(jobtypes.NewPayload(ctx, cj, nil))
+				_ = pool.SubmitJob(workertypes.NewPayload(ctx, cj, nil))
 			}
 		}
 	}

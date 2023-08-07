@@ -22,7 +22,7 @@ type BaseApp struct {
 	logger log.Logger
 
 	// jobMgr
-	jobMgr *JobManager
+	jobMgr *job.Manager
 
 	// ethClient is the client for communicating with the chain
 	ethClient eth.Client
@@ -46,7 +46,7 @@ func New(
 		name:      name,
 		logger:    log.NewBlankLogger(os.Stdout),
 		ethClient: ethClient,
-		jobMgr: NewJobManager(
+		jobMgr: job.NewManager(
 			name,
 			logger,
 			jobs,

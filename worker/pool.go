@@ -41,8 +41,7 @@ func (p *Pool) SubmitJob(pay Payload) error {
 	if !p.TrySubmit(func() { pay.Execute() }) {
 		p.Logger().Error("failed to submit job")
 		return errors.New("failed to submit job")
-	} else {
-		p.Logger().Info("submitted job")
-		return nil
 	}
+	p.Logger().Info("submitted job")
+	return nil
 }

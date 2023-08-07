@@ -1,21 +1,20 @@
-package baseapp
+package job
 
 import (
 	"context"
 	"os"
 
-	"github.com/berachain/offchain-sdk/job"
-	jobtypes "github.com/berachain/offchain-sdk/job/types"
 	"github.com/berachain/offchain-sdk/log"
 	"github.com/berachain/offchain-sdk/worker"
+	workertypes "github.com/berachain/offchain-sdk/worker/types"
 )
 
-type JobManager struct {
+type Manager struct {
 	// logger is the logger for the baseapp
 	logger log.Logger
 
 	// list of jobs
-	jobs []job.Basic
+	jobs []Basic
 
 	// Job producers are a pool of workers that produce jobs. These workers
 	// run in the background and produce jobs that are then consumed by the
@@ -28,16 +27,16 @@ type JobManager struct {
 }
 
 // New creates a new baseapp.
-func NewJobManager(
+func NewManager(
 	name string,
 	logger log.Logger,
-	jobs []job.Basic,
-) *JobManager {
+	jobs []Basic,
+) *Manager {
 	// TODO: read from config.
 	poolCfg := worker.DefaultPoolConfig()
 	poolCfg.Name = name
 	poolCfg.PrometheusPrefix = "job_executor"
-	return &JobManager{
+	return &Manager{
 		logger:       log.NewBlankLogger(os.Stdout),
 		jobs:         jobs,
 		jobExecutors: *worker.NewPool(poolCfg, logger),
@@ -55,40 +54,39 @@ func NewJobManager(
 // Start.
 //
 //nolint:gocognit // todo: fix.
-func (jm *JobManager) Start(ctx context.Context) {
-	group := jm.jobProducers.Group()
+func (jm *Manager) Start(ctx context.Context) {
 	for _, j := range jm.jobs {
-		if sj, ok := j.(job.HasSetup); ok {
+		if sj, ok := j.(HasSetup); ok {
 			if err := sj.Setup(ctx); err != nil {
 				panic(err)
 			}
 		}
 
-		if condJob, ok := j.(job.Conditional); ok { //nolint:nestif // todo:fix.
-			wrappedJob := job.WrapConditional(condJob)
-			group.Submit(
+		if condJob, ok := j.(Conditional); ok { //nolint:nestif // todo:fix.
+			wrappedJob := WrapConditional(condJob)
+			jm.jobExecutors.Submit(
 				func() {
 					if err := wrappedJob.Producer(ctx, &jm.jobExecutors); err != nil {
 						jm.logger.Error("error in job producer", "err", err)
 					}
 				},
 			)
-		} else if pollJob, ok := j.(job.Polling); ok { //nolint:govet // todo fix.
-			wrappedJob := job.WrapPolling(pollJob)
-			group.Submit(
+		} else if pollJob, ok := j.(Polling); ok { //nolint:govet // todo fix.
+			wrappedJob := WrapPolling(pollJob)
+			jm.jobExecutors.Submit(
 				func() {
 					if err := wrappedJob.Producer(ctx, &jm.jobExecutors); err != nil {
 						jm.logger.Error("error in job producer", "err", err)
 					}
 				},
 			)
-		} else if subJob, ok := j.(job.Subscribable); ok { //nolint:govet // todo fix.
-			group.Submit(func() {
+		} else if subJob, ok := j.(Subscribable); ok { //nolint:govet // todo fix.
+			jm.jobExecutors.Submit(func() {
 				ch := subJob.Subscribe(ctx)
 				for {
 					select {
 					case val := <-ch:
-						_ = jm.jobExecutors.SubmitJob(jobtypes.NewPayload(ctx, subJob, val))
+						_ = jm.jobExecutors.SubmitJob(workertypes.NewPayload(ctx, subJob, val))
 					case <-ctx.Done():
 						return
 					default:
@@ -96,8 +94,8 @@ func (jm *JobManager) Start(ctx context.Context) {
 					}
 				}
 			})
-		} else if ethSubJob, ok := j.(job.EthSubscribable); ok { //nolint:govet // todo fix.
-			group.Submit(func() {
+		} else if ethSubJob, ok := j.(EthSubscribable); ok { //nolint:govet // todo fix.
+			jm.jobExecutors.Submit(func() {
 				sub, ch := ethSubJob.Subscribe(ctx)
 				for {
 					select {
@@ -110,7 +108,7 @@ func (jm *JobManager) Start(ctx context.Context) {
 						ethSubJob.Unsubscribe(ctx)
 						return
 					case val := <-ch:
-						_ = jm.jobExecutors.SubmitJob(jobtypes.NewPayload(ctx, ethSubJob, val))
+						_ = jm.jobExecutors.SubmitJob(workertypes.NewPayload(ctx, ethSubJob, val))
 						continue
 					}
 				}
@@ -122,9 +120,9 @@ func (jm *JobManager) Start(ctx context.Context) {
 }
 
 // Stop.
-func (jm *JobManager) Stop() {
+func (jm *Manager) Stop() {
 	for _, j := range jm.jobs {
-		if tj, ok := j.(job.HasTeardown); ok {
+		if tj, ok := j.(HasTeardown); ok {
 			if err := tj.Teardown(); err != nil {
 				panic(err)
 			}
