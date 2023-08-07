@@ -2,9 +2,6 @@ package baseapp
 
 import (
 	"context"
-	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/berachain/offchain-sdk/client/eth"
 	"github.com/berachain/offchain-sdk/job"
@@ -62,14 +59,8 @@ func (b *BaseApp) Logger() log.Logger {
 }
 
 // Start starts the baseapp.
-func (b *BaseApp) Start() {
+func (b *BaseApp) Start(ctx context.Context) error {
 	b.Logger().Info("starting app")
-
-	// Create a context that will be cancelled when the user presses Ctrl+C
-	// (process receives termination signal).
-	// TODO: take the context from cobra and then wrap it in a cancel context and pass it down.
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
 
 	// Wrap the context in sdk.Context in order to attach our clients, logger and db.
 	// TODO: is this bad practice we are just stealing from the cosmos sdk?
@@ -88,9 +79,7 @@ func (b *BaseApp) Start() {
 	b.RegisterHTTPHandlers()
 	go b.svr.Start()
 
-	// Wait on ctx.Done
-	// TODO: wait in the cobra command once the NotifyContext is moved to the command.
-	<-ctx.Done()
+	return nil
 }
 
 // RegisterHttpHandlers registers the http handlers.
