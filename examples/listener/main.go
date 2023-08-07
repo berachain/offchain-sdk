@@ -6,14 +6,9 @@ import (
 
 	"github.com/berachain/offchain-sdk/baseapp"
 	"github.com/berachain/offchain-sdk/cmd"
-	"github.com/berachain/offchain-sdk/examples/listener/config"
 	ljobs "github.com/berachain/offchain-sdk/examples/listener/jobs"
 	jobs "github.com/berachain/offchain-sdk/x/jobs"
 	memdb "github.com/ethereum/go-ethereum/ethdb/memorydb"
-)
-
-const (
-	configPath = "config/.env"
 )
 
 // This example shows how to watch for an event on the Ethereum blockchain.
@@ -23,22 +18,25 @@ const (
 // The event is watched by the offchain-sdk and when it is emitted, the execution function is called.
 func main() {
 	appBuilder := baseapp.NewAppBuilder("listener")
-	appConfig := config.LoadConfig(configPath)
+
+	// TODO, proper config thing.
+	eventName := "NumberChanged(uint256)"
+	addrToListen := "0x5793a71D3eF074f71dCC21216Dbfd5C0e780132c"
 
 	// regsiter jobs
 	appBuilder.RegisterJob(
 		jobs.NewEthSub(
 			&ljobs.Listener{},
-			appConfig.AddressToListen,
-			appConfig.EventName,
+			addrToListen,
+			eventName,
 		),
 	)
 
 	appBuilder.RegisterJob(
 		jobs.NewEthSub(
 			&ljobs.DbWriter{},
-			appConfig.AddressToListen,
-			appConfig.EventName,
+			addrToListen,
+			eventName,
 		),
 	)
 

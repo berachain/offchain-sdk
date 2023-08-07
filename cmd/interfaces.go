@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"github.com/berachain/offchain-sdk/baseapp"
+	"github.com/berachain/offchain-sdk/client/eth"
 	"github.com/berachain/offchain-sdk/log"
 )
 
@@ -9,4 +10,5 @@ import (
 type AppBuilder interface {
 	AppName() string
 	BuildApp(log.Logger) *baseapp.BaseApp
+	RegisterEthClient(eth.Client)
 }
