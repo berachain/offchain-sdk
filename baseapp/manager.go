@@ -6,57 +6,75 @@ import (
 	"github.com/berachain/offchain-sdk/job"
 	workertypes "github.com/berachain/offchain-sdk/job/types"
 	"github.com/berachain/offchain-sdk/log"
+	sdk "github.com/berachain/offchain-sdk/types"
 	"github.com/berachain/offchain-sdk/worker"
+)
+
+const (
+	producerName           = "job-producer"
+	producerPromName       = "job_producer"
+	producerResizeStrategy = "eager"
+
+	executorName     = "job-executor"
+	executorPromName = "job_executor"
 )
 
 // Manager handles the job and worker lifecycle.
 type Manager struct {
-	// logger is the logger for the baseapp
-	logger log.Logger
-
 	// list of jobs
-	jobs []job.Basic
+	jobRegistry *job.Registry
 
 	// Job producers are a pool of workers that produce jobs. These workers
 	// run in the background and produce jobs that are then consumed by the
 	// job executors.
-	jobProducers worker.Pool
+	producerCfg  *worker.PoolConfig
+	jobProducers *worker.Pool
 
 	// Job executors are a pool of workers that execute jobs. These workers
 	// are fed jobs by the job producers.
-	jobExecutors worker.Pool
+	executorCfg  *worker.PoolConfig
+	jobExecutors *worker.Pool
 }
 
 // New creates a new baseapp.
 func NewManager(
-	name string,
-	logger log.Logger,
 	jobs []job.Basic,
 ) *Manager {
-	// TODO: read from config.
-	poolCfg := worker.DefaultPoolConfig()
-	poolCfg.Name = name
-	poolCfg.PrometheusPrefix = "job_executor"
-	return &Manager{
-		logger:       logger,
-		jobs:         jobs,
-		jobExecutors: *worker.NewPool(poolCfg, logger),
-		jobProducers: *worker.NewPool(&worker.PoolConfig{
-			Name:             "job-producer",
-			PrometheusPrefix: "job_producer",
-			MinWorkers:       len(jobs),
-			MaxWorkers:       len(jobs) + 1, // TODO: figure out why we need to +1
-			ResizingStrategy: "eager",
-			MaxQueuedJobs:    len(jobs),
-		}, logger),
+	m := &Manager{}
+	m.jobRegistry = job.NewRegistry()
+	for _, j := range jobs {
+		if err := m.jobRegistry.Register(j); err != nil {
+			panic(err)
+		}
 	}
+
+	jobCount := int(m.jobRegistry.Count())
+	m.producerCfg = &worker.PoolConfig{
+		Name:             producerName,
+		PrometheusPrefix: producerPromName,
+		MinWorkers:       uint16(jobCount),
+		MaxWorkers:       uint16(m.jobRegistry.Count()) + 1,
+		ResizingStrategy: producerResizeStrategy,
+		MaxQueuedJobs:    uint16(m.jobRegistry.Count()),
+	}
+
+	// TODO: read from config.
+	m.executorCfg = worker.DefaultPoolConfig()
+	m.executorCfg.Name = executorName
+	m.executorCfg.PrometheusPrefix = executorPromName
+
+	return m
 }
 
 // Start.
 //
 
 func (jm *Manager) Start(ctx context.Context) {
-	for _, j := range jm.jobs {
+	// We pass in the context in order to handle cancelling the workers.
+	jm.jobExecutors = worker.NewPool(ctx, jm.executorCfg)
+	jm.jobProducers = worker.NewPool(ctx, jm.producerCfg)
+
+	for _, j := range jm.jobRegistry.Iterate() {
 		if sj, ok := j.(job.HasSetup); ok {
 			if err := sj.Setup(ctx); err != nil {
 				panic(err)
@@ -67,26 +85,36 @@ func (jm *Manager) Start(ctx context.Context) {
 
 // Stop.
 func (jm *Manager) Stop() {
-	for _, j := range jm.jobs {
+	for _, j := range jm.jobRegistry.Iterate() {
 		if tj, ok := j.(job.HasTeardown); ok {
 			if err := tj.Teardown(); err != nil {
 				panic(err)
 			}
 		}
 	}
+
+	jm.jobProducers.Stop()
+	jm.jobExecutors.Stop()
+	jm.jobProducers = nil
+	jm.jobExecutors = nil
+}
+
+// Logger returns the logger for the baseapp.
+func (jm *Manager) Logger(ctx context.Context) log.Logger {
+	return sdk.UnwrapSdkContext(ctx).Logger().With("namespace", "job-manager")
 }
 
 // RunProducers runs the job producers.
 //
 //nolint:gocognit // fix.
 func (jm *Manager) RunProducers(ctx context.Context) {
-	for _, j := range jm.jobs {
+	for _, j := range jm.jobRegistry.Iterate() {
 		// Handle migrated jobs.
 		if wrappedJob := job.WrapJob(j); wrappedJob != nil {
 			jm.jobProducers.Submit(
 				func() {
-					if err := wrappedJob.Producer(ctx, &jm.jobExecutors); err != nil {
-						jm.logger.Error("error in job producer", "err", err)
+					if err := wrappedJob.Producer(ctx, jm.jobExecutors); err != nil {
+						jm.Logger(ctx).Error("error in job producer", "err", err)
 					}
 				},
 			)
@@ -118,7 +146,7 @@ func (jm *Manager) RunProducers(ctx context.Context) {
 						ethSubJob.Unsubscribe(ctx)
 						return
 					case err := <-sub.Err():
-						jm.logger.Error("error in subscription", "err", err)
+						jm.Logger(ctx).Error("error in subscription", "err", err)
 						// TODO: add retry mechanism
 						ethSubJob.Unsubscribe(ctx)
 						return

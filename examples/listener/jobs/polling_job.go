@@ -15,6 +15,10 @@ var _ job.Polling = &Poller{}
 // Listener is a simple job that logs the current block when it is run.
 type Poller struct{}
 
+func (Poller) RegistryKey() string {
+	return "Poller"
+}
+
 func (w *Poller) IntervalTime(context.Context) time.Duration {
 	return 1 * time.Second
 }

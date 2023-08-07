@@ -9,6 +9,7 @@ import (
 // but do not define any behaviour around how/when the job is to be executed, and thus cannot
 // be executed on their own.
 type Basic interface {
+	RegistryKey() string
 	Execute(context.Context, any) (any, error)
 }
 
@@ -26,6 +27,7 @@ type HasTeardown interface {
 
 // HasProducer represents a struct that defines a producer.
 type HasProducer interface {
+	Basic
 	Producer(ctx context.Context, pool WorkerPool) error
 }
 

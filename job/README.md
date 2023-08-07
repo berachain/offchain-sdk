@@ -1,8 +1,5 @@
 # Job
 
-
-
-
 # Job Types
 
 - All jobs must conform to the `Basic` job interface.

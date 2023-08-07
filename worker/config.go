@@ -10,16 +10,16 @@ type PoolConfig struct {
 	PrometheusPrefix string
 	// MinWorkers is the minimum number of workers that the resizer will
 	// shrink the pool down to .
-	MinWorkers int
+	MinWorkers uint16
 	// MaxWorkers is the maximum number of workers that can be active
 	// at the same time.
-	MaxWorkers int
+	MaxWorkers uint16
 	// ResizingStrategy is the methodology used to resize the number of workers
 	// in the pool.
 	ResizingStrategy string
 	// MaxQueuedJobs is the maximum number of jobs that can be queued
 	// before the pool starts rejecting jobs.
-	MaxQueuedJobs int
+	MaxQueuedJobs uint16
 }
 
 // DefaultPoolConfig is the default configuration for a pool.

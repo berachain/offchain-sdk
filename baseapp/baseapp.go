@@ -46,11 +46,9 @@ func New(
 ) *BaseApp {
 	return &BaseApp{
 		name:      name,
-		logger:    log.NewBlankLogger(os.Stdout),
+		logger:    logger,
 		ethClient: ethClient,
 		jobMgr: NewManager(
-			name,
-			logger,
 			jobs,
 		),
 		db:  db,
