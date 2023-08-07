@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"os/signal"
+	"syscall"
 
 	"github.com/berachain/offchain-sdk/client/eth"
 	"github.com/berachain/offchain-sdk/job"
@@ -66,12 +67,14 @@ func (b *BaseApp) Logger() log.Logger {
 func (b *BaseApp) Start() {
 	b.Logger().Info("starting app")
 
-	// Create a context that will be cancelled when the user presses Ctrl+C (process receives termination signal).
-	ctx, _ := signal.NotifyContext(context.Background(), os.Interrupt)
+	// Create a context that will be cancelled when the user presses Ctrl+C
+	// (process receives termination signal).
+	// TODO: take the context from cobra and then wrap it in a cancel context and pass it down.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
-	// ctx := context.Background()
-
-	// TODO: create a new context for every job request / creation.
+	// Wrap the context in sdk.Context in order to attach our clients, logger and db.
+	// TODO: is this bad practice we are just stealing from the cosmos sdk?
 	ctx = sdk.NewContext(
 		ctx,
 		b.ethClient,
@@ -79,15 +82,25 @@ func (b *BaseApp) Start() {
 		b.db,
 	)
 
-	// TODO: Handle better.
+	// Start the job manager and the producers.
 	b.jobMgr.Start(ctx)
 	b.jobMgr.RunProducers(ctx)
 
-	// TODO: create a nice way to register handlers.
+	// Register Http Handlers and start the server.
+	b.RegisterHTTPHandlers()
+	go b.svr.Start()
+
+	// Wait on ctx.Done
+	// TODO: wait in the cobra command once the NotifyContext is moved to the command.
+	<-ctx.Done()
+}
+
+// RegisterHttpHandlers registers the http handlers.
+func (b *BaseApp) RegisterHTTPHandlers() {
+	// Register the metrics handler with the server.
 	b.svr.RegisterHandler(
 		server.Handler{Path: "/metrics", Handler: promhttp.Handler()},
 	)
-	go b.svr.Start()
 }
 
 // Stop stops the baseapp.

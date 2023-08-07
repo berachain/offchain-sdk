@@ -14,7 +14,7 @@ func WrapJob(j Basic) HasProducer {
 	var wrappedJob HasProducer
 	if condJob, ok := j.(Conditional); ok {
 		wrappedJob = WrapConditional(condJob)
-	} else if pollJob, ok := j.(Polling); ok {
+	} else if pollJob, ok := j.(Polling); ok { //nolint:govet // can't avoid.
 		wrappedJob = WrapPolling(pollJob)
 	} else {
 		// does not support wrapping. (temporary)

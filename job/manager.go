@@ -2,7 +2,6 @@ package job
 
 import (
 	"context"
-	"os"
 
 	"github.com/berachain/offchain-sdk/log"
 	"github.com/berachain/offchain-sdk/worker"
@@ -38,7 +37,7 @@ func NewManager(
 	poolCfg.Name = name
 	poolCfg.PrometheusPrefix = "job_executor"
 	return &Manager{
-		logger:       log.NewBlankLogger(os.Stdout),
+		logger:       logger,
 		jobs:         jobs,
 		jobExecutors: *worker.NewPool(poolCfg, logger),
 		jobProducers: *worker.NewPool(&worker.PoolConfig{
