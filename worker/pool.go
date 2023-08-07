@@ -1,6 +1,8 @@
 package worker
 
 import (
+	"errors"
+
 	"github.com/alitto/pond"
 	"github.com/berachain/offchain-sdk/log"
 )
@@ -33,12 +35,14 @@ func (p *Pool) Logger() log.Logger {
 	return p.logger.With("namespace", p.name+"-pool")
 }
 
-// AddJob adds a job to the pool.
-func (p *Pool) AddJob(pay Payload) {
+// SubmitJob adds a job to the pool.
+func (p *Pool) SubmitJob(pay Payload) error {
 	// We use TrySubmit as to not block the calling thread.
 	if !p.TrySubmit(func() { pay.Execute() }) {
 		p.Logger().Error("failed to submit job")
+		return errors.New("failed to submit job")
 	} else {
 		p.Logger().Info("submitted job")
+		return nil
 	}
 }

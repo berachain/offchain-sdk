@@ -2,8 +2,6 @@ package job
 
 import (
 	"context"
-
-	"github.com/berachain/offchain-sdk/worker"
 )
 
 // Basic represents a basic job.
@@ -11,12 +9,12 @@ type Basic interface {
 	Execute(context.Context, any) (any, error)
 }
 
-type Setupable interface {
+type HasSetup interface {
 	Basic
 	Setup(context.Context) error
 }
 
-type Teardowanble interface {
+type HasTeardown interface {
 	Basic
 	Teardown() error
 }
@@ -28,7 +26,7 @@ type Custom interface {
 	HasProducer
 }
 
-// HasPorducer represents a struct that defines a producer.
+// HasProducer represents a struct that defines a producer.
 type HasProducer interface {
-	Producer(ctx context.Context, pool worker.Pool) error
+	Producer(ctx context.Context, pool WorkerPool) error
 }

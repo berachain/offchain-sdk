@@ -56,8 +56,9 @@ func NewJobManager(
 //
 //nolint:gocognit // todo: fix.
 func (jm *JobManager) Start(ctx context.Context) {
+	group := jm.jobProducers.Group()
 	for _, j := range jm.jobs {
-		if sj, ok := j.(job.Setupable); ok {
+		if sj, ok := j.(job.HasSetup); ok {
 			if err := sj.Setup(ctx); err != nil {
 				panic(err)
 			}
@@ -65,29 +66,29 @@ func (jm *JobManager) Start(ctx context.Context) {
 
 		if condJob, ok := j.(job.Conditional); ok { //nolint:nestif // todo:fix.
 			wrappedJob := job.WrapConditional(condJob)
-			jm.jobProducers.Submit(
+			group.Submit(
 				func() {
-					if err := wrappedJob.Producer(ctx, jm.jobExecutors); err != nil {
+					if err := wrappedJob.Producer(ctx, &jm.jobExecutors); err != nil {
 						jm.logger.Error("error in job producer", "err", err)
 					}
 				},
 			)
 		} else if pollJob, ok := j.(job.Polling); ok { //nolint:govet // todo fix.
 			wrappedJob := job.WrapPolling(pollJob)
-			jm.jobProducers.Submit(
+			group.Submit(
 				func() {
-					if err := wrappedJob.Producer(ctx, jm.jobExecutors); err != nil {
+					if err := wrappedJob.Producer(ctx, &jm.jobExecutors); err != nil {
 						jm.logger.Error("error in job producer", "err", err)
 					}
 				},
 			)
 		} else if subJob, ok := j.(job.Subscribable); ok { //nolint:govet // todo fix.
-			jm.jobProducers.Submit(func() {
+			group.Submit(func() {
 				ch := subJob.Subscribe(ctx)
 				for {
 					select {
 					case val := <-ch:
-						jm.jobExecutors.AddJob(jobtypes.NewPayload(ctx, subJob, val))
+						_ = jm.jobExecutors.SubmitJob(jobtypes.NewPayload(ctx, subJob, val))
 					case <-ctx.Done():
 						return
 					default:
@@ -96,7 +97,7 @@ func (jm *JobManager) Start(ctx context.Context) {
 				}
 			})
 		} else if ethSubJob, ok := j.(job.EthSubscribable); ok { //nolint:govet // todo fix.
-			jm.jobProducers.Submit(func() {
+			group.Submit(func() {
 				sub, ch := ethSubJob.Subscribe(ctx)
 				for {
 					select {
@@ -109,7 +110,7 @@ func (jm *JobManager) Start(ctx context.Context) {
 						ethSubJob.Unsubscribe(ctx)
 						return
 					case val := <-ch:
-						jm.jobExecutors.AddJob(jobtypes.NewPayload(ctx, ethSubJob, val))
+						_ = jm.jobExecutors.SubmitJob(jobtypes.NewPayload(ctx, ethSubJob, val))
 						continue
 					}
 				}
@@ -123,7 +124,7 @@ func (jm *JobManager) Start(ctx context.Context) {
 // Stop.
 func (jm *JobManager) Stop() {
 	for _, j := range jm.jobs {
-		if tj, ok := j.(job.Teardowanble); ok {
+		if tj, ok := j.(job.HasTeardown); ok {
 			if err := tj.Teardown(); err != nil {
 				panic(err)
 			}

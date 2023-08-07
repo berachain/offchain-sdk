@@ -5,7 +5,6 @@ import (
 	"time"
 
 	jobtypes "github.com/berachain/offchain-sdk/job/types"
-	"github.com/berachain/offchain-sdk/worker"
 	"github.com/ethereum/go-ethereum"
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
@@ -61,7 +60,7 @@ type conditional struct {
 }
 
 // ConditionalProducer produces a job when the condition is met.
-func (cj *conditional) Producer(ctx context.Context, pool worker.Pool) error {
+func (cj *conditional) Producer(ctx context.Context, pool WorkerPool) error {
 	for {
 		select {
 		// If the context is cancelled, return.
@@ -74,7 +73,7 @@ func (cj *conditional) Producer(ctx context.Context, pool worker.Pool) error {
 			// Check if the condition is true.
 			if cj.Condition(ctx) {
 				// If true add a job
-				pool.AddJob(jobtypes.NewPayload(ctx, cj, nil))
+				_ = pool.SubmitJob(jobtypes.NewPayload(ctx, cj, nil))
 			}
 		}
 	}
