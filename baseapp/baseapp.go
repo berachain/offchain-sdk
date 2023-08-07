@@ -24,7 +24,7 @@ type BaseApp struct {
 	logger log.Logger
 
 	// jobMgr
-	jobMgr *job.Manager
+	jobMgr *Manager
 
 	// ethClient is the client for communicating with the chain
 	ethClient eth.Client
@@ -48,7 +48,7 @@ func New(
 		name:      name,
 		logger:    log.NewBlankLogger(os.Stdout),
 		ethClient: ethClient,
-		jobMgr: job.NewManager(
+		jobMgr: NewManager(
 			name,
 			logger,
 			jobs,
@@ -78,7 +78,7 @@ func (b *BaseApp) Start() {
 	ctx = sdk.NewContext(
 		ctx,
 		b.ethClient,
-		b.Logger(),
+		b.logger,
 		b.db,
 	)
 

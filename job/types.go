@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	workertypes "github.com/berachain/offchain-sdk/worker/types"
+	jobtypes "github.com/berachain/offchain-sdk/job/types"
 	"github.com/ethereum/go-ethereum"
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
@@ -94,7 +94,7 @@ func (cj *conditional) Producer(ctx context.Context, pool WorkerPool) error {
 			// Check if the condition is true.
 			if cj.Condition(ctx) {
 				// If true add a job
-				_ = pool.SubmitJob(workertypes.NewPayload(ctx, cj, nil))
+				pool.Submit(jobtypes.NewPayload(ctx, cj, nil).Execute)
 			}
 		}
 	}

@@ -2,8 +2,6 @@ package types
 
 import (
 	"context"
-
-	"github.com/berachain/offchain-sdk/worker"
 )
 
 type Executable interface {
@@ -33,8 +31,6 @@ func NewPayload(ctx context.Context, job Executable, args any) *Payload {
 }
 
 // Execute executes the job and returns the result.
-// Todo: decouple from the worker package.
-func (p Payload) Execute() worker.Resultor {
-	res, err := p.job.Execute(p.ctx, p.args)
-	return &Resultor{res: res, err: err}
+func (p Payload) Execute() {
+	_, _ = p.job.Execute(p.ctx, p.args)
 }

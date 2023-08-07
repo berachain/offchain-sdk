@@ -1,11 +1,12 @@
-package job
+package baseapp
 
 import (
 	"context"
 
+	"github.com/berachain/offchain-sdk/job"
+	workertypes "github.com/berachain/offchain-sdk/job/types"
 	"github.com/berachain/offchain-sdk/log"
 	"github.com/berachain/offchain-sdk/worker"
-	workertypes "github.com/berachain/offchain-sdk/worker/types"
 )
 
 // Manager handles the job and worker lifecycle.
@@ -14,7 +15,7 @@ type Manager struct {
 	logger log.Logger
 
 	// list of jobs
-	jobs []Basic
+	jobs []job.Basic
 
 	// Job producers are a pool of workers that produce jobs. These workers
 	// run in the background and produce jobs that are then consumed by the
@@ -30,7 +31,7 @@ type Manager struct {
 func NewManager(
 	name string,
 	logger log.Logger,
-	jobs []Basic,
+	jobs []job.Basic,
 ) *Manager {
 	// TODO: read from config.
 	poolCfg := worker.DefaultPoolConfig()
@@ -56,7 +57,7 @@ func NewManager(
 
 func (jm *Manager) Start(ctx context.Context) {
 	for _, j := range jm.jobs {
-		if sj, ok := j.(HasSetup); ok {
+		if sj, ok := j.(job.HasSetup); ok {
 			if err := sj.Setup(ctx); err != nil {
 				panic(err)
 			}
@@ -67,7 +68,7 @@ func (jm *Manager) Start(ctx context.Context) {
 // Stop.
 func (jm *Manager) Stop() {
 	for _, j := range jm.jobs {
-		if tj, ok := j.(HasTeardown); ok {
+		if tj, ok := j.(job.HasTeardown); ok {
 			if err := tj.Teardown(); err != nil {
 				panic(err)
 			}
@@ -81,7 +82,7 @@ func (jm *Manager) Stop() {
 func (jm *Manager) RunProducers(ctx context.Context) {
 	for _, j := range jm.jobs {
 		// Handle migrated jobs.
-		if wrappedJob := WrapJob(j); wrappedJob != nil {
+		if wrappedJob := job.WrapJob(j); wrappedJob != nil {
 			jm.jobProducers.Submit(
 				func() {
 					if err := wrappedJob.Producer(ctx, &jm.jobExecutors); err != nil {
@@ -94,13 +95,13 @@ func (jm *Manager) RunProducers(ctx context.Context) {
 
 		// Handle unmigrated jobs.
 
-		if subJob, ok := j.(Subscribable); ok {
+		if subJob, ok := j.(job.Subscribable); ok {
 			jm.jobExecutors.Submit(func() {
 				ch := subJob.Subscribe(ctx)
 				for {
 					select {
 					case val := <-ch:
-						_ = jm.jobExecutors.SubmitJob(workertypes.NewPayload(ctx, subJob, val))
+						jm.jobExecutors.Submit(workertypes.NewPayload(ctx, subJob, val).Execute)
 					case <-ctx.Done():
 						return
 					default:
@@ -108,7 +109,7 @@ func (jm *Manager) RunProducers(ctx context.Context) {
 					}
 				}
 			})
-		} else if ethSubJob, ok := j.(EthSubscribable); ok { //nolint:govet // todo fix.
+		} else if ethSubJob, ok := j.(job.EthSubscribable); ok { //nolint:govet // todo fix.
 			jm.jobExecutors.Submit(func() {
 				sub, ch := ethSubJob.Subscribe(ctx)
 				for {
@@ -122,7 +123,7 @@ func (jm *Manager) RunProducers(ctx context.Context) {
 						ethSubJob.Unsubscribe(ctx)
 						return
 					case val := <-ch:
-						_ = jm.jobExecutors.SubmitJob(workertypes.NewPayload(ctx, ethSubJob, val))
+						jm.jobExecutors.Submit(workertypes.NewPayload(ctx, ethSubJob, val).Execute)
 						continue
 					}
 				}
