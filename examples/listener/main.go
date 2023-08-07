@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/berachain/offchain-sdk/baseapp"
-	"github.com/berachain/offchain-sdk/client/eth"
 	"github.com/berachain/offchain-sdk/cmd"
 	"github.com/berachain/offchain-sdk/examples/listener/config"
 	ljobs "github.com/berachain/offchain-sdk/examples/listener/jobs"
@@ -49,12 +48,6 @@ func main() {
 
 	// register db
 	appBuilder.RegisterDB(memdb.New())
-
-	// register ethClient
-	// TODO: move to connection pool
-	ethConfig := eth.LoadConfig(configPath)
-	ethClient := eth.NewClient(&ethConfig)
-	appBuilder.RegisterEthClient(ethClient)
 
 	// build command and run the app
 	if err := cmd.BuildBasicRootCmd(appBuilder).Execute(); err != nil {

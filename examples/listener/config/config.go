@@ -14,13 +14,7 @@ type Config struct {
 
 // LoadConfig loads the configuration from the config file.
 func LoadConfig(filepath string) Config {
-	if filepath == "" {
-		viper.AddConfigPath("./")   // Set the folder where the configuration file resides
-		viper.SetConfigName(".env") // Name of the configuration file
-		viper.SetConfigType("env")  // Set config file type to "env"
-	} else {
-		viper.SetConfigFile(filepath)
-	}
+	viper.SetConfigFile(filepath)
 	err := viper.ReadInConfig()
 	if err != nil {
 		log.Fatal("Error reading .env file:", err)
