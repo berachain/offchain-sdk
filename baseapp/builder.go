@@ -4,7 +4,9 @@ import (
 	"github.com/berachain/offchain-sdk/client/eth"
 	"github.com/berachain/offchain-sdk/job"
 	"github.com/berachain/offchain-sdk/log"
+	"github.com/berachain/offchain-sdk/server"
 	ethdb "github.com/ethereum/go-ethereum/ethdb"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // AppBuilder is a builder for an app.
@@ -13,13 +15,22 @@ type AppBuilder struct {
 	jobs      []job.Basic
 	db        ethdb.KeyValueStore
 	ethClient eth.Client
+	svr       *server.Server
 }
 
 // NewAppBuilder creates a new app builder.
 func NewAppBuilder(appName string) *AppBuilder {
+	svr := server.New()
+
+	// TODO: probably move
+	svr.RegisterHandler(
+		server.Handler{Path: "/metrics", Handler: promhttp.Handler()},
+	)
+
 	return &AppBuilder{
 		appName: appName,
 		jobs:    []job.Basic{},
+		svr:     svr,
 	}
 }
 
@@ -38,6 +49,11 @@ func (ab *AppBuilder) RegisterDB(db ethdb.KeyValueStore) {
 	ab.db = db
 }
 
+// RegisterDB registers the db.
+func (ab *AppBuilder) RegisterHTTPHandler(handler server.Handler) {
+	ab.svr.RegisterHandler(handler)
+}
+
 // RegisterEthClient registers the eth client.
 // TODO: update this to connection pool on baseapp and context gets one for running
 func (ab *AppBuilder) RegisterEthClient(ethClient eth.Client) {
@@ -54,5 +70,6 @@ func (ab *AppBuilder) BuildApp(
 		ab.ethClient,
 		ab.jobs,
 		ab.db,
+		ab.svr,
 	)
 }

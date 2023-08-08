@@ -31,6 +31,13 @@ type HasProducer interface {
 	Producer(ctx context.Context, pool WorkerPool) error
 }
 
+// HasMetrics represents a struct that defines metrics for
+// its internal functions.
+type HasMetrics interface {
+	Basic
+	// RegisterMetrics()
+}
+
 // Custom Jobs are jobs that defines their own producer function. This is useful
 // for adding custom job types without having to make a change to the core `offchain-sdk`.
 type Custom interface {

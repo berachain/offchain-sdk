@@ -9,7 +9,6 @@ import (
 	"github.com/berachain/offchain-sdk/server"
 	sdk "github.com/berachain/offchain-sdk/types"
 	ethdb "github.com/ethereum/go-ethereum/ethdb"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // BaseApp is the base application.
@@ -40,6 +39,7 @@ func New(
 	ethClient eth.Client,
 	jobs []job.Basic,
 	db ethdb.KeyValueStore,
+	svr *server.Server,
 ) *BaseApp {
 	return &BaseApp{
 		name:      name,
@@ -49,7 +49,7 @@ func New(
 			jobs,
 		),
 		db:  db,
-		svr: server.New(),
+		svr: svr,
 	}
 }
 
@@ -75,19 +75,10 @@ func (b *BaseApp) Start(ctx context.Context) error {
 	b.jobMgr.Start(ctx)
 	b.jobMgr.RunProducers(ctx)
 
-	// Register Http Handlers and start the server.
-	b.RegisterHTTPHandlers()
+	// Start the server.
 	go b.svr.Start()
 
 	return nil
-}
-
-// RegisterHttpHandlers registers the http handlers.
-func (b *BaseApp) RegisterHTTPHandlers() {
-	// Register the metrics handler with the server.
-	b.svr.RegisterHandler(
-		server.Handler{Path: "/metrics", Handler: promhttp.Handler()},
-	)
 }
 
 // Stop stops the baseapp.
