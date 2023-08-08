@@ -36,26 +36,28 @@ type Manager struct {
 	jobExecutors *worker.Pool
 }
 
-// New creates a new baseapp.
+// NewManager creates a new manager.
 func NewManager(
 	jobs []job.Basic,
 ) *Manager {
-	m := &Manager{}
-	m.jobRegistry = job.NewRegistry()
+	m := &Manager{
+		jobRegistry: job.NewRegistry(),
+	}
+
 	for _, j := range jobs {
 		if err := m.jobRegistry.Register(j); err != nil {
 			panic(err)
 		}
 	}
 
-	jobCount := int(m.jobRegistry.Count())
+	jobCount := uint16(m.jobRegistry.Count())
 	m.producerCfg = &worker.PoolConfig{
 		Name:             producerName,
 		PrometheusPrefix: producerPromName,
-		MinWorkers:       uint16(jobCount),
-		MaxWorkers:       uint16(m.jobRegistry.Count()) + 1,
+		MinWorkers:       jobCount,
+		MaxWorkers:       jobCount + 1,
 		ResizingStrategy: producerResizeStrategy,
-		MaxQueuedJobs:    uint16(m.jobRegistry.Count()),
+		MaxQueuedJobs:    jobCount,
 	}
 
 	// TODO: read from config.
@@ -66,9 +68,13 @@ func NewManager(
 	return m
 }
 
-// Start.
-//
+// Logger returns the logger for the baseapp.
+func (jm *Manager) Logger(ctx context.Context) log.Logger {
+	return sdk.UnwrapSdkContext(ctx).Logger().With("namespace", "job-manager")
+}
 
+// Start calls `Setup` on the jobs in the registry as well as spins up
+// the worker pools.
 func (jm *Manager) Start(ctx context.Context) {
 	// We pass in the context in order to handle cancelling the workers.
 	jm.jobExecutors = worker.NewPool(ctx, jm.executorCfg)
@@ -83,7 +89,8 @@ func (jm *Manager) Start(ctx context.Context) {
 	}
 }
 
-// Stop.
+// Stop calls `Teardown` on the jobs in the registry as well as
+// shut's down all the worker pools.
 func (jm *Manager) Stop() {
 	for _, j := range jm.jobRegistry.Iterate() {
 		if tj, ok := j.(job.HasTeardown); ok {
@@ -97,11 +104,6 @@ func (jm *Manager) Stop() {
 	jm.jobExecutors.Stop()
 	jm.jobProducers = nil
 	jm.jobExecutors = nil
-}
-
-// Logger returns the logger for the baseapp.
-func (jm *Manager) Logger(ctx context.Context) log.Logger {
-	return sdk.UnwrapSdkContext(ctx).Logger().With("namespace", "job-manager")
 }
 
 // RunProducers runs the job producers.
@@ -121,8 +123,7 @@ func (jm *Manager) RunProducers(ctx context.Context) {
 			continue
 		}
 
-		// Handle unmigrated jobs.
-
+		// Handle unmigrated jobs. // TODO: migrate format.
 		if subJob, ok := j.(job.Subscribable); ok {
 			jm.jobExecutors.Submit(func() {
 				ch := subJob.Subscribe(ctx)
@@ -137,6 +138,7 @@ func (jm *Manager) RunProducers(ctx context.Context) {
 					}
 				}
 			})
+			// Handle unmigrated jobs. // TODO: migrate format.
 		} else if ethSubJob, ok := j.(job.EthSubscribable); ok { //nolint:govet // todo fix.
 			jm.jobExecutors.Submit(func() {
 				sub, ch := ethSubJob.Subscribe(ctx)
