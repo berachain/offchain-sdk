@@ -20,17 +20,9 @@ type AppBuilder struct {
 
 // NewAppBuilder creates a new app builder.
 func NewAppBuilder(appName string) *AppBuilder {
-	svr := server.New()
-
-	// TODO: probably move
-	svr.RegisterHandler(
-		server.Handler{Path: "/metrics", Handler: promhttp.Handler()},
-	)
-
 	return &AppBuilder{
 		appName: appName,
 		jobs:    []job.Basic{},
-		svr:     svr,
 	}
 }
 
@@ -47,6 +39,16 @@ func (ab *AppBuilder) RegisterJob(job job.Basic) {
 // RegisterDB registers the db.
 func (ab *AppBuilder) RegisterDB(db ethdb.KeyValueStore) {
 	ab.db = db
+}
+
+// RegisterHTTPServer registers the http server.
+func (ab *AppBuilder) RegisterHTTPServer(svr *server.Server) {
+	ab.svr = svr
+
+	// TODO: probably move
+	ab.svr.RegisterHandler(
+		server.Handler{Path: "/metrics", Handler: promhttp.Handler()},
+	)
 }
 
 // RegisterDB registers the db.

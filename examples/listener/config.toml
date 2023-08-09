@@ -8,3 +8,6 @@ Interval = "1s"
 [Eth]
 EthHTTPURL = "http://localhost:8545"
 EthWSURL = "ws://localhost:8546"
+
+[Server.HTTP]
+Port = 8080

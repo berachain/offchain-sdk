@@ -78,6 +78,7 @@ func (b *BaseApp) Start(ctx context.Context) error {
 
 	if b.svr == nil {
 		b.Logger().Info("no server registered, skipping")
+	} else {
 		go b.svr.Start(ctx)
 	}
 

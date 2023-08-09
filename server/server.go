@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 )
 
@@ -13,13 +14,15 @@ type Handler struct {
 
 // Server is a server.
 type Server struct {
+	cfg *Config
 	mux *http.ServeMux
 }
 
 // New creates a new server.
-func New() *Server {
+func New(cfg *Config) *Server {
 	return &Server{
 		mux: http.NewServeMux(),
+		cfg: cfg,
 	}
 }
 
@@ -30,7 +33,7 @@ func (s *Server) RegisterHandler(h Handler) {
 
 // Start starts the server.
 func (s *Server) Start(_ context.Context) {
-	if err := http.ListenAndServe(":8080", s.mux); err != nil { //nolint:gosec // todo fix.
+	if err := http.ListenAndServe(fmt.Sprintf(":%d", s.cfg.HTTP.Port), s.mux); err != nil { //nolint:gosec // todo fix.
 		panic(err)
 	}
 }

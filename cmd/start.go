@@ -13,6 +13,7 @@ import (
 	"github.com/berachain/offchain-sdk/config"
 	"github.com/berachain/offchain-sdk/config/toml"
 	"github.com/berachain/offchain-sdk/log"
+	"github.com/berachain/offchain-sdk/server"
 	"github.com/spf13/cobra"
 )
 
@@ -60,6 +61,10 @@ func StartCmdWithOptions[C any](app App[C], defaultAppHome string, _ StartCmdOpt
 			// Maybe move this to BuildApp?
 			ethClient := eth.NewClient(&cfg.Eth)
 			ab.RegisterEthClient(ethClient)
+
+			// Maybe move this to BuildApp?
+			svr := server.New(&cfg.Server)
+			ab.RegisterHTTPServer(svr)
 
 			// Build the application, then start it.
 			app.Setup(ab, cfg.App, logger)

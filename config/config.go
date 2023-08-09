@@ -1,6 +1,9 @@
 package config
 
-import "github.com/berachain/offchain-sdk/client/eth"
+import (
+	"github.com/berachain/offchain-sdk/client/eth"
+	"github.com/berachain/offchain-sdk/server"
+)
 
 // Reader defines an interface for reading in configuration data.
 type Reader[C any] func(string, *C) error
@@ -11,6 +14,9 @@ type Config[C any] struct {
 	// Application specific config
 	App C
 
-	// Offchain-SDK config
+	// EthClient config
 	Eth eth.Config
+
+	// Server Config
+	Server server.Config
 }
