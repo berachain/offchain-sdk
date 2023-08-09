@@ -29,7 +29,7 @@ func (s *Server) RegisterHandler(h Handler) {
 }
 
 // Start starts the server.
-func (s *Server) Start(ctx context.Context) {
+func (s *Server) Start(_ context.Context) {
 	if err := http.ListenAndServe(":8080", s.mux); err != nil { //nolint:gosec // todo fix.
 		panic(err)
 	}
