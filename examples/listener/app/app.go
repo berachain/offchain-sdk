@@ -1,8 +1,6 @@
 package app
 
 import (
-	"time"
-
 	"github.com/berachain/offchain-sdk/cmd"
 	"github.com/berachain/offchain-sdk/log"
 
@@ -41,8 +39,8 @@ func (app *ListenerApp) Setup(
 	ab.RegisterJob(
 		jobs.NewEthSub(
 			&ljobs.Listener{}, // We embed a Basic job inside.
-			config.Job1.AddressToListen,
-			config.Job1.EventName,
+			config.Jobs.Sub.AddressToListen,
+			config.Jobs.Sub.EventName,
 		),
 	)
 
@@ -50,15 +48,15 @@ func (app *ListenerApp) Setup(
 	ab.RegisterJob(
 		jobs.NewEthSub(
 			&ljobs.DbWriter{},
-			config.Job2.AddressToListen,
-			config.Job2.EventName,
+			config.Jobs.Sub.AddressToListen,
+			config.Jobs.Sub.EventName,
 		),
 	)
 
 	// This job is querying the chain on a 1 second time interval.
 	ab.RegisterJob(
 		&ljobs.Poller{
-			Interval: 1 * time.Second,
+			Interval: config.Jobs.Poller.Interval,
 		},
 	)
 
