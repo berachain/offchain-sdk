@@ -76,7 +76,7 @@ func (b *BaseApp) Start(ctx context.Context) error {
 	b.jobMgr.RunProducers(ctx)
 
 	// Start the server.
-	go b.svr.Start()
+	go b.svr.Start(ctx)
 
 	return nil
 }

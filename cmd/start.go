@@ -8,6 +8,8 @@ import (
 	"github.com/berachain/offchain-sdk/baseapp"
 	"github.com/berachain/offchain-sdk/client/eth"
 	"github.com/berachain/offchain-sdk/cmd/flags"
+	"github.com/berachain/offchain-sdk/config"
+	"github.com/berachain/offchain-sdk/config/toml"
 	"github.com/berachain/offchain-sdk/log"
 	"github.com/spf13/cobra"
 )
@@ -16,12 +18,12 @@ import (
 type StartCmdOptions struct{}
 
 // StartCmd runs the application passed in.
-func StartCmd(app App, defaultAppHome string) *cobra.Command {
-	return StartCmdWithOptions(app, defaultAppHome, StartCmdOptions{})
+func StartCmd[C any](app App[C], defaultAppHome string) *cobra.Command {
+	return StartCmdWithOptions[C](app, defaultAppHome, StartCmdOptions{})
 }
 
 // StartCmdWithOptions runs the service passed in.
-func StartCmdWithOptions(app App, defaultAppHome string, _ StartCmdOptions) *cobra.Command {
+func StartCmdWithOptions[C any](app App[C], defaultAppHome string, _ StartCmdOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "start",
 		Short: "Run the service",
@@ -41,15 +43,19 @@ func StartCmdWithOptions(app App, defaultAppHome string, _ StartCmdOptions) *cob
 				configPath = defaultAppHome
 			}
 
+			var cfg config.Config[C]
+			if err = toml.ReadIntoMap[config.Config[C]](configPath, &cfg); err != nil {
+				return err
+			}
+
 			ab := &baseapp.AppBuilder{}
 
-			// TODO MOVE / handle all generic configs.
-			ethConfig := eth.LoadConfig(configPath)
-			ethClient := eth.NewClient(&ethConfig)
+			// Maybe move this to BuildApp?
+			ethClient := eth.NewClient(&cfg.Eth)
 			ab.RegisterEthClient(ethClient)
 
 			// Build the application, then start it.
-			app.Setup(ab, log.NewBlankLogger(cmd.OutOrStdout()))
+			app.Setup(ab, cfg.App, log.NewBlankLogger(cmd.OutOrStdout()))
 			if err = app.Start(ctx); err != nil {
 				return err
 			}
@@ -57,7 +63,7 @@ func StartCmdWithOptions(app App, defaultAppHome string, _ StartCmdOptions) *cob
 			// Wait for the context to be done.
 			<-ctx.Done()
 			// TODO: should we return error here based on ctx.Err()?
-			return nil
+			return ctx.Err()
 		},
 	}
 

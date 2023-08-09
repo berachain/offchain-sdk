@@ -7,6 +7,7 @@ import (
 	"github.com/berachain/offchain-sdk/log"
 
 	"github.com/berachain/offchain-sdk/baseapp"
+	"github.com/berachain/offchain-sdk/examples/listener/config"
 	ljobs "github.com/berachain/offchain-sdk/examples/listener/jobs"
 	jobs "github.com/berachain/offchain-sdk/x/jobs"
 	memdb "github.com/ethereum/go-ethereum/ethdb/memorydb"
@@ -14,7 +15,7 @@ import (
 
 // TODO: move cmd.App out of the cmd package.
 // We must conform to the `App` interface.
-var _ cmd.App = &ListenerApp{}
+var _ cmd.App[config.Config] = &ListenerApp{}
 
 // ListenerApp shows how to watch for an event on the Ethereum blockchain.
 // The event is defined in the smart contract at: 0x18Df82C7E422A42D47345Ed86B0E935E9718eBda
@@ -31,17 +32,17 @@ func (ListenerApp) Name() string {
 }
 
 // Setup implements the `App` interface.
-func (app *ListenerApp) Setup(ab cmd.AppBuilder, logger log.Logger) {
-	// TODO, proper config thing.
-	eventName := "NumberChanged(uint256)"
-	addrToListen := "0x5793a71D3eF074f71dCC21216Dbfd5C0e780132c"
-
+func (app *ListenerApp) Setup(
+	ab cmd.AppBuilder,
+	config config.Config,
+	logger log.Logger,
+) {
 	// This job is subscribed to the `NumberChanged(uint256)` event.
 	ab.RegisterJob(
 		jobs.NewEthSub(
 			&ljobs.Listener{}, // We embed a Basic job inside.
-			addrToListen,
-			eventName,
+			config.Job1.AddressToListen,
+			config.Job1.EventName,
 		),
 	)
 
@@ -49,8 +50,8 @@ func (app *ListenerApp) Setup(ab cmd.AppBuilder, logger log.Logger) {
 	ab.RegisterJob(
 		jobs.NewEthSub(
 			&ljobs.DbWriter{},
-			addrToListen,
-			eventName,
+			config.Job2.AddressToListen,
+			config.Job2.EventName,
 		),
 	)
 

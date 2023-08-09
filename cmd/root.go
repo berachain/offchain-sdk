@@ -8,14 +8,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type App interface {
+type App[C any] interface {
 	Name() string
-	Setup(ab AppBuilder, logger log.Logger)
+	Setup(ab AppBuilder, config C, logger log.Logger)
 	Start(context.Context) error
 }
 
 // BuildBasicRootCmd builds a root command.
-func BuildBasicRootCmd(app App) *cobra.Command {
+func BuildBasicRootCmd[C any](app App[C]) *cobra.Command {
 	rootCmd := BuildRootCommand(
 		app.Name(),
 		"Welcome to "+app.Name(),

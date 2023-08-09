@@ -13,7 +13,7 @@ import (
 
 const (
 	MaxRetries       = 3
-	defaultRetryTime = 5 * time.Second
+	defaultRetryTime = 1 * time.Second
 )
 
 type Client interface {

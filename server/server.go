@@ -1,6 +1,11 @@
 package server
 
-import "net/http"
+import (
+	"context"
+	"net/http"
+
+	sdk "github.com/berachain/offchain-sdk/types"
+)
 
 // Handler is a handler.
 type Handler struct {
@@ -10,28 +15,27 @@ type Handler struct {
 
 // Server is a server.
 type Server struct {
-	handlers []Handler
+	mux *http.ServeMux
 }
 
 // New creates a new server.
 func New() *Server {
-	return &Server{}
+	return &Server{
+		mux: http.NewServeMux(),
+	}
 }
 
 // RegisterHandler registers a handler.
 func (s *Server) RegisterHandler(h Handler) {
-	s.handlers = append(s.handlers, h)
+	s.mux.Handle(h.Path, h.Handler)
 }
 
 // Start starts the server.
-func (s *Server) Start() {
-	mux := http.NewServeMux()
-	for _, h := range s.handlers {
-		mux.Handle(h.Path, h.Handler)
-	}
-	if err := http.ListenAndServe(":8080", mux); err != nil { //nolint:gosec // todo fix.
-		panic(err)
-	}
+func (s *Server) Start(ctx context.Context) {
+	sdk.UnwrapSdkContext(ctx).Logger().Info("starting server")
+	// if err := http.ListenAndServe(":8080", s.mux); err != nil { //nolint:gosec // todo fix.
+	// 	panic(err)
+	// }
 }
 
 // Stop stops the server.
