@@ -12,6 +12,7 @@ type App[C any] interface {
 	Name() string
 	Setup(ab AppBuilder, config C, logger log.Logger)
 	Start(context.Context) error
+	Stop()
 }
 
 // BuildBasicRootCmd builds a root command.

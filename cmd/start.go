@@ -33,8 +33,13 @@ func StartCmdWithOptions[C any](app App[C], defaultAppHome string, _ StartCmdOpt
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create a context that will be cancelled when the user presses Ctrl+C
 			// (process receives termination signal).
+			logger := log.NewBlankLogger(cmd.OutOrStdout())
 			ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
-			defer stop()
+			defer func() {
+				logger.Info("received interrupt signal, exiting gracefully...", ctx.Done())
+				app.Stop()
+				stop()
+			}()
 
 			configPath, err := cmd.Flags().GetString(flags.ConfigPath)
 			if err != nil {
@@ -50,14 +55,14 @@ func StartCmdWithOptions[C any](app App[C], defaultAppHome string, _ StartCmdOpt
 				return err
 			}
 
-			ab := &baseapp.AppBuilder{}
+			ab := baseapp.NewAppBuilder(app.Name())
 
 			// Maybe move this to BuildApp?
 			ethClient := eth.NewClient(&cfg.Eth)
 			ab.RegisterEthClient(ethClient)
 
 			// Build the application, then start it.
-			app.Setup(ab, cfg.App, log.NewBlankLogger(cmd.OutOrStdout()))
+			app.Setup(ab, cfg.App, logger)
 			if err = app.Start(ctx); err != nil {
 				return err
 			}

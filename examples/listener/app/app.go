@@ -26,7 +26,7 @@ type ListenerApp struct {
 
 // Name implements the `App` interface.
 func (ListenerApp) Name() string {
-	return "listener-app"
+	return "listener"
 }
 
 // Setup implements the `App` interface.

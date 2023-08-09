@@ -55,12 +55,13 @@ func New(
 
 // Logger returns the logger for the baseapp.
 func (b *BaseApp) Logger() log.Logger {
-	return b.logger.With("namespace", b.name+"-app")
+	return b.logger.With("namespace", "baseapp")
 }
 
 // Start starts the baseapp.
 func (b *BaseApp) Start(ctx context.Context) error {
-	b.Logger().Info("starting app")
+	b.Logger().Info("attempting to start")
+	defer b.Logger().Info("successfully started")
 
 	// Wrap the context in sdk.Context in order to attach our clients, logger and db.
 	// TODO: is this bad practice we are just stealing from the cosmos sdk?
@@ -75,15 +76,18 @@ func (b *BaseApp) Start(ctx context.Context) error {
 	b.jobMgr.Start(ctx)
 	b.jobMgr.RunProducers(ctx)
 
-	// Start the server.
-	go b.svr.Start(ctx)
+	if b.svr == nil {
+		b.Logger().Info("no server registered, skipping")
+		go b.svr.Start(ctx)
+	}
 
 	return nil
 }
 
 // Stop stops the baseapp.
 func (b *BaseApp) Stop() {
-	b.Logger().Info("stopping app")
+	b.Logger().Info("attempting to stop")
+	defer b.Logger().Info("successfully stopped")
 	b.jobMgr.Stop()
 	b.svr.Stop()
 }
