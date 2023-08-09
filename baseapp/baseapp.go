@@ -20,7 +20,7 @@ type BaseApp struct {
 	logger log.Logger
 
 	// jobMgr
-	jobMgr *Manager
+	jobMgr *JobManager
 
 	// ethClient is the client for communicating with the chain
 	ethClient eth.Client

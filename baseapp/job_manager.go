@@ -19,8 +19,8 @@ const (
 	executorPromName = "job_executor"
 )
 
-// Manager handles the job and worker lifecycle.
-type Manager struct {
+// JobManager handles the job and worker lifecycle.
+type JobManager struct {
 	// list of jobs
 	jobRegistry *job.Registry
 
@@ -39,8 +39,8 @@ type Manager struct {
 // NewManager creates a new manager.
 func NewManager(
 	jobs []job.Basic,
-) *Manager {
-	m := &Manager{
+) *JobManager {
+	m := &JobManager{
 		jobRegistry: job.NewRegistry(),
 	}
 
@@ -69,13 +69,13 @@ func NewManager(
 }
 
 // Logger returns the logger for the baseapp.
-func (jm *Manager) Logger(ctx context.Context) log.Logger {
+func (jm *JobManager) Logger(ctx context.Context) log.Logger {
 	return sdk.UnwrapSdkContext(ctx).Logger().With("namespace", "job-manager")
 }
 
 // Start calls `Setup` on the jobs in the registry as well as spins up
 // the worker pools.
-func (jm *Manager) Start(ctx context.Context) {
+func (jm *JobManager) Start(ctx context.Context) {
 	// We pass in the context in order to handle cancelling the workers.
 	jm.jobExecutors = worker.NewPool(ctx, jm.executorCfg)
 	jm.jobProducers = worker.NewPool(ctx, jm.producerCfg)
@@ -91,7 +91,7 @@ func (jm *Manager) Start(ctx context.Context) {
 
 // Stop calls `Teardown` on the jobs in the registry as well as
 // shut's down all the worker pools.
-func (jm *Manager) Stop() {
+func (jm *JobManager) Stop() {
 	for _, j := range jm.jobRegistry.Iterate() {
 		if tj, ok := j.(job.HasTeardown); ok {
 			if err := tj.Teardown(); err != nil {
@@ -109,7 +109,7 @@ func (jm *Manager) Stop() {
 // RunProducers runs the job producers.
 //
 //nolint:gocognit // fix.
-func (jm *Manager) RunProducers(ctx context.Context) {
+func (jm *JobManager) RunProducers(ctx context.Context) {
 	for _, j := range jm.jobRegistry.Iterate() {
 		// Handle migrated jobs.
 		if wrappedJob := job.WrapJob(j); wrappedJob != nil {
