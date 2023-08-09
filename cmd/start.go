@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"context"
+	"errors"
 	"os"
 	"os/signal"
 	"syscall"
@@ -62,8 +64,13 @@ func StartCmdWithOptions[C any](app App[C], defaultAppHome string, _ StartCmdOpt
 
 			// Wait for the context to be done.
 			<-ctx.Done()
+			err = ctx.Err()
+
 			// TODO: should we return error here based on ctx.Err()?
-			return ctx.Err()
+			if errors.Is(err, context.Canceled) {
+				return nil
+			}
+			return err
 		},
 	}
 
