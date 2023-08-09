@@ -29,6 +29,7 @@ func (w *Poller) IntervalTime(context.Context) time.Duration {
 func (w *Poller) Execute(ctx context.Context, args any) (any, error) {
 	sCtx := sdk.UnwrapSdkContext(ctx)
 	myBlock, _ := sCtx.Chain().BlockNumber(ctx)
+	panic("TEST")
 	sCtx.Logger().Info("block", "block", new(big.Int).SetUint64(myBlock).String())
 	return nil, nil
 }

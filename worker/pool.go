@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/alitto/pond"
+	"github.com/berachain/offchain-sdk/log"
 )
 
 // and other functionality to the pool.
@@ -13,7 +14,7 @@ type Pool struct {
 }
 
 // NewPool creates a new pool.
-func NewPool(ctx context.Context, cfg *PoolConfig) *Pool {
+func NewPool(ctx context.Context, logger log.Logger, cfg *PoolConfig) *Pool {
 	p := &Pool{
 		name: cfg.Name,
 		WorkerPool: pond.New(
@@ -22,6 +23,7 @@ func NewPool(ctx context.Context, cfg *PoolConfig) *Pool {
 			pond.Strategy(resizerFromString(cfg.ResizingStrategy)),
 			pond.Context(ctx), // allows for cancelling jobs.
 			pond.MinWorkers(int(cfg.MinWorkers)),
+			pond.PanicHandler(PanicHandler(logger)),
 		),
 	}
 	p.setupMetrics(cfg.PrometheusPrefix)

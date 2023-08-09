@@ -77,8 +77,9 @@ func (jm *JobManager) Logger(ctx context.Context) log.Logger {
 // the worker pools.
 func (jm *JobManager) Start(ctx context.Context) {
 	// We pass in the context in order to handle cancelling the workers.
-	jm.jobExecutors = worker.NewPool(ctx, jm.executorCfg)
-	jm.jobProducers = worker.NewPool(ctx, jm.producerCfg)
+	logger := sdk.UnwrapSdkContext(ctx).Logger()
+	jm.jobExecutors = worker.NewPool(ctx, logger, jm.executorCfg)
+	jm.jobProducers = worker.NewPool(ctx, logger, jm.producerCfg)
 
 	for _, j := range jm.jobRegistry.Iterate() {
 		if sj, ok := j.(job.HasSetup); ok {
