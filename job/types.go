@@ -85,6 +85,10 @@ func (cj *conditional) Producer(ctx context.Context, pool WorkerPool) error {
 		// we get all this for free.
 		// Sleep for a period of time.
 		time.Sleep(cj.IntervalTime(ctx))
+		// args := func() any {
+		// 	time.Sleep(cj.IntervalTime(ctx))
+		// 	return nil
+		// }()
 
 		select {
 		// If the context is cancelled, return.
