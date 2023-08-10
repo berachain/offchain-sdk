@@ -2,6 +2,10 @@ package baseapp
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"reflect"
+	"sync"
 
 	"github.com/berachain/offchain-sdk/job"
 	workertypes "github.com/berachain/offchain-sdk/job/types"
@@ -23,6 +27,7 @@ const (
 type JobManager struct {
 	// list of jobs
 	jobRegistry *job.Registry
+	ctxFactory  *contextFactory
 
 	// Job producers are a pool of workers that produce jobs. These workers
 	// run in the background and produce jobs that are then consumed by the
@@ -39,9 +44,11 @@ type JobManager struct {
 // NewManager creates a new manager.
 func NewManager(
 	jobs []job.Basic,
+	ctxFactory *contextFactory,
 ) *JobManager {
 	m := &JobManager{
 		jobRegistry: job.NewRegistry(),
+		ctxFactory:  ctxFactory,
 	}
 
 	for _, j := range jobs {
@@ -70,20 +77,20 @@ func NewManager(
 
 // Logger returns the logger for the baseapp.
 func (jm *JobManager) Logger(ctx context.Context) log.Logger {
-	return sdk.UnwrapSdkContext(ctx).Logger().With("namespace", "job-manager")
+	return sdk.UnwrapContext(ctx).Logger().With("namespace", "job-manager")
 }
 
 // Start calls `Setup` on the jobs in the registry as well as spins up
 // the worker pools.
 func (jm *JobManager) Start(ctx context.Context) {
 	// We pass in the context in order to handle cancelling the workers.
-	logger := sdk.UnwrapSdkContext(ctx).Logger()
+	logger := jm.ctxFactory.logger
 	jm.jobExecutors = worker.NewPool(ctx, logger, jm.executorCfg)
 	jm.jobProducers = worker.NewPool(ctx, logger, jm.producerCfg)
 
 	for _, j := range jm.jobRegistry.Iterate() {
 		if sj, ok := j.(job.HasSetup); ok {
-			if err := sj.Setup(ctx); err != nil {
+			if err := sj.Setup(jm.ctxFactory.NewSDKContext(ctx)); err != nil {
 				panic(err)
 			}
 		}
@@ -93,39 +100,61 @@ func (jm *JobManager) Start(ctx context.Context) {
 // Stop calls `Teardown` on the jobs in the registry as well as
 // shut's down all the worker pools.
 func (jm *JobManager) Stop() {
-	for _, j := range jm.jobRegistry.Iterate() {
-		if tj, ok := j.(job.HasTeardown); ok {
-			if err := tj.Teardown(); err != nil {
-				panic(err)
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	// Shutdown producers.
+	go func() {
+		jm.jobProducers.StopAndWait()
+		wg.Done()
+		jm.jobProducers = nil
+	}()
+
+	wg.Wait()
+	wg.Add(1)
+
+	// Shutdown Executors and call Teardown().
+	go func() {
+		jm.jobExecutors.StopAndWait()
+		for _, j := range jm.jobRegistry.Iterate() {
+			if tj, ok := j.(job.HasTeardown); ok {
+				if err := tj.Teardown(); err != nil {
+					panic(err)
+				}
 			}
 		}
-	}
+		wg.Done()
+		jm.jobExecutors = nil
+	}()
 
-	jm.jobProducers.Stop()
-	jm.jobExecutors.Stop()
-	jm.jobProducers = nil
-	jm.jobExecutors = nil
+	wg.Wait()
+}
+
+func (jm *JobManager) runProducer(ctx context.Context, j job.Basic) bool {
+	// Handle migrated jobs.
+	if wrappedJob := job.WrapJob(j); wrappedJob != nil {
+		jm.jobProducers.Submit(
+			func() {
+				if err := wrappedJob.Producer(ctx, jm.jobExecutors); !errors.Is(err, context.Canceled) && err != nil {
+					jm.Logger(ctx).Error("error in job producer", "err", err)
+				}
+			},
+		)
+		return true
+	}
+	return false
 }
 
 // RunProducers runs the job producers.
 //
-//nolint:gocognit // fix.
-func (jm *JobManager) RunProducers(ctx context.Context) {
-	for _, j := range jm.jobRegistry.Iterate() {
-		// Handle migrated jobs.
-		if wrappedJob := job.WrapJob(j); wrappedJob != nil {
-			jm.jobProducers.Submit(
-				func() {
-					if err := wrappedJob.Producer(ctx, jm.jobExecutors); err != nil {
-						jm.Logger(ctx).Error("error in job producer", "err", err)
-					}
-				},
-			)
-			continue
-		}
 
-		// Handle unmigrated jobs. // TODO: migrate format.
-		if subJob, ok := j.(job.Subscribable); ok {
+func (jm *JobManager) RunProducers(gctx context.Context) {
+	for _, j := range jm.jobRegistry.Iterate() {
+		ctx := jm.ctxFactory.NewSDKContext(gctx)
+		if jm.runProducer(ctx, j) {
+			continue
+		} else if subJob, ok := j.(job.Subscribable); ok {
+			// Handle unmigrated jobs. // TODO: migrate format.
 			jm.jobExecutors.Submit(func() {
 				ch := subJob.Subscribe(ctx)
 				for {
@@ -160,7 +189,7 @@ func (jm *JobManager) RunProducers(ctx context.Context) {
 				}
 			})
 		} else {
-			panic("unknown job type")
+			panic(fmt.Sprintf("unknown job type %s", reflect.TypeOf(j)))
 		}
 	}
 }

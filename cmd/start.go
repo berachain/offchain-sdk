@@ -36,11 +36,6 @@ func StartCmdWithOptions[C any](app App[C], defaultAppHome string, _ StartCmdOpt
 			// (process receives termination signal).
 			logger := log.NewBlankLogger(cmd.OutOrStdout())
 			ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
-			defer func() {
-				logger.Info("received interrupt signal, exiting gracefully...", ctx.Done())
-				app.Stop()
-				stop()
-			}()
 
 			configPath, err := cmd.Flags().GetString(flags.ConfigPath)
 			if err != nil {
@@ -76,10 +71,17 @@ func StartCmdWithOptions[C any](app App[C], defaultAppHome string, _ StartCmdOpt
 			<-ctx.Done()
 			err = ctx.Err()
 
+			defer func() {
+				logger.Info("received interrupt signal, exiting gracefully...", ctx.Done())
+				app.Stop()
+				stop()
+			}()
+
 			// TODO: should we return error here based on ctx.Err()?
 			if errors.Is(err, context.Canceled) {
 				return nil
 			}
+
 			return err
 		},
 	}

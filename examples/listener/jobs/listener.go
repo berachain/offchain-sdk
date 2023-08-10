@@ -20,7 +20,7 @@ func (w *Listener) RegistryKey() string {
 
 // Execute implements job.Basic.
 func (w *Listener) Execute(ctx context.Context, args any) (any, error) {
-	sCtx := sdk.UnwrapSdkContext(ctx)
+	sCtx := sdk.UnwrapContext(ctx)
 	myBlock, _ := sCtx.Chain().BlockNumber(ctx)
 	sCtx.Logger().Info("block", "block", new(big.Int).SetUint64(myBlock).String())
 	return nil, nil

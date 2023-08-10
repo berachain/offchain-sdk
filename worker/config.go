@@ -34,8 +34,8 @@ func DefaultPoolConfig() *PoolConfig {
 	}
 }
 
-// ResizerFromString returns a pond resizer for the given name.
-func ResizerFromString(name string) pond.ResizingStrategy {
+// resizerFromString returns a pond resizer for the given name.
+func resizerFromString(name string) pond.ResizingStrategy {
 	switch name {
 	case "eager":
 		return pond.Eager()

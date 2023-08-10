@@ -1,17 +1,14 @@
 package worker
 
-import "github.com/alitto/pond"
+import (
+	"runtime/debug"
 
-// resizerFromString returns a pond resizer for the given name.
-func resizerFromString(name string) pond.ResizingStrategy {
-	switch name {
-	case "eager":
-		return pond.Eager()
-	case "lazy":
-		return pond.Lazy()
-	case "balanced":
-		return pond.Balanced()
-	default:
-		panic("invalid resizer name")
+	"github.com/berachain/offchain-sdk/log"
+)
+
+// PanicHandler builds a panic handler for the worker pool that logs the panic.
+func PanicHandler(logger log.Logger) func(interface{}) {
+	return func(panicData interface{}) {
+		logger.Error("Worker exits from a panic", "reason", panicData, "stack-trace", string(debug.Stack()))
 	}
 }

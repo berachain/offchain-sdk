@@ -21,15 +21,14 @@ func (Poller) RegistryKey() string {
 	return "Poller"
 }
 
-func (w *Poller) IntervalTime(context.Context) time.Duration {
+func (w *Poller) IntervalTime(_ context.Context) time.Duration {
 	return w.Interval
 }
 
 // Execute implements job.Basic.
 func (w *Poller) Execute(ctx context.Context, args any) (any, error) {
-	sCtx := sdk.UnwrapSdkContext(ctx)
+	sCtx := sdk.UnwrapContext(ctx)
 	myBlock, _ := sCtx.Chain().BlockNumber(ctx)
-	panic("TEST")
 	sCtx.Logger().Info("block", "block", new(big.Int).SetUint64(myBlock).String())
 	return nil, nil
 }

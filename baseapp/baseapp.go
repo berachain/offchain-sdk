@@ -7,7 +7,6 @@ import (
 	"github.com/berachain/offchain-sdk/job"
 	"github.com/berachain/offchain-sdk/log"
 	"github.com/berachain/offchain-sdk/server"
-	sdk "github.com/berachain/offchain-sdk/types"
 	ethdb "github.com/ethereum/go-ethereum/ethdb"
 )
 
@@ -21,12 +20,6 @@ type BaseApp struct {
 
 	// jobMgr
 	jobMgr *JobManager
-
-	// ethClient is the client for communicating with the chain
-	ethClient eth.Client
-
-	// db KV store
-	db ethdb.KeyValueStore
 
 	// svr is the server for the baseapp.
 	svr *server.Server
@@ -42,13 +35,16 @@ func New(
 	svr *server.Server,
 ) *BaseApp {
 	return &BaseApp{
-		name:      name,
-		logger:    logger,
-		ethClient: ethClient,
+		name:   name,
+		logger: logger,
 		jobMgr: NewManager(
 			jobs,
+			&contextFactory{
+				connPool: ethClient,
+				logger:   logger,
+				db:       db,
+			},
 		),
-		db:  db,
 		svr: svr,
 	}
 }
@@ -62,15 +58,6 @@ func (b *BaseApp) Logger() log.Logger {
 func (b *BaseApp) Start(ctx context.Context) error {
 	b.Logger().Info("attempting to start")
 	defer b.Logger().Info("successfully started")
-
-	// Wrap the context in sdk.Context in order to attach our clients, logger and db.
-	// TODO: is this bad practice we are just stealing from the cosmos sdk?
-	ctx = sdk.NewContext(
-		ctx,
-		b.ethClient,
-		b.logger,
-		b.db,
-	)
 
 	// Start the job manager and the producers.
 	b.jobMgr.Start(ctx)

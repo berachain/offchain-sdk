@@ -20,7 +20,7 @@ func (DbWriter) RegistryKey() string {
 
 // Execute implements job.Basic.
 func (w *DbWriter) Execute(ctx context.Context, args any) (any, error) {
-	sCtx := sdk.UnwrapSdkContext(ctx)
+	sCtx := sdk.UnwrapContext(ctx)
 	myBlock, _ := sCtx.Chain().BlockNumber(ctx)
 	db := sCtx.DB()
 	sCtx.Logger().Info("block", "block", new(big.Int).SetUint64(myBlock).String())

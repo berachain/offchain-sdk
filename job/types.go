@@ -80,20 +80,19 @@ type conditional struct {
 // ConditionalProducer produces a job when the condition is met.
 func (cj *conditional) Producer(ctx context.Context, pool WorkerPool) error {
 	for {
+		// NOTE: for job producers, we can just register the default, pass all of
+		// them into `TaskGroups` have the context be shared and bobs your uncle
+		// we get all this for free.
+		// Sleep for a period of time.
+		time.Sleep(cj.IntervalTime(ctx))
+
 		select {
 		// If the context is cancelled, return.
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-			// NOTE: for job producers, we can just register the default, pass all of
-			// them into `TaskGroups` have the context be shared and bobs your uncle
-			// we get all this for free.
-			// Sleep for a period of time.
-			time.Sleep(cj.IntervalTime(ctx))
-
 			// Check if the condition is true.
 			if cj.Condition(ctx) {
-				// If true add a job
 				pool.Submit(jobtypes.NewPayload(ctx, cj, nil).Execute)
 			}
 		}
