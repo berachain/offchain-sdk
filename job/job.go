@@ -2,40 +2,45 @@ package job
 
 import (
 	"context"
-	"time"
-
-	"github.com/ethereum/go-ethereum"
-	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
-// Basic represents a basic job.
+// Basic represents a basic job. Borrowing the terminology from inheritance, we can
+// think of Basic jobs as the Abstract Base Class for all jobs. Basic jobs define execution,
+// but do not define any behaviour around how/when the job is to be executed, and thus cannot
+// be executed on their own.
 type Basic interface {
-	Start(ctx context.Context) error
-	Stop() error
+	RegistryKey() string
 	Execute(context.Context, any) (any, error)
 }
 
-// Conditional represents a conditional job.
-type Conditional interface {
+// HasSetup represents a job that has a setup function.
+type HasSetup interface {
 	Basic
-	Condition(ctx context.Context) bool
+	Setup(context.Context) error
 }
 
-// Subscribable represents a subscribable job.
-type Subscribable interface {
+// HasTeardown represents a job that has a teardown function.
+type HasTeardown interface {
 	Basic
-	Subscribe(ctx context.Context) chan any
+	Teardown() error
 }
 
-// Polling represents a polling job.
-type Polling interface {
+// HasProducer represents a struct that defines a producer.
+type HasProducer interface {
 	Basic
-	IntervalTime(ctx context.Context) time.Duration
+	Producer(ctx context.Context, pool WorkerPool) error
 }
 
-// EthSubscribable represents a subscription to an ethereum event.
-type EthSubscribable interface {
+// HasMetrics represents a struct that defines metrics for
+// its internal functions.
+type HasMetrics interface {
 	Basic
-	Subscribe(ctx context.Context) (ethereum.Subscription, chan coretypes.Log)
-	Unsubscribe(ctx context.Context)
+	// RegisterMetrics()
+}
+
+// Custom Jobs are jobs that defines their own producer function. This is useful
+// for adding custom job types without having to make a change to the core `offchain-sdk`.
+type Custom interface {
+	Basic
+	HasProducer
 }

@@ -1,0 +1,13 @@
+[App.Jobs.Sub]
+AddressToListen = "0x18Df82C7E422A42D47345Ed86B0E935E9718eBda"
+EventName = "NumberChanged(uint256)"
+
+[App.Jobs.Poller]
+Interval = "1s"
+
+[Eth]
+EthHTTPURL = "http://localhost:8545"
+EthWSURL = "ws://localhost:8546"
+
+[Server.HTTP]
+Port = 8080

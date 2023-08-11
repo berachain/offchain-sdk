@@ -14,17 +14,13 @@ var _ job.Basic = &DbWriter{}
 // Listener is a simple job that logs the current block when it is run.
 type DbWriter struct{}
 
-func (w *DbWriter) Start(context.Context) error {
-	return nil
-}
-
-func (w *DbWriter) Stop() error {
-	return nil
+func (DbWriter) RegistryKey() string {
+	return "DBWriter"
 }
 
 // Execute implements job.Basic.
 func (w *DbWriter) Execute(ctx context.Context, args any) (any, error) {
-	sCtx := sdk.UnwrapSdkContext(ctx)
+	sCtx := sdk.UnwrapContext(ctx)
 	myBlock, _ := sCtx.Chain().BlockNumber(ctx)
 	db := sCtx.DB()
 	sCtx.Logger().Info("block", "block", new(big.Int).SetUint64(myBlock).String())

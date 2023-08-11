@@ -8,6 +8,10 @@ import (
 	"github.com/ethereum/go-ethereum/ethdb"
 )
 
+type CancellableContext interface {
+	Cancel()
+}
+
 type Context struct {
 	context.Context
 	chain  eth.Client
@@ -15,11 +19,21 @@ type Context struct {
 	db     ethdb.KeyValueStore
 }
 
-// UnwrapSdkContext unwraps the sdk context.
-func UnwrapSdkContext(ctx context.Context) Context {
-	if sdkCtx, ok := ctx.(Context); ok {
+// UnwrapContext unwraps the sdk context.
+func UnwrapContext(ctx context.Context) *Context {
+	if sdkCtx, ok := ctx.(*Context); ok {
 		return sdkCtx
 	}
+
+	panic("context is not sdk context")
+}
+
+// UnwrapCancelContext unwraps the sdk context.
+func UnwrapCancelContext(ctx context.Context) *Context {
+	if sdkCtx, ok := ctx.(*Context); ok {
+		return sdkCtx
+	}
+
 	panic("context is not sdk context")
 }
 
@@ -32,7 +46,7 @@ func NewContext(ctx context.Context, ethClient eth.Client, logger log.Logger, db
 	}
 }
 
-func (c Context) Chain() eth.Client {
+func (c *Context) Chain() eth.Client {
 	return c.chain
 }
 

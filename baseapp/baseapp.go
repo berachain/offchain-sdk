@@ -2,12 +2,11 @@ package baseapp
 
 import (
 	"context"
-	"os"
 
 	"github.com/berachain/offchain-sdk/client/eth"
 	"github.com/berachain/offchain-sdk/job"
 	"github.com/berachain/offchain-sdk/log"
-	sdk "github.com/berachain/offchain-sdk/types"
+	"github.com/berachain/offchain-sdk/server"
 	ethdb "github.com/ethereum/go-ethereum/ethdb"
 )
 
@@ -22,11 +21,8 @@ type BaseApp struct {
 	// jobMgr
 	jobMgr *JobManager
 
-	// ethClient is the client for communicating with the chain
-	ethClient eth.Client
-
-	// db KV store
-	db ethdb.KeyValueStore
+	// svr is the server for the baseapp.
+	svr *server.Server
 }
 
 // New creates a new baseapp.
@@ -36,43 +32,50 @@ func New(
 	ethClient eth.Client,
 	jobs []job.Basic,
 	db ethdb.KeyValueStore,
+	svr *server.Server,
 ) *BaseApp {
 	return &BaseApp{
-		name:      name,
-		logger:    log.NewBlankLogger(os.Stdout),
-		ethClient: ethClient,
-		jobMgr: NewJobManager(
-			name,
-			logger,
+		name:   name,
+		logger: logger,
+		jobMgr: NewManager(
 			jobs,
+			&contextFactory{
+				connPool: ethClient,
+				logger:   logger,
+				db:       db,
+			},
 		),
-		db: db,
+		svr: svr,
 	}
 }
 
 // Logger returns the logger for the baseapp.
 func (b *BaseApp) Logger() log.Logger {
-	return b.logger.With("namespace", b.name+"-app")
+	return b.logger.With("namespace", "baseapp")
 }
 
 // Start starts the baseapp.
-func (b *BaseApp) Start() {
-	b.Logger().Info("starting app")
+func (b *BaseApp) Start(ctx context.Context) error {
+	b.Logger().Info("attempting to start")
+	defer b.Logger().Info("successfully started")
 
-	// TODO: create a new context for every job request / creation.
-	ctx := sdk.NewContext(
-		context.Background(),
-		b.ethClient,
-		b.Logger(),
-		b.db,
-	)
-	b.jobMgr.executionPool.Start()
-	b.jobMgr.Start(*ctx)
+	// Start the job manager and the producers.
+	b.jobMgr.Start(ctx)
+	b.jobMgr.RunProducers(ctx)
+
+	if b.svr == nil {
+		b.Logger().Info("no server registered, skipping")
+	} else {
+		go b.svr.Start(ctx)
+	}
+
+	return nil
 }
 
 // Stop stops the baseapp.
 func (b *BaseApp) Stop() {
-	b.Logger().Info("stopping app")
-	b.jobMgr.executionPool.Stop()
+	b.Logger().Info("attempting to stop")
+	defer b.Logger().Info("successfully stopped")
 	b.jobMgr.Stop()
+	b.svr.Stop()
 }

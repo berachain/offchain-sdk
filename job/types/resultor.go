@@ -1,4 +1,4 @@
-package job
+package types
 
 // Result encapsulates the result of a job execution.
 type Resultor struct {
