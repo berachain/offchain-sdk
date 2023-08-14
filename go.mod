@@ -1,6 +1,6 @@
 module github.com/berachain/offchain-sdk
 
-go 1.20
+go 1.21
 
 require (
 	github.com/alitto/pond v1.8.3
@@ -8,10 +8,10 @@ require (
 	github.com/ethereum/go-ethereum v1.12.0
 	github.com/golangci/golangci-lint v1.53.3
 	github.com/hashicorp/golang-lru/v2 v2.0.4
+	github.com/pelletier/go-toml v1.9.5
 	github.com/prometheus/client_golang v1.16.0
 	github.com/rs/zerolog v1.29.1
 	github.com/spf13/cobra v1.7.0
-	github.com/spf13/viper v1.12.0
 )
 
 require (
@@ -127,7 +127,6 @@ require (
 	github.com/nishanths/predeclared v0.2.2 // indirect
 	github.com/nunnatsa/ginkgolinter v0.12.1 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
-	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.5 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/polyfloyd/go-errorlint v1.4.2 // indirect
@@ -156,6 +155,7 @@ require (
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/spf13/viper v1.12.0 // indirect
 	github.com/ssgreg/nlreturn/v2 v2.2.1 // indirect
 	github.com/stbenjam/no-sprintf-host-port v0.1.1 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
