@@ -64,9 +64,6 @@ func NewClient(cfg *Config) Client {
 	client := &client{
 		cfg: cfg,
 	}
-	if err := client.Dial(); err != nil {
-		panic(err)
-	}
 	return client
 }
 
