@@ -57,7 +57,7 @@ func StartCmdWithOptions[C any](app App[C], defaultAppHome string, _ StartCmdOpt
 			ethClient := eth.NewClient(&cfg.Eth)
 			ab.RegisterEthClient(ethClient)
 
-			if err := ethClient.Dial(); err != nil {
+			if err = ethClient.Dial(); err != nil {
 				logger.Error("failed to dial chain node", err)
 			}
 
