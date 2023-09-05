@@ -5,6 +5,7 @@ import (
 	"github.com/berachain/offchain-sdk/client/eth"
 	"github.com/berachain/offchain-sdk/job"
 	"github.com/berachain/offchain-sdk/log"
+	"github.com/berachain/offchain-sdk/server"
 	"github.com/ethereum/go-ethereum/ethdb"
 )
 
@@ -15,4 +16,5 @@ type Builder interface {
 	RegisterEthClient(eth.Client)
 	RegisterJob(job.Basic)
 	RegisterDB(db ethdb.KeyValueStore)
+	RegisterHTTPHandler(handler server.Handler)
 }
