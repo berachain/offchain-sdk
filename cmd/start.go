@@ -12,6 +12,7 @@ import (
 	"github.com/berachain/offchain-sdk/cmd/flags"
 	"github.com/berachain/offchain-sdk/config"
 	"github.com/berachain/offchain-sdk/config/toml"
+	coreapp "github.com/berachain/offchain-sdk/core/app"
 	"github.com/berachain/offchain-sdk/log"
 	"github.com/berachain/offchain-sdk/server"
 	"github.com/spf13/cobra"
@@ -21,12 +22,12 @@ import (
 type StartCmdOptions struct{}
 
 // StartCmd runs the application passed in.
-func StartCmd[C any](app App[C], defaultAppHome string) *cobra.Command {
+func StartCmd[C any](app coreapp.App[C], defaultAppHome string) *cobra.Command {
 	return StartCmdWithOptions[C](app, defaultAppHome, StartCmdOptions{})
 }
 
 // StartCmdWithOptions runs the service passed in.
-func StartCmdWithOptions[C any](app App[C], defaultAppHome string, _ StartCmdOptions) *cobra.Command {
+func StartCmdWithOptions[C any](app coreapp.App[C], defaultAppHome string, _ StartCmdOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "start",
 		Short: "Run the service",

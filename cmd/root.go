@@ -1,22 +1,14 @@
 package cmd
 
 import (
-	"context"
 	"os"
 
-	"github.com/berachain/offchain-sdk/log"
+	coreapp "github.com/berachain/offchain-sdk/core/app"
 	"github.com/spf13/cobra"
 )
 
-type App[C any] interface {
-	Name() string
-	Setup(ab AppBuilder, config C, logger log.Logger)
-	Start(context.Context) error
-	Stop()
-}
-
 // BuildBasicRootCmd builds a root command.
-func BuildBasicRootCmd[C any](app App[C]) *cobra.Command {
+func BuildBasicRootCmd[C any](app coreapp.App[C]) *cobra.Command {
 	rootCmd := BuildRootCommand(
 		app.Name(),
 		"Welcome to "+app.Name(),

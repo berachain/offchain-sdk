@@ -1,10 +1,10 @@
 package app
 
 import (
-	"github.com/berachain/offchain-sdk/cmd"
 	"github.com/berachain/offchain-sdk/log"
 
 	"github.com/berachain/offchain-sdk/baseapp"
+	coreapp "github.com/berachain/offchain-sdk/core/app"
 	"github.com/berachain/offchain-sdk/examples/listener/config"
 	ljobs "github.com/berachain/offchain-sdk/examples/listener/jobs"
 	jobs "github.com/berachain/offchain-sdk/x/jobs"
@@ -13,7 +13,7 @@ import (
 
 // TODO: move cmd.App out of the cmd package.
 // We must conform to the `App` interface.
-var _ cmd.App[config.Config] = &ListenerApp{}
+var _ coreapp.App[config.Config] = &ListenerApp{}
 
 // ListenerApp shows how to watch for an event on the Ethereum blockchain.
 // The event is defined in the smart contract at: 0x18Df82C7E422A42D47345Ed86B0E935E9718eBda
@@ -31,7 +31,7 @@ func (ListenerApp) Name() string {
 
 // Setup implements the `App` interface.
 func (app *ListenerApp) Setup(
-	ab cmd.AppBuilder,
+	ab coreapp.Builder,
 	config config.Config,
 	logger log.Logger,
 ) {

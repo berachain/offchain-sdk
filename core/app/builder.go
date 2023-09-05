@@ -1,4 +1,4 @@
-package cmd
+package app
 
 import (
 	"github.com/berachain/offchain-sdk/baseapp"
@@ -8,8 +8,8 @@ import (
 	"github.com/ethereum/go-ethereum/ethdb"
 )
 
-// AppBuilder is a builder for an app. It follows a basic factory pattern.
-type AppBuilder interface {
+// Builder is a builder for an app. It follows a basic factory pattern.
+type Builder interface {
 	AppName() string
 	BuildApp(log.Logger) *baseapp.BaseApp
 	RegisterEthClient(eth.Client)
