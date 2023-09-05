@@ -91,7 +91,7 @@ func (c *client) Dial() error {
 		time.Sleep(defaultRetryTime)
 	}
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	retries = 0
@@ -105,7 +105,7 @@ func (c *client) Dial() error {
 		time.Sleep(defaultRetryTime)
 	}
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	return nil
