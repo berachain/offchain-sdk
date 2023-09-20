@@ -60,6 +60,11 @@ func (app *ListenerApp) Setup(
 		},
 	)
 
+	// This job is listening to the blocks on the chain.
+	ab.RegisterJob(
+		&ljobs.BlockWatcher{},
+	)
+
 	// We register a database with our app.
 	ab.RegisterDB(memdb.New())
 
