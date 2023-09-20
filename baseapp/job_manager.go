@@ -157,7 +157,7 @@ func (jm *JobManager) runProducer(ctx context.Context, j job.Basic) bool {
 // RunProducers runs the job producers.
 //
 
-func (jm *JobManager) RunProducers(gctx context.Context) {
+func (jm *JobManager) RunProducers(gctx context.Context) { //nolint:gocognit // todo fix.
 	for _, j := range jm.jobRegistry.Iterate() {
 		ctx := jm.ctxFactory.NewSDKContext(gctx)
 		if jm.runProducer(ctx, j) {
@@ -197,7 +197,7 @@ func (jm *JobManager) RunProducers(gctx context.Context) {
 					}
 				}
 			})
-		} else if blockHeaderJob, ok := j.(job.BlockHeaderSub); ok {
+		} else if blockHeaderJob, ok := j.(job.BlockHeaderSub); ok { //nolint:govet // todo fix.
 			jm.jobExecutors.Submit(func() {
 				sub, ch := blockHeaderJob.Subscribe(ctx)
 				for {

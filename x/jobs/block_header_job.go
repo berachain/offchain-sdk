@@ -12,12 +12,12 @@ import (
 // Compile time check to ensure that EthEventSub implements job.BlockHeaderSub.
 var _ job.BlockHeaderSub = (*BlockHeaderWatcher)(nil)
 
-// BlockHeaderWatcher allows you to subscribe a basic job to a block header event
+// BlockHeaderWatcher allows you to subscribe a basic job to a block header event.
 type BlockHeaderWatcher struct {
 	job.Basic
 }
 
-// NewBlockHeaderWatcher creates a new BlockHeaderWatcher
+// NewBlockHeaderWatcher creates a new BlockHeaderWatcher.
 func NewBlockHeaderWatcher() *BlockHeaderWatcher {
 	return &BlockHeaderWatcher{}
 }
@@ -30,10 +30,9 @@ func (w *BlockHeaderWatcher) Subscribe(ctx context.Context) (ethereum.Subscripti
 	}
 	sCtx.Logger().Info("Subscribed to new block headers")
 	return sub, headerCh
-
 }
 
-func (w *BlockHeaderWatcher) Unsubscribe(ctx context.Context) {
+func (w *BlockHeaderWatcher) Unsubscribe(_ context.Context) {
 	// TODO: better way to restart here?
 	panic("sub failure")
 }
