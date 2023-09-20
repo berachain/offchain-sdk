@@ -197,6 +197,24 @@ func (jm *JobManager) RunProducers(gctx context.Context) {
 					}
 				}
 			})
+		} else if blockHeaderJob, ok := j.(job.BlockHeaderSub); ok {
+			jm.jobExecutors.Submit(func() {
+				sub, ch := blockHeaderJob.Subscribe(ctx)
+				for {
+					select {
+					case <-ctx.Done():
+						blockHeaderJob.Unsubscribe(ctx)
+						return
+					case err := <-sub.Err():
+						jm.Logger(ctx).Error("error in subscription", "err", err)
+						blockHeaderJob.Unsubscribe(ctx)
+						return
+					case val := <-ch:
+						jm.jobExecutors.Submit(workertypes.NewPayload(ctx, blockHeaderJob, val).Execute)
+						continue
+					}
+				}
+			})
 		} else {
 			panic(fmt.Sprintf("unknown job type %s", reflect.TypeOf(j)))
 		}

@@ -115,3 +115,10 @@ type EthSubscribable interface {
 	Subscribe(ctx context.Context) (ethereum.Subscription, chan coretypes.Log)
 	Unsubscribe(ctx context.Context)
 }
+
+// BlockHeaderSub represents a block watcher job.
+type BlockHeaderSub interface {
+	Basic
+	Subscribe(ctx context.Context) (ethereum.Subscription, chan *coretypes.Header)
+	Unsubscribe(ctx context.Context)
+}
