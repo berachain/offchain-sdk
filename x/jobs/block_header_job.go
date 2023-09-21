@@ -18,8 +18,10 @@ type BlockHeaderWatcher struct {
 }
 
 // NewBlockHeaderWatcher creates a new BlockHeaderWatcher.
-func NewBlockHeaderWatcher() *BlockHeaderWatcher {
-	return &BlockHeaderWatcher{}
+func NewBlockHeaderWatcher(basic job.Basic) *BlockHeaderWatcher {
+	return &BlockHeaderWatcher{
+		Basic: basic,
+	}
 }
 
 func (w *BlockHeaderWatcher) Subscribe(ctx context.Context) (ethereum.Subscription, chan *coretypes.Header) {
