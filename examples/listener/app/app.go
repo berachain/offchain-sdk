@@ -11,7 +11,6 @@ import (
 	memdb "github.com/ethereum/go-ethereum/ethdb/memorydb"
 )
 
-// TODO: move cmd.App out of the cmd package.
 // We must conform to the `App` interface.
 var _ coreapp.App[config.Config] = &ListenerApp{}
 
@@ -38,7 +37,7 @@ func (app *ListenerApp) Setup(
 	// This job is subscribed to the `NumberChanged(uint256)` event.
 	ab.RegisterJob(
 		jobs.NewEthSub(
-			&ljobs.Listener{}, // We embed a Basic job inside.
+			&ljobs.Listener{},
 			config.Jobs.Sub.AddressToListen,
 			config.Jobs.Sub.EventName,
 		),
@@ -61,9 +60,7 @@ func (app *ListenerApp) Setup(
 	)
 
 	// This job is listening to the blocks on the chain.
-	ab.RegisterJob(
-		jobs.NewBlockHeaderWatcher(&ljobs.BlockWatcher{}),
-	)
+	ab.RegisterJob(jobs.NewBlockHeaderWatcher())
 
 	// We register a database with our app.
 	ab.RegisterDB(memdb.New())
