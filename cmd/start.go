@@ -48,7 +48,21 @@ func StartCmdWithOptions[C any](app coreapp.App[C], defaultAppHome string, _ Sta
 			}
 
 			var cfg config.Config[C]
-			if err = toml.ReadIntoMap[config.Config[C]](configPath, &cfg); err != nil {
+			// Check if we should override the config with environment variables.
+			envOverride, err := cmd.Flags().GetBool(flags.EnvOverride)
+			if err != nil {
+				return err
+			}
+
+			if envOverride {
+				envOverridePrefix, err := cmd.Flags().GetString(flags.EnvOverridePrefix)
+				if err != nil {
+					return err
+				}
+				if err = toml.PrioritizeEnv[config.Config[C]](configPath, envOverridePrefix, &cfg); err != nil {
+					return err
+				}
+			} else if err = toml.ReadIntoMap[config.Config[C]](configPath, &cfg); err != nil {
 				return err
 			}
 
@@ -92,5 +106,7 @@ func StartCmdWithOptions[C any](app coreapp.App[C], defaultAppHome string, _ Sta
 	}
 
 	cmd.Flags().String(flags.ConfigPath, flags.DefaultConfigPath, "The config directory")
+	cmd.Flags().Bool(flags.EnvOverride, false, "Override config with environment variables")
+	cmd.Flags().String(flags.EnvOverridePrefix, "", "Prefix for environment variables")
 	return cmd
 }
