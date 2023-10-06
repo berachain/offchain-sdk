@@ -157,7 +157,7 @@ func (jm *JobManager) runProducer(ctx context.Context, j job.Basic) bool {
 // RunProducers runs the job producers.
 //
 
-func (jm *JobManager) RunProducers(gctx context.Context) {
+func (jm *JobManager) RunProducers(gctx context.Context) { //nolint:gocognit // todo fix.
 	for _, j := range jm.jobRegistry.Iterate() {
 		ctx := jm.ctxFactory.NewSDKContext(gctx)
 		if jm.runProducer(ctx, j) {
@@ -193,6 +193,24 @@ func (jm *JobManager) RunProducers(gctx context.Context) {
 						return
 					case val := <-ch:
 						jm.jobExecutors.Submit(workertypes.NewPayload(ctx, ethSubJob, val).Execute)
+						continue
+					}
+				}
+			})
+		} else if blockHeaderJob, ok := j.(job.BlockHeaderSub); ok { //nolint:govet // todo fix.
+			jm.jobExecutors.Submit(func() {
+				sub, ch := blockHeaderJob.Subscribe(ctx)
+				for {
+					select {
+					case <-ctx.Done():
+						blockHeaderJob.Unsubscribe(ctx)
+						return
+					case err := <-sub.Err():
+						jm.Logger(ctx).Error("error in subscription", "err", err)
+						blockHeaderJob.Unsubscribe(ctx)
+						return
+					case val := <-ch:
+						jm.jobExecutors.Submit(workertypes.NewPayload(ctx, blockHeaderJob, val).Execute)
 						continue
 					}
 				}
