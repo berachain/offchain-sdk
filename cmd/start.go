@@ -54,15 +54,11 @@ func StartCmdWithOptions[C any](app coreapp.App[C], defaultAppHome string, _ Sta
 				return err
 			}
 
-			if envOverride {
-				envOverridePrefix, err := cmd.Flags().GetString(flags.EnvOverridePrefix)
-				if err != nil {
-					return err
-				}
-				if err = toml.PrioritizeEnv[config.Config[C]](configPath, envOverridePrefix, &cfg); err != nil {
-					return err
-				}
-			} else if err = toml.ReadIntoMap[config.Config[C]](configPath, &cfg); err != nil {
+			envOverridePrefix, err := cmd.Flags().GetString(flags.EnvOverridePrefix)
+			if err != nil {
+				return err
+			}
+			if err = toml.LoadConfig[config.Config[C]](configPath, &cfg, envOverride, envOverridePrefix); err != nil {
 				return err
 			}
 

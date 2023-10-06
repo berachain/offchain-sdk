@@ -6,17 +6,9 @@ import (
 	"github.com/spf13/viper"
 )
 
-// ReadTomlIntoMap reads a TOML file into a map.
-func ReadIntoMap[T any](filepath string, target *T) error {
-	return initConfig(filepath, false, "", target)
-}
-
-// PrioritizeEnv prioritizes environment variables over config file values.
-func PrioritizeEnv[T any](filepath string, envPrefix string, target *T) error {
-	return initConfig(filepath, true, envPrefix, target)
-}
-
-func initConfig[T any](filepath string, envOverride bool, envPrefix string, target *T) error {
+// LoadConfig loads a TOML config file into the target. It will prioritize
+// environment variables if envOverride is true.
+func LoadConfig[T any](filepath string, target *T, envOverride bool, envPrefix string) error {
 	// Find and read the config file
 	viper.SetConfigFile(filepath)
 
