@@ -24,6 +24,20 @@ func NewBlockHeaderWatcher(basic job.Basic) *BlockHeaderWatcher {
 	}
 }
 
+func (w *BlockHeaderWatcher) Setup(ctx context.Context) error {
+	if setupJob, ok := w.Basic.(job.HasSetup); ok {
+		return setupJob.Setup(ctx)
+	}
+	return nil
+}
+
+func (w *BlockHeaderWatcher) Teardown() error {
+	if setupJob, ok := w.Basic.(job.HasTeardown); ok {
+		return setupJob.Teardown()
+	}
+	return nil
+}
+
 func (w *BlockHeaderWatcher) Subscribe(ctx context.Context) (ethereum.Subscription, chan *coretypes.Header) {
 	sCtx := sdk.UnwrapContext(ctx)
 	headerCh, sub, err := sCtx.Chain().SubscribeNewHead(sCtx)
