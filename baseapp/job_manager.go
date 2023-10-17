@@ -164,7 +164,7 @@ func (jm *JobManager) RunProducers(gctx context.Context) { //nolint:gocognit // 
 			continue
 		} else if subJob, ok := j.(job.Subscribable); ok {
 			// Handle unmigrated jobs. // TODO: migrate format.
-			jm.jobExecutors.Submit(func() {
+			jm.jobProducers.Submit(func() {
 				ch := subJob.Subscribe(ctx)
 				for {
 					select {
@@ -179,7 +179,7 @@ func (jm *JobManager) RunProducers(gctx context.Context) { //nolint:gocognit // 
 			})
 			// Handle unmigrated jobs. // TODO: migrate format.
 		} else if ethSubJob, ok := j.(job.EthSubscribable); ok { //nolint:govet // todo fix.
-			jm.jobExecutors.Submit(func() {
+			jm.jobProducers.Submit(func() {
 				sub, ch := ethSubJob.Subscribe(ctx)
 				for {
 					select {
@@ -198,7 +198,7 @@ func (jm *JobManager) RunProducers(gctx context.Context) { //nolint:gocognit // 
 				}
 			})
 		} else if blockHeaderJob, ok := j.(job.BlockHeaderSub); ok { //nolint:govet // todo fix.
-			jm.jobExecutors.Submit(func() {
+			jm.jobProducers.Submit(func() {
 				sub, ch := blockHeaderJob.Subscribe(ctx)
 				for {
 					select {
