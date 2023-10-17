@@ -116,7 +116,7 @@ func (jm *JobManager) Stop() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		jm.jobProducers.StopAndWait()
+		jm.jobProducers.Stop()
 		jm.jobProducers = nil
 	}()
 

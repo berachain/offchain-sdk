@@ -48,3 +48,12 @@ func (p *Pool) StopAndWait() {
 	defer p.Logger().Info("workers finished")
 	p.WorkerPool.StopAndWait()
 }
+
+// Stop stops the pool without waiting for all workers to finish. NOTE: Tasks being executed by
+// workers will continue until completion (unless the process is terminated). Tasks in the queue
+// will not be executed.
+func (p *Pool) Stop() {
+	p.Logger().Info("stopping worker pool")
+	defer p.Logger().Info("workers halted")
+	p.WorkerPool.Stop()
+}
