@@ -15,6 +15,7 @@ var _ job.BlockHeaderSub = (*BlockHeaderWatcher)(nil)
 // BlockHeaderWatcher allows you to subscribe a basic job to a block header event.
 type BlockHeaderWatcher struct {
 	job.Basic
+	sub ethereum.Subscription
 }
 
 // NewBlockHeaderWatcher creates a new BlockHeaderWatcher.
@@ -30,11 +31,12 @@ func (w *BlockHeaderWatcher) Subscribe(ctx context.Context) (ethereum.Subscripti
 	if err != nil {
 		return nil, nil
 	}
+	w.sub = sub
+
 	sCtx.Logger().Info("Subscribed to new block headers")
 	return sub, headerCh
 }
 
-func (w *BlockHeaderWatcher) Unsubscribe(_ context.Context) {
-	// TODO: better way to restart here?
-	panic("sub failure")
+func (w *BlockHeaderWatcher) Unsubscribe(context.Context) {
+	w.sub.Unsubscribe()
 }
