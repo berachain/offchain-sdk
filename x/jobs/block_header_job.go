@@ -9,8 +9,13 @@ import (
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
-// Compile time check to ensure that EthEventSub implements job.BlockHeaderSub.
-var _ job.BlockHeaderSub = (*BlockHeaderWatcher)(nil)
+// Compile time check to ensure that EthEventSub implements job.BlockHeaderSub, and optionally the
+// basic job's Setup and Teardown methods.
+var (
+	_ job.BlockHeaderSub = (*BlockHeaderWatcher)(nil)
+	_ job.HasSetup       = (*BlockHeaderWatcher)(nil)
+	_ job.HasTeardown    = (*BlockHeaderWatcher)(nil)
+)
 
 // BlockHeaderWatcher allows you to subscribe a basic job to a block header event.
 type BlockHeaderWatcher struct {
@@ -39,4 +44,18 @@ func (w *BlockHeaderWatcher) Subscribe(ctx context.Context) (ethereum.Subscripti
 
 func (w *BlockHeaderWatcher) Unsubscribe(context.Context) {
 	w.sub.Unsubscribe()
+}
+
+func (w *BlockHeaderWatcher) Setup(ctx context.Context) error {
+	if setupJob, ok := w.Basic.(job.HasSetup); ok {
+		return setupJob.Setup(ctx)
+	}
+	return nil
+}
+
+func (w *BlockHeaderWatcher) Teardown() error {
+	if setupJob, ok := w.Basic.(job.HasTeardown); ok {
+		return setupJob.Teardown()
+	}
+	return nil
 }
