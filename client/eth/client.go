@@ -8,7 +8,6 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	ethcoretypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
@@ -26,28 +25,28 @@ type Client interface {
 
 // Reader is the eth reader interface.
 type Reader interface {
-	BlockByNumber(ctx context.Context, number *big.Int) (*ethcoretypes.Block, error)
-	SubscribeNewHead(ctx context.Context) (chan *ethcoretypes.Header, ethereum.Subscription, error)
+	BlockByNumber(ctx context.Context, number *big.Int) (*types.Block, error)
+	SubscribeNewHead(ctx context.Context) (chan *types.Header, ethereum.Subscription, error)
 	BlockNumber(ctx context.Context) (uint64, error)
 	ChainID(ctx context.Context) (*big.Int, error)
-	TransactionReceipt(ctx context.Context, txHash common.Hash) (*ethcoretypes.Receipt, error)
+	TransactionReceipt(ctx context.Context, txHash common.Hash) (*types.Receipt, error)
 	BalanceAt(ctx context.Context, address common.Address, bn *big.Int) (*big.Int, error)
 	CodeAt(ctx context.Context, account common.Address, blockNumber *big.Int) ([]byte, error)
 	EstimateGas(ctx context.Context, msg ethereum.CallMsg) (uint64, error)
-	FilterLogs(ctx context.Context, q ethereum.FilterQuery) ([]ethcoretypes.Log, error)
-	HeaderByNumber(ctx context.Context, number *big.Int) (*ethcoretypes.Header, error)
+	FilterLogs(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error)
+	HeaderByNumber(ctx context.Context, number *big.Int) (*types.Header, error)
 	PendingCodeAt(ctx context.Context, account common.Address) ([]byte, error)
 	PendingNonceAt(ctx context.Context, account common.Address) (uint64, error)
-	SendTransaction(ctx context.Context, tx *ethcoretypes.Transaction) error
+	SendTransaction(ctx context.Context, tx *types.Transaction) error
 	SubscribeFilterLogs(ctx context.Context, q ethereum.FilterQuery,
-		ch chan<- ethcoretypes.Log) (ethereum.Subscription, error)
+		ch chan<- types.Log) (ethereum.Subscription, error)
 	SuggestGasPrice(ctx context.Context) (*big.Int, error)
 	SuggestGasTipCap(ctx context.Context) (*big.Int, error)
 	TransactionByHash(ctx context.Context, hash common.Hash) (tx *types.Transaction, isPending bool, err error)
 }
 
 type Writer interface {
-	SendTransaction(ctx context.Context, tx *ethcoretypes.Transaction) error
+	SendTransaction(ctx context.Context, tx *types.Transaction) error
 	CallContract(ctx context.Context, msg ethereum.CallMsg,
 		blockNumber *big.Int) ([]byte, error)
 }
@@ -126,8 +125,8 @@ func (c *client) Close() error {
 // ==================================================================
 
 // GetReceipts returns the receipts for the given transactions.
-func (c *client) GetReceipts(ctx context.Context, txs ethcoretypes.Transactions) (ethcoretypes.Receipts, error) {
-	var receipts ethcoretypes.Receipts
+func (c *client) GetReceipts(ctx context.Context, txs types.Transactions) (types.Receipts, error) {
+	var receipts types.Receipts
 	for _, tx := range txs {
 		receipt, err := c.TransactionReceipt(ctx, tx.Hash())
 		if err != nil {
@@ -139,8 +138,8 @@ func (c *client) GetReceipts(ctx context.Context, txs ethcoretypes.Transactions)
 }
 
 // SubscribeNewHead subscribes to new block headers.
-func (c *client) SubscribeNewHead(ctx context.Context) (chan *ethcoretypes.Header, ethereum.Subscription, error) {
-	ch := make(chan *ethcoretypes.Header)
+func (c *client) SubscribeNewHead(ctx context.Context) (chan *types.Header, ethereum.Subscription, error) {
+	ch := make(chan *types.Header)
 	sub, err := c.wsclient.SubscribeNewHead(ctx, ch)
 	return ch, sub, err
 }
