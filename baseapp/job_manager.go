@@ -135,7 +135,9 @@ func (jm *JobManager) runProducer(ctx context.Context, j job.Basic) bool {
 	if wrappedJob := job.WrapJob(j); wrappedJob != nil {
 		jm.jobProducers.Submit(
 			func() {
-				if err := wrappedJob.Producer(ctx, jm.jobExecutors); !errors.Is(err, context.Canceled) && err != nil {
+				if err := wrappedJob.Producer(
+					ctx, jm.jobExecutors,
+				); !errors.Is(err, context.Canceled) && err != nil {
 					jm.Logger(ctx).Error("error in job producer", "err", err)
 				}
 			},

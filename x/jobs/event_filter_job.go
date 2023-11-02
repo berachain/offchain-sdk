@@ -5,6 +5,7 @@ import (
 
 	"github.com/berachain/offchain-sdk/job"
 	sdk "github.com/berachain/offchain-sdk/types"
+
 	"github.com/ethereum/go-ethereum"
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )

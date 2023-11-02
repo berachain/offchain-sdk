@@ -6,6 +6,7 @@ import (
 	"github.com/berachain/offchain-sdk/client/eth"
 	"github.com/berachain/offchain-sdk/log"
 	sdk "github.com/berachain/offchain-sdk/types"
+
 	ethdb "github.com/ethereum/go-ethereum/ethdb"
 )
 

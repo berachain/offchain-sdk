@@ -32,28 +32,32 @@ func NewChainProviderImpl(pool ConnectionPool) (ChainProvider, error) {
 // Implementations of Reader and Writer
 // ==================================================================
 
-func (c *ChainProviderImpl) GetBlockByNumber(ctx context.Context, number uint64) (*types.Block, error) {
+func (c *ChainProviderImpl) GetBlockByNumber(
+	ctx context.Context, number uint64) (*types.Block, error) {
 	if client, ok := c.GetAnyChainClient(); ok {
 		return client.GetBlockByNumber(ctx, number)
 	}
 	return nil, ErrClientNotFound
 }
 
-func (c *ChainProviderImpl) GetReceipts(ctx context.Context, txs types.Transactions) (types.Receipts, error) {
+func (c *ChainProviderImpl) GetReceipts(
+	ctx context.Context, txs types.Transactions) (types.Receipts, error) {
 	if client, ok := c.GetAnyChainClient(); ok {
 		return client.GetReceipts(ctx, txs)
 	}
 	return nil, ErrClientNotFound
 }
 
-func (c *ChainProviderImpl) GetReceipt(ctx context.Context, txHash common.Hash) (*types.Receipt, error) {
+func (c *ChainProviderImpl) GetReceipt(
+	ctx context.Context, txHash common.Hash) (*types.Receipt, error) {
 	if client, ok := c.GetAnyChainClient(); ok {
 		return client.TransactionReceipt(ctx, txHash)
 	}
 	return nil, ErrClientNotFound
 }
 
-func (c *ChainProviderImpl) SubscribeNewHead(ctx context.Context) (chan *types.Header, ethereum.Subscription, error) {
+func (c *ChainProviderImpl) SubscribeNewHead(
+	ctx context.Context) (chan *types.Header, ethereum.Subscription, error) {
 	if client, ok := c.GetAnyChainClient(); ok {
 		return client.SubscribeNewHead(ctx)
 	}
@@ -74,63 +78,72 @@ func (c *ChainProviderImpl) ChainID(ctx context.Context) (*big.Int, error) {
 	return nil, ErrClientNotFound
 }
 
-func (c *ChainProviderImpl) TransactionReceipt(ctx context.Context, txHash common.Hash) (*types.Receipt, error) {
+func (c *ChainProviderImpl) TransactionReceipt(
+	ctx context.Context, txHash common.Hash) (*types.Receipt, error) {
 	if client, ok := c.GetAnyChainClient(); ok {
 		return client.TransactionReceipt(ctx, txHash)
 	}
 	return nil, ErrClientNotFound
 }
 
-func (c *ChainProviderImpl) GetBalance(ctx context.Context, address common.Address) (*big.Int, error) {
+func (c *ChainProviderImpl) GetBalance(
+	ctx context.Context, address common.Address) (*big.Int, error) {
 	if client, ok := c.GetAnyChainClient(); ok {
 		return client.GetBalance(ctx, address)
 	}
 	return nil, ErrClientNotFound
 }
 
-func (c *ChainProviderImpl) CodeAt(ctx context.Context, account common.Address, blockNumber *big.Int) ([]byte, error) {
+func (c *ChainProviderImpl) CodeAt(
+	ctx context.Context, account common.Address, blockNumber *big.Int) ([]byte, error) {
 	if client, ok := c.GetAnyChainClient(); ok {
 		return client.CodeAt(ctx, account, blockNumber)
 	}
 	return nil, ErrClientNotFound
 }
 
-func (c *ChainProviderImpl) EstimateGas(ctx context.Context, msg ethereum.CallMsg) (uint64, error) {
+func (c *ChainProviderImpl) EstimateGas(
+	ctx context.Context, msg ethereum.CallMsg) (uint64, error) {
 	if client, ok := c.GetAnyChainClient(); ok {
 		return client.EstimateGas(ctx, msg)
 	}
 	return 0, ErrClientNotFound
 }
 
-func (c *ChainProviderImpl) FilterLogs(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error) {
+func (c *ChainProviderImpl) FilterLogs(
+	ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error) {
 	if client, ok := c.GetAnyChainClient(); ok {
 		return client.FilterLogs(ctx, q)
 	}
 	return nil, ErrClientNotFound
 }
 
-func (c *ChainProviderImpl) HeaderByNumber(ctx context.Context, number *big.Int) (*types.Header, error) {
+func (c *ChainProviderImpl) HeaderByNumber(
+	ctx context.Context, number *big.Int) (*types.Header, error) {
 	if client, ok := c.GetAnyChainClient(); ok {
 		return client.HeaderByNumber(ctx, number)
 	}
 	return nil, ErrClientNotFound
 }
 
-func (c *ChainProviderImpl) PendingCodeAt(ctx context.Context, account common.Address) ([]byte, error) {
+func (c *ChainProviderImpl) PendingCodeAt(
+	ctx context.Context, account common.Address) ([]byte, error) {
 	if client, ok := c.GetAnyChainClient(); ok {
 		return client.PendingCodeAt(ctx, account)
 	}
 	return nil, ErrClientNotFound
 }
 
-func (c *ChainProviderImpl) PendingNonceAt(ctx context.Context, account common.Address) (uint64, error) {
+func (c *ChainProviderImpl) PendingNonceAt(
+	ctx context.Context, account common.Address) (uint64, error) {
 	if client, ok := c.GetAnyChainClient(); ok {
 		return client.PendingNonceAt(ctx, account)
 	}
 	return 0, ErrClientNotFound
 }
 
-func (c *ChainProviderImpl) SendTransaction(ctx context.Context, tx *types.Transaction) error {
+func (c *ChainProviderImpl) SendTransaction(
+	ctx context.Context, tx *types.Transaction) error {
 	if client, ok := c.GetAnyChainClient(); ok {
 		return client.SendTransaction(ctx, tx)
 	}

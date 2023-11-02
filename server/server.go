@@ -33,7 +33,8 @@ func (s *Server) RegisterHandler(h Handler) {
 
 // Start starts the server.
 func (s *Server) Start(_ context.Context) {
-	if err := http.ListenAndServe(fmt.Sprintf(":%d", s.cfg.HTTP.Port), s.mux); err != nil { //nolint:gosec // todo fix.
+	if err := http.ListenAndServe( //nolint:gosec // its okay for now.
+		fmt.Sprintf(":%d", s.cfg.HTTP.Port), s.mux); err != nil {
 		panic(err)
 	}
 }

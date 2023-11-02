@@ -7,6 +7,7 @@ import (
 	"github.com/berachain/offchain-sdk/job"
 	"github.com/berachain/offchain-sdk/log"
 	"github.com/berachain/offchain-sdk/server"
+
 	ethdb "github.com/ethereum/go-ethereum/ethdb"
 )
 

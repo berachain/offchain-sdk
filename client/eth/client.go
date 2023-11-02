@@ -126,17 +126,20 @@ func (c *client) Close() error {
 // ==================================================================
 
 // GetBlockByNumber returns the block for the given block number.
-func (c *client) GetBlockByNumber(ctx context.Context, number uint64) (*ethcoretypes.Block, error) {
+func (c *client) GetBlockByNumber(
+	ctx context.Context, number uint64) (*ethcoretypes.Block, error) {
 	return c.httpclient.BlockByNumber(ctx, big.NewInt(int64(number)))
 }
 
 // GetBalance returns the balance for the given address.
-func (c *client) GetBalance(ctx context.Context, address common.Address) (*big.Int, error) {
+func (c *client) GetBalance(
+	ctx context.Context, address common.Address) (*big.Int, error) {
 	return c.httpclient.BalanceAt(ctx, address, nil)
 }
 
 // GetReceipts returns the receipts for the given transactions.
-func (c *client) GetReceipts(ctx context.Context, txs ethcoretypes.Transactions) (ethcoretypes.Receipts, error) {
+func (c *client) GetReceipts(
+	ctx context.Context, txs ethcoretypes.Transactions) (ethcoretypes.Receipts, error) {
 	var receipts ethcoretypes.Receipts
 	for _, tx := range txs {
 		receipt, err := c.httpclient.TransactionReceipt(ctx, tx.Hash())
@@ -149,12 +152,14 @@ func (c *client) GetReceipts(ctx context.Context, txs ethcoretypes.Transactions)
 }
 
 // GetReceipt returns the receipt for the given transaction hash.
-func (c *client) GetReceipt(ctx context.Context, txHash common.Hash) (*ethcoretypes.Receipt, error) {
+func (c *client) GetReceipt(
+	ctx context.Context, txHash common.Hash) (*ethcoretypes.Receipt, error) {
 	return c.httpclient.TransactionReceipt(ctx, txHash)
 }
 
 // SubscribeNewHead subscribes to new block headers.
-func (c *client) SubscribeNewHead(ctx context.Context) (chan *ethcoretypes.Header, ethereum.Subscription, error) {
+func (c *client) SubscribeNewHead(
+	ctx context.Context) (chan *ethcoretypes.Header, ethereum.Subscription, error) {
 	ch := make(chan *ethcoretypes.Header)
 	sub, err := c.wsclient.SubscribeNewHead(ctx, ch)
 	return ch, sub, err
@@ -170,43 +175,53 @@ func (c *client) ChainID(ctx context.Context) (*big.Int, error) {
 	return c.httpclient.ChainID(ctx)
 }
 
-func (c *client) TransactionReceipt(ctx context.Context, txHash common.Hash) (*ethcoretypes.Receipt, error) {
+func (c *client) TransactionReceipt(
+	ctx context.Context, txHash common.Hash) (*ethcoretypes.Receipt, error) {
 	return c.httpclient.TransactionReceipt(ctx, txHash)
 }
 
-func (c *client) CodeAt(ctx context.Context, contract common.Address, blockNumber *big.Int) ([]byte, error) {
+func (c *client) CodeAt(
+	ctx context.Context, contract common.Address, blockNumber *big.Int) ([]byte, error) {
 	return c.httpclient.CodeAt(ctx, contract, blockNumber)
 }
 
-func (c *client) CallContract(ctx context.Context, msg ethereum.CallMsg, blockNumber *big.Int) ([]byte, error) {
+func (c *client) CallContract(
+	ctx context.Context, msg ethereum.CallMsg, blockNumber *big.Int) ([]byte, error) {
 	return c.httpclient.CallContract(ctx, msg, blockNumber)
 }
 
-func (c *client) EstimateGas(ctx context.Context, msg ethereum.CallMsg) (uint64, error) {
+func (c *client) EstimateGas(
+	ctx context.Context, msg ethereum.CallMsg) (uint64, error) {
 	return c.httpclient.EstimateGas(ctx, msg)
 }
 
-func (c *client) FilterLogs(ctx context.Context, q ethereum.FilterQuery) ([]ethcoretypes.Log, error) {
+func (c *client) FilterLogs(
+	ctx context.Context, q ethereum.FilterQuery) ([]ethcoretypes.Log, error) {
 	return c.httpclient.FilterLogs(ctx, q)
 }
 
-func (c *client) HeaderByNumber(ctx context.Context, number *big.Int) (*ethcoretypes.Header, error) {
+func (c *client) HeaderByNumber(
+	ctx context.Context, number *big.Int) (*ethcoretypes.Header, error) {
 	return c.httpclient.HeaderByNumber(ctx, number)
 }
 
-func (c *client) PendingCodeAt(ctx context.Context, account common.Address) ([]byte, error) {
+func (c *client) PendingCodeAt(
+	ctx context.Context, account common.Address) ([]byte, error) {
 	return c.httpclient.PendingCodeAt(ctx, account)
 }
 
-func (c *client) PendingNonceAt(ctx context.Context, account common.Address) (uint64, error) {
+func (c *client) PendingNonceAt(
+	ctx context.Context, account common.Address) (uint64, error) {
 	return c.httpclient.PendingNonceAt(ctx, account)
 }
 
-func (c *client) SendTransaction(ctx context.Context, tx *ethcoretypes.Transaction) error {
+func (c *client) SendTransaction(
+	ctx context.Context, tx *ethcoretypes.Transaction) error {
 	return c.httpclient.SendTransaction(ctx, tx)
 }
 
-func (c *client) SubscribeFilterLogs(ctx context.Context,
+func (c *client) SubscribeFilterLogs(
+	ctx context.Context,
 	q ethereum.FilterQuery, ch chan<- ethcoretypes.Log) (ethereum.Subscription, error) {
 	return c.wsclient.SubscribeFilterLogs(ctx, q, ch)
 }

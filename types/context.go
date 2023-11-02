@@ -5,6 +5,7 @@ import (
 
 	"github.com/berachain/offchain-sdk/client/eth"
 	"github.com/berachain/offchain-sdk/log"
+
 	"github.com/ethereum/go-ethereum/ethdb"
 )
 
@@ -37,7 +38,9 @@ func UnwrapCancelContext(ctx context.Context) *Context {
 	panic("context is not sdk context")
 }
 
-func NewContext(ctx context.Context, ethClient eth.Client, logger log.Logger, db ethdb.KeyValueStore) *Context {
+func NewContext(
+	ctx context.Context, ethClient eth.Client, logger log.Logger, db ethdb.KeyValueStore,
+) *Context {
 	return &Context{
 		Context: ctx,
 		chain:   ethClient,

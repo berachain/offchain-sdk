@@ -44,7 +44,9 @@ func (p *Pool) Logger() log.Logger {
 // StopAndWait stops the pool and waits for all workers to finish.
 func (p *Pool) StopAndWait() {
 	p.Logger().Info("stopping worker pool")
-	p.Logger().Info("waiting for workers to finish", "running", p.RunningWorkers(), "idle", p.IdleWorkers())
+	p.Logger().Info("waiting for workers to finish",
+		"running", p.RunningWorkers(), "idle", p.IdleWorkers(),
+	)
 	defer p.Logger().Info("workers finished")
 	p.WorkerPool.StopAndWait()
 }

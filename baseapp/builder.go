@@ -5,8 +5,9 @@ import (
 	"github.com/berachain/offchain-sdk/job"
 	"github.com/berachain/offchain-sdk/log"
 	"github.com/berachain/offchain-sdk/server"
-	ethdb "github.com/ethereum/go-ethereum/ethdb"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	ethdb "github.com/ethereum/go-ethereum/ethdb"
 )
 
 // AppBuilder is a builder for an app.

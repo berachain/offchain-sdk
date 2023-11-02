@@ -29,7 +29,8 @@ type ConnectionPoolConfig struct {
 func NewConnectionPoolImpl(cfg ConnectionPoolConfig) (ConnectionPool, error) {
 	cache, err := lru.NewWithEvict[string, Client](int(cfg.cacheSize), func(_ string, v Client) {
 		defer v.Close()
-		// The timeout is added so that any in progress requests have a chance to complete before we close.
+		// The timeout is added so that any in progress
+		// requests have a chance to complete before we close.
 		time.Sleep(cfg.defaultTimeout)
 	})
 	if err != nil {

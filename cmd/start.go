@@ -27,7 +27,9 @@ func StartCmd[C any](app coreapp.App[C], defaultAppHome string) *cobra.Command {
 }
 
 // StartCmdWithOptions runs the service passed in.
-func StartCmdWithOptions[C any](app coreapp.App[C], defaultAppHome string, _ StartCmdOptions) *cobra.Command {
+func StartCmdWithOptions[C any](
+	app coreapp.App[C], defaultAppHome string, _ StartCmdOptions,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "start",
 		Short: "Run the service",
@@ -58,7 +60,8 @@ func StartCmdWithOptions[C any](app coreapp.App[C], defaultAppHome string, _ Sta
 			if err != nil {
 				return err
 			}
-			if err = toml.LoadConfig[config.Config[C]](configPath, &cfg, envOverride, envOverridePrefix); err != nil {
+			if err = toml.LoadConfig[config.Config[C]](
+				configPath, &cfg, envOverride, envOverridePrefix); err != nil {
 				return err
 			}
 

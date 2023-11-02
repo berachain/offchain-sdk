@@ -5,6 +5,7 @@ import (
 
 	"github.com/berachain/offchain-sdk/job"
 	sdk "github.com/berachain/offchain-sdk/types"
+
 	"github.com/ethereum/go-ethereum"
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
@@ -30,7 +31,9 @@ func NewBlockHeaderWatcher(basic job.Basic) *BlockHeaderWatcher {
 	}
 }
 
-func (w *BlockHeaderWatcher) Subscribe(ctx context.Context) (ethereum.Subscription, chan *coretypes.Header) {
+func (w *BlockHeaderWatcher) Subscribe(
+	ctx context.Context,
+) (ethereum.Subscription, chan *coretypes.Header) {
 	sCtx := sdk.UnwrapContext(ctx)
 	headerCh, sub, err := sCtx.Chain().SubscribeNewHead(sCtx)
 	if err != nil {

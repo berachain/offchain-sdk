@@ -5,6 +5,7 @@ import (
 	"time"
 
 	jobtypes "github.com/berachain/offchain-sdk/job/types"
+
 	"github.com/ethereum/go-ethereum"
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
