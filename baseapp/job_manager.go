@@ -96,15 +96,6 @@ func (jm *JobManager) Start(ctx context.Context) {
 	logger := jm.ctxFactory.logger
 	jm.jobExecutors = worker.NewPool(ctx, logger, jm.executorCfg)
 	jm.jobProducers = worker.NewPool(ctx, logger, jm.producerCfg)
-
-	// We have to call setup on all the jobs, we each give them a freshly wrapped sdk.Context.
-	for _, j := range jm.jobRegistry.Iterate() {
-		if sj, ok := j.(job.HasSetup); ok {
-			if err := sj.Setup(jm.ctxFactory.NewSDKContext(ctx)); err != nil {
-				panic(err)
-			}
-		}
-	}
 }
 
 // Stop calls `Teardown` on the jobs in the registry as well as
@@ -154,12 +145,16 @@ func (jm *JobManager) runProducer(ctx context.Context, j job.Basic) bool {
 	return false
 }
 
-// RunProducers runs the job producers.
-//
-
+// RunProducers sets up each job and runs its producer.
 func (jm *JobManager) RunProducers(gctx context.Context) { //nolint:gocognit // todo fix.
 	for _, j := range jm.jobRegistry.Iterate() {
 		ctx := jm.ctxFactory.NewSDKContext(gctx)
+		if sj, ok := j.(job.HasSetup); ok {
+			if err := sj.Setup(ctx); err != nil {
+				panic(err)
+			}
+		}
+
 		if jm.runProducer(ctx, j) {
 			continue
 		} else if subJob, ok := j.(job.Subscribable); ok {
