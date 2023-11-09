@@ -223,13 +223,13 @@ func withRetry(task func() bool) func() {
 	return func() {
 		backoff := 1 * time.Second
 		const maxBackoff = 2 * time.Minute
-		const base = 2
+		const base time.Duration = 2
 
 		for {
 			if retry := task(); retry {
 				// Exponential backoff with jitter.
 				time.Sleep(backoff + time.Duration(rand.Intn(1000))*time.Millisecond)
-				backoff = time.Duration(base) * backoff
+				backoff *= base
 				if backoff > maxBackoff {
 					backoff = maxBackoff
 				}
