@@ -12,8 +12,13 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
-// Compile time check to ensure that EthEventSub implements job.EthSubscribable.
-var _ job.EthSubscribable = (*EthEventSub)(nil)
+// Compile time check to ensure that EthEventSub implements job.EthSubscribable, and optionally the
+// basic job's Setup and Teardown methods.
+var (
+	_ job.EthSubscribable = (*EthEventSub)(nil)
+	_ job.HasSetup        = (*EthEventSub)(nil)
+	_ job.HasTeardown     = (*EthEventSub)(nil)
+)
 
 // EthEventSub allows you to subscribe a basic job to an ethereum event.
 type EthEventSub struct {
@@ -50,4 +55,18 @@ func (j *EthEventSub) Subscribe(ctx context.Context) (ethereum.Subscription, cha
 // Unsubscribe unsubscribes from an ethereum event.
 func (j *EthEventSub) Unsubscribe(_ context.Context) {
 	j.sub.Unsubscribe()
+}
+
+func (j *EthEventSub) Setup(ctx context.Context) error {
+	if setupJob, ok := j.Basic.(job.HasSetup); ok {
+		return setupJob.Setup(ctx)
+	}
+	return nil
+}
+
+func (j *EthEventSub) Teardown() error {
+	if setupJob, ok := j.Basic.(job.HasTeardown); ok {
+		return setupJob.Teardown()
+	}
+	return nil
 }
