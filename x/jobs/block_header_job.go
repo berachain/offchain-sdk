@@ -10,8 +10,8 @@ import (
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
-// Compile time check to ensure that EthEventSub implements job.BlockHeaderSub, and optionally the
-// basic job's Setup and Teardown methods.
+// Compile time check to ensure that BlockHeaderWatcher implements job.BlockHeaderSub, and
+// optionally the basic job's Setup and Teardown methods.
 var (
 	_ job.BlockHeaderSub = (*BlockHeaderWatcher)(nil)
 	_ job.HasSetup       = (*BlockHeaderWatcher)(nil)

@@ -10,8 +10,13 @@ import (
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
-// Compile time check to ensure that EthEventSub implements job.EthSubscribable.
-var _ job.EthSubscribable = (*EthFilterSub)(nil)
+// Compile time check to ensure that EthFilterSub implements job.EthSubscribable, and optionally
+// the basic job's Setup and Teardown methods.
+var (
+	_ job.EthSubscribable = (*EthFilterSub)(nil)
+	_ job.HasSetup        = (*EthFilterSub)(nil)
+	_ job.HasTeardown     = (*EthFilterSub)(nil)
+)
 
 // EthFilterSub allows you to subscribe a basic job to an ethereum event.
 type EthFilterSub struct {
@@ -44,4 +49,18 @@ func (j *EthFilterSub) Subscribe(ctx context.Context) (ethereum.Subscription, ch
 // Unsubscribe unsubscribes from filter query.
 func (j *EthFilterSub) Unsubscribe(_ context.Context) {
 	j.sub.Unsubscribe()
+}
+
+func (j *EthFilterSub) Setup(ctx context.Context) error {
+	if setupJob, ok := j.Basic.(job.HasSetup); ok {
+		return setupJob.Setup(ctx)
+	}
+	return nil
+}
+
+func (j *EthFilterSub) Teardown() error {
+	if setupJob, ok := j.Basic.(job.HasTeardown); ok {
+		return setupJob.Teardown()
+	}
+	return nil
 }

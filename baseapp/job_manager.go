@@ -160,7 +160,6 @@ func (jm *JobManager) RunProducers(gctx context.Context) { //nolint:gocognit // 
 		if jm.runProducer(ctx, j) {
 			continue
 		} else if subJob, ok := j.(job.Subscribable); ok {
-			// Handle unmigrated jobs. // TODO: migrate format.
 			jm.jobProducers.Submit(func() {
 				ch := subJob.Subscribe(ctx)
 				for {
@@ -174,7 +173,6 @@ func (jm *JobManager) RunProducers(gctx context.Context) { //nolint:gocognit // 
 					}
 				}
 			})
-			// Handle unmigrated jobs. // TODO: migrate format.
 		} else if ethSubJob, ok := j.(job.EthSubscribable); ok { //nolint:govet // todo fix.
 			jm.jobProducers.Submit(func() {
 				sub, ch := ethSubJob.Subscribe(ctx)
@@ -185,9 +183,8 @@ func (jm *JobManager) RunProducers(gctx context.Context) { //nolint:gocognit // 
 						return
 					case err := <-sub.Err():
 						jm.Logger(ctx).Error("error in subscription", "err", err)
-						// TODO: add retry mechanism
 						ethSubJob.Unsubscribe(ctx)
-						return
+						panic(err) // job fails so kill the service.
 					case val := <-ch:
 						jm.jobExecutors.Submit(workertypes.NewPayload(ctx, ethSubJob, val).Execute)
 						continue
@@ -205,7 +202,7 @@ func (jm *JobManager) RunProducers(gctx context.Context) { //nolint:gocognit // 
 					case err := <-sub.Err():
 						jm.Logger(ctx).Error("error in subscription", "err", err)
 						blockHeaderJob.Unsubscribe(ctx)
-						return
+						panic(err) // job fails so kill the service.
 					case val := <-ch:
 						jm.jobExecutors.Submit(workertypes.NewPayload(ctx, blockHeaderJob, val).Execute)
 						continue
