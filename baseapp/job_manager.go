@@ -2,10 +2,13 @@ package baseapp
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
+	"math/big"
 	"reflect"
 	"sync"
+	"time"
 
 	"github.com/berachain/offchain-sdk/job"
 	workertypes "github.com/berachain/offchain-sdk/job/types"
@@ -21,6 +24,11 @@ const (
 
 	executorName     = "job-executor"
 	executorPromName = "job_executor"
+
+	maxBackoff   = 2 * time.Minute
+	backoffStart = 1 * time.Second
+	backoffBase  = 2
+	jitterRange  = 1000
 )
 
 // JobManager handles the job and worker lifecycle.
@@ -174,43 +182,65 @@ func (jm *JobManager) RunProducers(gctx context.Context) { //nolint:gocognit // 
 				}
 			})
 		} else if ethSubJob, ok := j.(job.EthSubscribable); ok { //nolint:govet // todo fix.
-			jm.jobProducers.Submit(func() {
+			jm.jobProducers.Submit(withRetry(func() bool {
 				sub, ch := ethSubJob.Subscribe(ctx)
 				for {
 					select {
 					case <-ctx.Done():
 						ethSubJob.Unsubscribe(ctx)
-						return
+						return false
 					case err := <-sub.Err():
 						jm.Logger(ctx).Error("error in subscription", "err", err)
 						ethSubJob.Unsubscribe(ctx)
-						panic(err) // job fails so kill the service.
+						// retry
+						return true
 					case val := <-ch:
 						jm.jobExecutors.Submit(workertypes.NewPayload(ctx, ethSubJob, val).Execute)
 						continue
 					}
 				}
-			})
+			}))
 		} else if blockHeaderJob, ok := j.(job.BlockHeaderSub); ok { //nolint:govet // todo fix.
-			jm.jobProducers.Submit(func() {
+			jm.jobProducers.Submit(withRetry(func() bool {
 				sub, ch := blockHeaderJob.Subscribe(ctx)
 				for {
 					select {
 					case <-ctx.Done():
 						blockHeaderJob.Unsubscribe(ctx)
-						return
+						return false
 					case err := <-sub.Err():
 						jm.Logger(ctx).Error("error in subscription", "err", err)
 						blockHeaderJob.Unsubscribe(ctx)
-						panic(err) // job fails so kill the service.
+						return true
 					case val := <-ch:
 						jm.jobExecutors.Submit(workertypes.NewPayload(ctx, blockHeaderJob, val).Execute)
 						continue
 					}
 				}
-			})
+			}))
 		} else {
 			panic(fmt.Sprintf("unknown job type %s", reflect.TypeOf(j)))
+		}
+	}
+}
+
+// withRetry is a wrapper that retries a task with exponential backoff.
+func withRetry(task func() bool) func() {
+	return func() {
+		backoff := backoffStart
+
+		for {
+			if retry := task(); retry {
+				// Exponential backoff with jitter.
+				jitter, _ := rand.Int(rand.Reader, big.NewInt(jitterRange))
+				time.Sleep(backoff + time.Duration(jitter.Int64())*time.Millisecond)
+				backoff *= backoffBase
+				if backoff > maxBackoff {
+					backoff = maxBackoff
+				}
+				continue
+			}
+			break
 		}
 	}
 }
