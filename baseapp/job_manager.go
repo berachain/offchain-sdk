@@ -2,9 +2,10 @@ package baseapp
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
-	"math/rand"
+	"math/big"
 	"reflect"
 	"sync"
 	"time"
@@ -23,6 +24,9 @@ const (
 
 	executorName     = "job-executor"
 	executorPromName = "job_executor"
+
+	maxBackoff  = 2 * time.Minute
+	backoffBase = 2
 )
 
 // JobManager handles the job and worker lifecycle.
@@ -222,14 +226,13 @@ func (jm *JobManager) RunProducers(gctx context.Context) { //nolint:gocognit // 
 func withRetry(task func() bool) func() {
 	return func() {
 		backoff := 1 * time.Second
-		const maxBackoff = 2 * time.Minute
-		const base time.Duration = 2
 
 		for {
 			if retry := task(); retry {
 				// Exponential backoff with jitter.
-				time.Sleep(backoff + time.Duration(rand.Intn(1000))*time.Millisecond)
-				backoff *= base
+				jitter, _ := rand.Int(rand.Reader, big.NewInt(1000))
+				time.Sleep(backoff + time.Duration(jitter.Int64())*time.Millisecond)
+				backoff *= backoffBase
 				if backoff > maxBackoff {
 					backoff = maxBackoff
 				}
