@@ -13,13 +13,12 @@ import (
 // WrapJob wraps a basic job into a job that can be submitted to the worker pool.
 func WrapJob(j Basic) HasProducer {
 	var wrappedJob HasProducer
-	if condJob, ok := j.(Conditional); ok {
+	if prodJob, ok := j.(HasProducer); ok {
+		wrappedJob = prodJob
+	} else if condJob, ok := j.(Conditional); ok { //nolint:govet // can't avoid.
 		wrappedJob = WrapConditional(condJob)
 	} else if pollJob, ok := j.(Polling); ok { //nolint:govet // can't avoid.
 		wrappedJob = WrapPolling(pollJob)
-	} else {
-		// does not support wrapping. (temporary)
-		return nil
 	}
 	return wrappedJob
 }
@@ -88,7 +87,7 @@ func (cj *conditional) Producer(ctx context.Context, pool WorkerPool) error {
 		default:
 			// Check if the condition is true.
 			if cj.Condition(ctx) {
-				pool.Submit(jobtypes.NewPayload(ctx, cj, nil).Execute)
+				pool.SubmitAndWait(jobtypes.NewPayload(ctx, cj, nil).Execute)
 			}
 		}
 
@@ -97,10 +96,6 @@ func (cj *conditional) Producer(ctx context.Context, pool WorkerPool) error {
 		// we get all this for free.
 		// Sleep for a period of time.
 		time.Sleep(cj.IntervalTime(ctx))
-		// args := func() any {
-		// 	time.Sleep(cj.IntervalTime(ctx))
-		// 	return nil
-		// }()
 	}
 }
 
