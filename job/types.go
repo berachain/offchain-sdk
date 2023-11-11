@@ -88,7 +88,7 @@ func (cj *conditional) Producer(ctx context.Context, pool WorkerPool) error {
 		default:
 			// Check if the condition is true.
 			if cj.Condition(ctx) {
-				pool.Submit(jobtypes.NewPayload(ctx, cj, nil).Execute)
+				pool.SubmitAndWait(jobtypes.NewPayload(ctx, cj, nil).Execute)
 			}
 		}
 
@@ -97,10 +97,6 @@ func (cj *conditional) Producer(ctx context.Context, pool WorkerPool) error {
 		// we get all this for free.
 		// Sleep for a period of time.
 		time.Sleep(cj.IntervalTime(ctx))
-		// args := func() any {
-		// 	time.Sleep(cj.IntervalTime(ctx))
-		// 	return nil
-		// }()
 	}
 }
 
