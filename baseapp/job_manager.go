@@ -165,7 +165,7 @@ func (jm *JobManager) RunProducers(gctx context.Context) { //nolint:gocognit // 
 			}
 		}
 
-		if jm.runProducer(ctx, j) {
+		if jm.runProducer(ctx, j) { //nolint:nestif // todo fix.
 			continue
 		} else if subJob, ok := j.(job.Subscribable); ok {
 			jm.jobProducers.Submit(func() {
@@ -183,13 +183,19 @@ func (jm *JobManager) RunProducers(gctx context.Context) { //nolint:gocognit // 
 			})
 		} else if ethSubJob, ok := j.(job.EthSubscribable); ok { //nolint:govet // todo fix.
 			jm.jobProducers.Submit(withRetry(func() bool {
-				sub, ch := ethSubJob.Subscribe(ctx)
+				sub, ch, err := ethSubJob.Subscribe(ctx)
+
+				if err != nil {
+					jm.Logger(ctx).Error("error subscribing block header", "err", err)
+					return true
+				}
+
 				for {
 					select {
 					case <-ctx.Done():
 						ethSubJob.Unsubscribe(ctx)
 						return false
-					case err := <-sub.Err():
+					case err = <-sub.Err():
 						jm.Logger(ctx).Error("error in subscription", "err", err)
 						ethSubJob.Unsubscribe(ctx)
 						// retry
@@ -202,13 +208,18 @@ func (jm *JobManager) RunProducers(gctx context.Context) { //nolint:gocognit // 
 			}))
 		} else if blockHeaderJob, ok := j.(job.BlockHeaderSub); ok { //nolint:govet // todo fix.
 			jm.jobProducers.Submit(withRetry(func() bool {
-				sub, ch := blockHeaderJob.Subscribe(ctx)
+				sub, ch, err := blockHeaderJob.Subscribe(ctx)
+				if err != nil {
+					jm.Logger(ctx).Error("error subscribing block header", "err", err)
+					return true
+				}
+
 				for {
 					select {
 					case <-ctx.Done():
 						blockHeaderJob.Unsubscribe(ctx)
 						return false
-					case err := <-sub.Err():
+					case err = <-sub.Err():
 						jm.Logger(ctx).Error("error in subscription", "err", err)
 						blockHeaderJob.Unsubscribe(ctx)
 						return true

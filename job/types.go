@@ -108,13 +108,13 @@ type Subscribable interface {
 // EthSubscribable represents a subscription to an ethereum event.
 type EthSubscribable interface {
 	Basic
-	Subscribe(ctx context.Context) (ethereum.Subscription, chan coretypes.Log)
+	Subscribe(ctx context.Context) (ethereum.Subscription, chan coretypes.Log, error)
 	Unsubscribe(ctx context.Context)
 }
 
 // BlockHeaderSub represents a block watcher job.
 type BlockHeaderSub interface {
 	Basic
-	Subscribe(ctx context.Context) (ethereum.Subscription, chan *coretypes.Header)
+	Subscribe(ctx context.Context) (ethereum.Subscription, chan *coretypes.Header, error)
 	Unsubscribe(ctx context.Context)
 }
