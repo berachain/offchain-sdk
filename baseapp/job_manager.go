@@ -165,7 +165,7 @@ func (jm *JobManager) RunProducers(gctx context.Context) { //nolint:gocognit // 
 			}
 		}
 
-		if jm.runProducer(ctx, j) { //nolint:govet // todo fix.
+		if jm.runProducer(ctx, j) { //nolint:nestif // todo fix.
 			continue
 		} else if subJob, ok := j.(job.Subscribable); ok {
 			jm.jobProducers.Submit(func() {
