@@ -38,7 +38,7 @@ func NewEthSub(job job.Basic, contractAddr string, event string) *EthEventSub {
 }
 
 // Subscribe subscribes to an ethereum event.
-func (j *EthEventSub) Subscribe(ctx context.Context) (ethereum.Subscription, chan coretypes.Log) {
+func (j *EthEventSub) Subscribe(ctx context.Context) (ethereum.Subscription, chan coretypes.Log, error) {
 	sCtx := sdk.UnwrapContext(ctx)
 	ch := make(chan coretypes.Log)
 	sub, err := sCtx.Chain().SubscribeFilterLogs(context.Background(), ethereum.FilterQuery{
@@ -47,9 +47,9 @@ func (j *EthEventSub) Subscribe(ctx context.Context) (ethereum.Subscription, cha
 	}, ch)
 	j.sub = sub
 	if err != nil {
-		panic(err)
+		return nil, nil, err
 	}
-	return sub, ch
+	return sub, ch, nil
 }
 
 // Unsubscribe unsubscribes from an ethereum event.

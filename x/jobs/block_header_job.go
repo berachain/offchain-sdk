@@ -33,16 +33,16 @@ func NewBlockHeaderWatcher(basic job.Basic) *BlockHeaderWatcher {
 
 func (w *BlockHeaderWatcher) Subscribe(
 	ctx context.Context,
-) (ethereum.Subscription, chan *coretypes.Header) {
+) (ethereum.Subscription, chan *coretypes.Header, error) {
 	sCtx := sdk.UnwrapContext(ctx)
 	headerCh, sub, err := sCtx.Chain().SubscribeNewHead(sCtx)
 	if err != nil {
-		return nil, nil
+		return nil, nil, err
 	}
 	w.sub = sub
 
 	sCtx.Logger().Info("Subscribed to new block headers")
-	return sub, headerCh
+	return sub, headerCh, nil
 }
 
 func (w *BlockHeaderWatcher) Unsubscribe(context.Context) {
