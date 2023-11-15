@@ -165,7 +165,7 @@ func (jm *JobManager) RunProducers(gctx context.Context) { //nolint:gocognit // 
 			}
 		}
 
-		if jm.runProducer(ctx, j) {
+		if jm.runProducer(ctx, j) { //nolint:govet // todo fix.
 			continue
 		} else if subJob, ok := j.(job.Subscribable); ok {
 			jm.jobProducers.Submit(func() {
@@ -195,7 +195,7 @@ func (jm *JobManager) RunProducers(gctx context.Context) { //nolint:gocognit // 
 					case <-ctx.Done():
 						ethSubJob.Unsubscribe(ctx)
 						return false
-					case err := <-sub.Err():
+					case err = <-sub.Err():
 						jm.Logger(ctx).Error("error in subscription", "err", err)
 						ethSubJob.Unsubscribe(ctx)
 						// retry
@@ -219,7 +219,7 @@ func (jm *JobManager) RunProducers(gctx context.Context) { //nolint:gocognit // 
 					case <-ctx.Done():
 						blockHeaderJob.Unsubscribe(ctx)
 						return false
-					case err := <-sub.Err():
+					case err = <-sub.Err():
 						jm.Logger(ctx).Error("error in subscription", "err", err)
 						blockHeaderJob.Unsubscribe(ctx)
 						return true
