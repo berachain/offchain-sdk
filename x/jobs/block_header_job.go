@@ -46,7 +46,9 @@ func (w *BlockHeaderWatcher) Subscribe(
 }
 
 func (w *BlockHeaderWatcher) Unsubscribe(context.Context) {
-	w.sub.Unsubscribe()
+	if w.sub != nil {
+		w.sub.Unsubscribe()
+	}
 }
 
 func (w *BlockHeaderWatcher) Setup(ctx context.Context) error {

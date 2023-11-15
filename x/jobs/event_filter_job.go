@@ -38,17 +38,19 @@ func NewEthFilterSub(job job.Basic, eventFilter ethereum.FilterQuery) *EthFilter
 func (j *EthFilterSub) Subscribe(ctx context.Context) (ethereum.Subscription, chan coretypes.Log, error) {
 	sCtx := sdk.UnwrapContext(ctx)
 	ch := make(chan coretypes.Log)
-	sub, err := sCtx.Chain().SubscribeFilterLogs(context.Background(), j.eventFilter, ch)
-	j.sub = sub
+	sub, err := sCtx.Chain().SubscribeFilterLogs(ctx, j.eventFilter, ch)
 	if err != nil {
 		return nil, nil, err
 	}
+	j.sub = sub
 	return sub, ch, nil
 }
 
 // Unsubscribe unsubscribes from filter query.
 func (j *EthFilterSub) Unsubscribe(_ context.Context) {
-	j.sub.Unsubscribe()
+	if j.sub != nil {
+		j.sub.Unsubscribe()
+	}
 }
 
 func (j *EthFilterSub) Setup(ctx context.Context) error {
