@@ -22,15 +22,15 @@ func NewContextualClient(ctx context.Context, client Client) *ContextualClient {
 }
 
 func (c *ContextualClient) CurrentBlock() (*types.Block, error) {
-	x, err := c.client.BlockNumber(c.ctx)
+	num, err := c.client.BlockNumber(c.ctx)
 	if err != nil {
 		return nil, err
 	}
-	return c.client.GetBlockByNumber(c.ctx, x)
+	return c.client.BlockByNumber(c.ctx, new(big.Int).SetUint64(num))
 }
 
-func (c *ContextualClient) GetBlockByNumber(number uint64) (*types.Block, error) {
-	return c.client.GetBlockByNumber(c.ctx, number)
+func (c *ContextualClient) GetBlockByNumber(num uint64) (*types.Block, error) {
+	return c.client.BlockByNumber(c.ctx, new(big.Int).SetUint64(num))
 }
 
 func (c *ContextualClient) SubscribeNewHead() (chan *types.Header,
