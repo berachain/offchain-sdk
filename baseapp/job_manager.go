@@ -184,11 +184,11 @@ func (jm *JobManager) RunProducers(gctx context.Context) { //nolint:gocognit // 
 		} else if ethSubJob, ok := j.(job.EthSubscribable); ok { //nolint:govet // todo fix.
 			jm.jobProducers.Submit(withRetry(func() bool {
 				sub, ch, err := ethSubJob.Subscribe(ctx)
-
 				if err != nil {
 					jm.Logger(ctx).Error("error subscribing block header", "err", err)
 					return true
 				}
+				jm.Logger(ctx).Info("(re)subscribed to eth subscription", "job", j.RegistryKey())
 
 				for {
 					select {
@@ -213,6 +213,7 @@ func (jm *JobManager) RunProducers(gctx context.Context) { //nolint:gocognit // 
 					jm.Logger(ctx).Error("error subscribing block header", "err", err)
 					return true
 				}
+				jm.Logger(ctx).Info("(re)subscribed to block header sub", "job", j.RegistryKey())
 
 				for {
 					select {
