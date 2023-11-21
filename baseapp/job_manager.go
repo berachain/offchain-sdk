@@ -156,7 +156,7 @@ func (jm *JobManager) runProducer(ctx context.Context, j job.Basic) bool {
 }
 
 // RunProducers sets up each job and runs its producer.
-func (jm *JobManager) RunProducers(gctx context.Context) { //nolint:gocognit // todo fix.
+func (jm *JobManager) RunProducers(gctx context.Context) {
 	for _, j := range jm.jobRegistry.Iterate() {
 		ctx := jm.ctxFactory.NewSDKContext(gctx)
 		if sj, ok := j.(job.HasSetup); ok {
@@ -165,7 +165,7 @@ func (jm *JobManager) RunProducers(gctx context.Context) { //nolint:gocognit // 
 			}
 		}
 
-		if jm.runProducer(ctx, j) { //nolint:nestif // todo fix.
+		if jm.runProducer(ctx, j) {
 			continue
 		} else if subJob, ok := j.(job.Subscribable); ok {
 			jm.jobProducers.Submit(func() {
@@ -181,7 +181,7 @@ func (jm *JobManager) RunProducers(gctx context.Context) { //nolint:gocognit // 
 					}
 				}
 			})
-		} else if ethSubJob, ok := j.(job.EthSubscribable); ok {
+		} else if ethSubJob, okEthSubJob := j.(job.EthSubscribable); okEthSubJob {
 			jm.runEthSubscribable(ctx, ethSubJob)
 		} else {
 			panic(fmt.Sprintf("unknown job type %s", reflect.TypeOf(j)))
