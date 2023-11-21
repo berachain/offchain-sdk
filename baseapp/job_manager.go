@@ -193,7 +193,7 @@ func (jm *JobManager) runEthSubscribable(ctx context.Context, j job.EthSubscriba
 	jm.jobProducers.Submit(withRetry(func() bool {
 		sub, ch, err := j.Subscribe(ctx)
 		if err != nil {
-			jm.Logger(ctx).Error("error subscribing block header", "err", err)
+			jm.Logger(ctx).Error("error in eth subscription", "err", err)
 			return true
 		}
 
@@ -203,7 +203,7 @@ func (jm *JobManager) runEthSubscribable(ctx context.Context, j job.EthSubscriba
 				j.Unsubscribe(ctx)
 				return false
 			case err = <-sub.Err():
-				jm.Logger(ctx).Error("error in subscription", "err", err)
+				jm.Logger(ctx).Error("error in eth subscription", "err", err)
 				j.Unsubscribe(ctx)
 				return true
 			case val := <-ch:
@@ -224,7 +224,7 @@ func withRetry(task func() bool, logger log.Logger) func() {
 				// Exponential backoff with jitter.
 				jitter, _ := rand.Int(rand.Reader, big.NewInt(jitterRange))
 				sleep := backoff + time.Duration(jitter.Int64())*time.Millisecond
-				logger.Info("retrying job", "backoff", sleep, "task", task)
+				logger.Info(fmt.Sprintf("retrying task in %s...", sleep))
 				time.Sleep(sleep)
 				backoff *= backoffBase
 				if backoff > maxBackoff {

@@ -9,7 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum"
 )
 
-// Compile time check to ensure that BlockHeaderWatcher implements job.BlockHeaderSub, and
+// Compile time check to ensure that BlockHeaderWatcher implements job.EthSubscribable, and
 // optionally the basic job's Setup and Teardown methods.
 var (
 	_ job.EthSubscribable = (*BlockHeaderWatcher)(nil)
