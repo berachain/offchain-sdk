@@ -54,8 +54,17 @@ func (j *EthEventSub) Subscribe(
 
 	ch := make(chan any)
 	go func() {
-		for val := range logCh {
-			ch <- val
+		defer close(ch)
+		for {
+			select {
+			case val, ok := <-logCh:
+				if !ok {
+					return
+				}
+				ch <- val
+			case <-ctx.Done():
+				return
+			}
 		}
 	}()
 

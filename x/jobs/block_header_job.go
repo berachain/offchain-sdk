@@ -43,8 +43,17 @@ func (w *BlockHeaderWatcher) Subscribe(
 	sCtx.Logger().Info("Subscribed to new block headers")
 	ch := make(chan any)
 	go func() {
-		for val := range headerCh {
-			ch <- val
+		defer close(ch)
+		for {
+			select {
+			case val, ok := <-headerCh:
+				if !ok {
+					return
+				}
+				ch <- val
+			case <-ctx.Done():
+				return
+			}
 		}
 	}()
 
