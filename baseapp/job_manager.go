@@ -181,62 +181,41 @@ func (jm *JobManager) RunProducers(gctx context.Context) { //nolint:gocognit // 
 					}
 				}
 			})
-		} else if ethSubJob, ok := j.(job.EthSubscribable); ok { //nolint:govet // todo fix.
-			jm.jobProducers.Submit(withRetry(func() bool {
-				sub, ch, err := ethSubJob.Subscribe(ctx)
-
-				if err != nil {
-					jm.Logger(ctx).Error("error subscribing block header", "err", err)
-					return true
-				}
-
-				for {
-					select {
-					case <-ctx.Done():
-						ethSubJob.Unsubscribe(ctx)
-						return false
-					case err = <-sub.Err():
-						jm.Logger(ctx).Error("error in subscription", "err", err)
-						ethSubJob.Unsubscribe(ctx)
-						// retry
-						return true
-					case val := <-ch:
-						jm.jobExecutors.Submit(workertypes.NewPayload(ctx, ethSubJob, val).Execute)
-						continue
-					}
-				}
-			}))
-		} else if blockHeaderJob, ok := j.(job.BlockHeaderSub); ok { //nolint:govet // todo fix.
-			jm.jobProducers.Submit(withRetry(func() bool {
-				sub, ch, err := blockHeaderJob.Subscribe(ctx)
-				if err != nil {
-					jm.Logger(ctx).Error("error subscribing block header", "err", err)
-					return true
-				}
-
-				for {
-					select {
-					case <-ctx.Done():
-						blockHeaderJob.Unsubscribe(ctx)
-						return false
-					case err = <-sub.Err():
-						jm.Logger(ctx).Error("error in subscription", "err", err)
-						blockHeaderJob.Unsubscribe(ctx)
-						return true
-					case val := <-ch:
-						jm.jobExecutors.Submit(workertypes.NewPayload(ctx, blockHeaderJob, val).Execute)
-						continue
-					}
-				}
-			}))
+		} else if ethSubJob, ok := j.(job.EthSubscribable); ok {
+			jm.runEthSubscribable(ctx, ethSubJob)
 		} else {
 			panic(fmt.Sprintf("unknown job type %s", reflect.TypeOf(j)))
 		}
 	}
 }
 
+func (jm *JobManager) runEthSubscribable(ctx context.Context, j job.EthSubscribable) {
+	jm.jobProducers.Submit(withRetry(func() bool {
+		sub, ch, err := j.Subscribe(ctx)
+		if err != nil {
+			jm.Logger(ctx).Error("error subscribing block header", "err", err)
+			return true
+		}
+
+		for {
+			select {
+			case <-ctx.Done():
+				j.Unsubscribe(ctx)
+				return false
+			case err = <-sub.Err():
+				jm.Logger(ctx).Error("error in subscription", "err", err)
+				j.Unsubscribe(ctx)
+				return true
+			case val := <-ch:
+				jm.jobExecutors.Submit(workertypes.NewPayload(ctx, j, val).Execute)
+				continue
+			}
+		}
+	}, jm.Logger(ctx)))
+}
+
 // withRetry is a wrapper that retries a task with exponential backoff.
-func withRetry(task func() bool) func() {
+func withRetry(task func() bool, logger log.Logger) func() {
 	return func() {
 		backoff := backoffStart
 
@@ -244,7 +223,9 @@ func withRetry(task func() bool) func() {
 			if retry := task(); retry {
 				// Exponential backoff with jitter.
 				jitter, _ := rand.Int(rand.Reader, big.NewInt(jitterRange))
-				time.Sleep(backoff + time.Duration(jitter.Int64())*time.Millisecond)
+				sleep := backoff + time.Duration(jitter.Int64())*time.Millisecond
+				logger.Info("retrying job", "backoff", sleep, "task", task)
+				time.Sleep(sleep)
 				backoff *= backoffBase
 				if backoff > maxBackoff {
 					backoff = maxBackoff

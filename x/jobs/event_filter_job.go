@@ -37,14 +37,22 @@ func NewEthFilterSub(job job.Basic, eventFilter ethereum.FilterQuery) *EthFilter
 // Subscribe subscribes to all events based on ethereum filter query.
 func (j *EthFilterSub) Subscribe(
 	ctx context.Context,
-) (ethereum.Subscription, chan coretypes.Log, error) {
+) (ethereum.Subscription, chan any, error) {
 	sCtx := sdk.UnwrapContext(ctx)
-	ch := make(chan coretypes.Log)
-	sub, err := sCtx.Chain().SubscribeFilterLogs(ctx, j.eventFilter, ch)
+	logCh := make(chan coretypes.Log)
+	sub, err := sCtx.Chain().SubscribeFilterLogs(ctx, j.eventFilter, logCh)
 	if err != nil {
 		return nil, nil, err
 	}
 	j.sub = sub
+
+	ch := make(chan any)
+	go func() {
+		for val := range logCh {
+			ch <- val
+		}
+	}()
+
 	return sub, ch, nil
 }
 

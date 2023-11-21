@@ -7,7 +7,6 @@ import (
 	jobtypes "github.com/berachain/offchain-sdk/job/types"
 
 	"github.com/ethereum/go-ethereum"
-	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
 // WrapJob wraps a basic job into a job that can be submitted to the worker pool.
@@ -108,13 +107,6 @@ type Subscribable interface {
 // EthSubscribable represents a subscription to an ethereum event.
 type EthSubscribable interface {
 	Basic
-	Subscribe(ctx context.Context) (ethereum.Subscription, chan coretypes.Log, error)
-	Unsubscribe(ctx context.Context)
-}
-
-// BlockHeaderSub represents a block watcher job.
-type BlockHeaderSub interface {
-	Basic
-	Subscribe(ctx context.Context) (ethereum.Subscription, chan *coretypes.Header, error)
+	Subscribe(ctx context.Context) (ethereum.Subscription, chan any, error)
 	Unsubscribe(ctx context.Context)
 }

@@ -7,15 +7,14 @@ import (
 	sdk "github.com/berachain/offchain-sdk/types"
 
 	"github.com/ethereum/go-ethereum"
-	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
 // Compile time check to ensure that BlockHeaderWatcher implements job.BlockHeaderSub, and
 // optionally the basic job's Setup and Teardown methods.
 var (
-	_ job.BlockHeaderSub = (*BlockHeaderWatcher)(nil)
-	_ job.HasSetup       = (*BlockHeaderWatcher)(nil)
-	_ job.HasTeardown    = (*BlockHeaderWatcher)(nil)
+	_ job.EthSubscribable = (*BlockHeaderWatcher)(nil)
+	_ job.HasSetup        = (*BlockHeaderWatcher)(nil)
+	_ job.HasTeardown     = (*BlockHeaderWatcher)(nil)
 )
 
 // BlockHeaderWatcher allows you to subscribe a basic job to a block header event.
@@ -33,7 +32,7 @@ func NewBlockHeaderWatcher(basic job.Basic) *BlockHeaderWatcher {
 
 func (w *BlockHeaderWatcher) Subscribe(
 	ctx context.Context,
-) (ethereum.Subscription, chan *coretypes.Header, error) {
+) (ethereum.Subscription, chan any, error) {
 	sCtx := sdk.UnwrapContext(ctx)
 	headerCh, sub, err := sCtx.Chain().SubscribeNewHead(sCtx)
 	if err != nil {
@@ -42,7 +41,14 @@ func (w *BlockHeaderWatcher) Subscribe(
 	w.sub = sub
 
 	sCtx.Logger().Info("Subscribed to new block headers")
-	return sub, headerCh, nil
+	ch := make(chan any)
+	go func() {
+		for val := range headerCh {
+			ch <- val
+		}
+	}()
+
+	return sub, ch, nil
 }
 
 func (w *BlockHeaderWatcher) Unsubscribe(context.Context) {
