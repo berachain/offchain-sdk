@@ -1,0 +1,37 @@
+[profile.default]
+ignored_error_codes = [1878, 5574]
+evm_version = 'shanghai'
+solc_version = '0.8.22'
+cache = true
+force = false
+optimizer = true
+optimizer_runs = 10000
+gas_reports = ["*"]
+bytecode_hash = "none"
+verbosity = 1
+fuzz = { runs = 1_000 }
+remappings = [
+    '@forge-std/=lib/forge-std/src/',
+    '@interfaces/=src/interfaces/',
+    '@src/=src/core',
+    '@erc6551/=lib/reference/src/',
+    '@openzeppelin/contracts=lib/openzeppelin-contracts/contracts',
+]
+
+[profile.ci]
+fuzz = { runs = 100_000 }
+verbosity = 4
+
+[rpc_endpoints]
+local = "${RPC_URL_LOCAL}"
+devnet = "${RPC_URL_DEVNET}"
+testnet = "${RPC_URL_TESTNET}"
+mainnet = "${RPC_URL_MAINNET}"
+
+# [etherscan]
+# goerli = { key = "${ETHERSCAN_KEY}", url = "https://api-goerli.etherscan.io/api" }
+# mainnet = { key = "${ETHERSCAN_KEY}" }
+[fmt]
+line_length = 80
+int_types = "long"
+wrap_comments = true

@@ -44,3 +44,9 @@ test: |
 # Format
 format: |
 	go run github.com/golangci/golangci-lint/cmd/golangci-lint run --fix
+
+generate: |
+	go generate ./...
+
+tidy: |
+	go mod tidy
