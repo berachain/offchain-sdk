@@ -184,11 +184,11 @@ func (jm *JobManager) RunProducers(gctx context.Context) { //nolint:gocognit // 
 		} else if ethSubJob, ok := j.(job.EthSubscribable); ok { //nolint:govet // todo fix.
 			jm.jobProducers.Submit(withRetry(func() bool {
 				sub, ch, err := ethSubJob.Subscribe(ctx)
-
 				if err != nil {
 					jm.Logger(ctx).Error("error subscribing block header", "err", err)
 					return true
 				}
+				jm.Logger(ctx).Info("(re)subscribed to eth subscription", "job", j.RegistryKey())
 
 				for {
 					select {
@@ -205,7 +205,7 @@ func (jm *JobManager) RunProducers(gctx context.Context) { //nolint:gocognit // 
 						continue
 					}
 				}
-			}))
+			}, jm.Logger(ctx)))
 		} else if blockHeaderJob, ok := j.(job.BlockHeaderSub); ok { //nolint:govet // todo fix.
 			jm.jobProducers.Submit(withRetry(func() bool {
 				sub, ch, err := blockHeaderJob.Subscribe(ctx)
@@ -213,6 +213,7 @@ func (jm *JobManager) RunProducers(gctx context.Context) { //nolint:gocognit // 
 					jm.Logger(ctx).Error("error subscribing block header", "err", err)
 					return true
 				}
+				jm.Logger(ctx).Info("(re)subscribed to block header sub", "job", j.RegistryKey())
 
 				for {
 					select {
@@ -228,7 +229,7 @@ func (jm *JobManager) RunProducers(gctx context.Context) { //nolint:gocognit // 
 						continue
 					}
 				}
-			}))
+			}, jm.Logger(ctx)))
 		} else {
 			panic(fmt.Sprintf("unknown job type %s", reflect.TypeOf(j)))
 		}
@@ -236,7 +237,7 @@ func (jm *JobManager) RunProducers(gctx context.Context) { //nolint:gocognit // 
 }
 
 // withRetry is a wrapper that retries a task with exponential backoff.
-func withRetry(task func() bool) func() {
+func withRetry(task func() bool, logger log.Logger) func() {
 	return func() {
 		backoff := backoffStart
 
@@ -244,7 +245,9 @@ func withRetry(task func() bool) func() {
 			if retry := task(); retry {
 				// Exponential backoff with jitter.
 				jitter, _ := rand.Int(rand.Reader, big.NewInt(jitterRange))
-				time.Sleep(backoff + time.Duration(jitter.Int64())*time.Millisecond)
+				sleep := backoff + time.Duration(jitter.Int64())*time.Millisecond
+				logger.Info(fmt.Sprintf("retrying task in %s...", sleep))
+				time.Sleep(sleep)
 				backoff *= backoffBase
 				if backoff > maxBackoff {
 					backoff = maxBackoff
