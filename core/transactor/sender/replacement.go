@@ -23,6 +23,8 @@ func DefaultTxReplacementPolicy(
 	sCtx := sdk.UnwrapContext(ctx)
 	ethClient := sCtx.Chain()
 
+	sCtx.Logger().Warn("processing replacement tx", "tx_hash", tx.Hash())
+
 	// Get the chain to suggest a new gas price.
 	newGas, err := ethClient.SuggestGasPrice(ctx)
 	if err != nil {
