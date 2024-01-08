@@ -26,7 +26,7 @@ type TxrV2 struct {
 	cfg        Config
 	requests   queuetypes.Queue[*types.TxRequest]
 	sender     *sender.Sender
-	factory    *factory.Factory
+	factory    *factory.Factory   
 	noncer     *tracker.Noncer
 	tracker    *tracker.Tracker
 	dispatcher *event.Dispatcher[*tracker.InFlightTx]

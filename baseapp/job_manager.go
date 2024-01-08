@@ -157,7 +157,14 @@ func (jm *JobManager) runProducer(ctx context.Context, j job.Basic) bool {
 
 // RunProducers sets up each job and runs its producer.
 func (jm *JobManager) RunProducers(gctx context.Context) { //nolint:gocognit // todo fix.
-	for _, j := range jm.jobRegistry.Iterate() {
+	// Load all jobs in registry in the order they were registered.
+	orderedJobs, err := jm.jobRegistry.IterateInOrder()
+	if err != nil {
+		panic(err)
+	}
+
+	for _, jobID := range orderedJobs.Keys() {
+		j := jm.jobRegistry.Get(jobID)
 		ctx := jm.ctxFactory.NewSDKContext(gctx)
 		if sj, ok := j.(job.HasSetup); ok {
 			if err := sj.Setup(ctx); err != nil {
