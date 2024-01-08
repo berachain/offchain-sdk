@@ -167,7 +167,7 @@ func (jm *JobManager) RunProducers(gctx context.Context) { //nolint:gocognit // 
 		j := jm.jobRegistry.Get(jobID)
 		ctx := jm.ctxFactory.NewSDKContext(gctx)
 		if sj, ok := j.(job.HasSetup); ok {
-			if err := sj.Setup(ctx); err != nil {
+			if err = sj.Setup(ctx); err != nil {
 				panic(err)
 			}
 		}
@@ -190,6 +190,7 @@ func (jm *JobManager) RunProducers(gctx context.Context) { //nolint:gocognit // 
 			})
 		} else if ethSubJob, ok := j.(job.EthSubscribable); ok { //nolint:govet // todo fix.
 			jm.jobProducers.Submit(withRetry(func() bool {
+				//nolint:govet // todo fix.
 				sub, ch, err := ethSubJob.Subscribe(ctx)
 				if err != nil {
 					jm.Logger(ctx).Error("error subscribing block header", "err", err)
@@ -214,6 +215,7 @@ func (jm *JobManager) RunProducers(gctx context.Context) { //nolint:gocognit // 
 				}
 			}, jm.Logger(ctx)))
 		} else if blockHeaderJob, ok := j.(job.BlockHeaderSub); ok { //nolint:govet // todo fix.
+			//nolint:govet // todo fix.
 			jm.jobProducers.Submit(withRetry(func() bool {
 				sub, ch, err := blockHeaderJob.Subscribe(ctx)
 				if err != nil {
