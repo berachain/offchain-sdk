@@ -8,7 +8,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.18.45
 	github.com/aws/aws-sdk-go-v2/service/kms v1.26.3
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.28.2
-	github.com/berachain/go-utils v0.0.0-20230807182405-b64b3fb7424d
+	github.com/berachain/go-utils v0.0.0-20240108175945-0bf7199282f7
 	github.com/ethereum/go-ethereum v1.13.4
 	github.com/golangci/golangci-lint v1.54.1
 	github.com/google/uuid v1.3.0
@@ -79,6 +79,7 @@ require (
 	github.com/deckarep/golang-set/v2 v2.1.0 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
 	github.com/denis-tingaikin/go-header v0.4.3 // indirect
+	github.com/elliotchance/orderedmap/v2 v2.2.0 // indirect
 	github.com/esimonov/ifshort v1.0.4 // indirect
 	github.com/ethereum/c-kzg-4844 v0.4.0 // indirect
 	github.com/ettle/strcase v0.1.1 // indirect
