@@ -95,7 +95,7 @@ func (c *ConnectionPoolImpl) GetAnyChainClient() (*HealthCheckedClient, bool) {
 	defer c.mutex.Unlock()
 retry:
 	_, client, ok := c.cache.GetOldest()
-	if client.Healthy() {
+	if !client.Healthy() {
 		goto retry
 	}
 	return client, ok
