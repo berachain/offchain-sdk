@@ -33,20 +33,23 @@ type Queue[T types.Marshallable] struct {
 	queueURL    string
 	inProcessMu *sync.RWMutex
 	inProcess   map[string]string
+
+	fifoQueueID string
 }
 
 // NewQueue creates a new SQS object with the specified queue URL.
-func NewQueueFromConfig[T types.Marshallable](cfg aws.Config, queueURL string) (*Queue[T], error) {
+func NewQueueFromConfig[T types.Marshallable](cfg aws.Config, queueURL, fifoQueueID string) (*Queue[T], error) {
 	return &Queue[T]{
 		svc:         sqs.NewFromConfig(cfg),
 		queueURL:    queueURL,
 		inProcessMu: new(sync.RWMutex),
 		inProcess:   make(map[string]string),
+		fifoQueueID: fifoQueueID,
 	}, nil
 }
 
 func NewQueue[T types.Marshallable](
-	region, accessKeyID, secretKey string, queueURL string,
+	region, accessKeyID, secretKey, fifoQueueID, queueURL string,
 ) (*Queue[T], error) {
 	awsCfg, _ := config.LoadDefaultConfig(
 		context.Background(), func(cfg *config.LoadOptions) error {
@@ -60,7 +63,7 @@ func NewQueue[T types.Marshallable](
 			return nil
 		})
 
-	return NewQueueFromConfig[T](awsCfg, queueURL)
+	return NewQueueFromConfig[T](awsCfg, queueURL, fifoQueueID)
 }
 
 // Push adds an item to the SQS queue.
@@ -74,8 +77,9 @@ func (q *Queue[T]) Push(item T) (string, error) {
 	// Send the message to the SQS queue with the provided context
 	str := string(bz)
 	output, err := q.svc.SendMessage(context.TODO(), &sqs.SendMessageInput{
-		QueueUrl:    &q.queueURL,
-		MessageBody: &str,
+		QueueUrl:       &q.queueURL,
+		MessageBody:    &str,
+		MessageGroupId: &q.fifoQueueID,
 	})
 
 	if err != nil {
