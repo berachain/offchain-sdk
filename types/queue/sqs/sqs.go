@@ -2,6 +2,7 @@ package sqs
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"strconv"
 	"sync"
@@ -12,6 +13,7 @@ import (
 	sqstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	awsutils "github.com/berachain/offchain-sdk/types/aws"
 	"github.com/berachain/offchain-sdk/types/queue/types"
+	"k8s.io/apimachinery/pkg/util/rand"
 )
 
 // SQSClient is an interface that defines the necessary methods for interacting
@@ -77,9 +79,10 @@ func (q *Queue[T]) Push(item T) (string, error) {
 	// Send the message to the SQS queue with the provided context
 	str := string(bz)
 	output, err := q.svc.SendMessage(context.TODO(), &sqs.SendMessageInput{
-		QueueUrl:       &q.queueURL,
-		MessageBody:    &str,
-		MessageGroupId: &q.fifoQueueID,
+		QueueUrl:               &q.queueURL,
+		MessageBody:            &str,
+		MessageGroupId:         &q.fifoQueueID,
+		MessageDeduplicationId: aws.String(fmt.Sprintf("%s-%s", q.fifoQueueID, rand.String(32))),
 	})
 
 	if err != nil {
@@ -129,6 +132,13 @@ func (q *Queue[T]) Receive() (string, T, bool) {
 func (q *Queue[T]) ReceiveMany(num int32) ([]string, []T, error) {
 	ts := make([]T, 0)
 	msgIDs := make([]string, 0)
+	fmt.Println(q.queueURL)
+	fmt.Println(q.svc.GetQueueAttributes(context.TODO(), &sqs.GetQueueAttributesInput{
+		QueueUrl: &q.queueURL,
+		AttributeNames: []sqstypes.QueueAttributeName{
+			"ApproximateNumberOfMessages",
+		},
+	}))
 
 	// Receive a message from the SQS queue
 	resp, err := q.svc.ReceiveMessage(context.TODO(), &sqs.ReceiveMessageInput{
