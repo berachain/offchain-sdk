@@ -11,7 +11,8 @@ import (
 )
 
 type ConnectionPool interface {
-	GetAnyChainClient() (*HealthCheckedClient, bool)
+	GetHTTP() (*HealthCheckedClient, bool)
+	GetWS() (*HealthCheckedClient, bool)
 	RemoveChainClient(string) error
 	Close() error
 	Dial(string) error
@@ -19,10 +20,11 @@ type ConnectionPool interface {
 }
 
 type ConnectionPoolImpl struct {
-	cache  *lru.Cache[string, *HealthCheckedClient]
-	mutex  sync.Mutex
-	config ConnectionPoolConfig
-	logger log.Logger
+	cache   *lru.Cache[string, *HealthCheckedClient]
+	wsCache *lru.Cache[string, *HealthCheckedClient]
+	mutex   sync.Mutex
+	config  ConnectionPoolConfig
+	logger  log.Logger
 }
 
 type ConnectionPoolConfig struct {
@@ -40,7 +42,17 @@ func DefaultConnectPoolConfig() *ConnectionPoolConfig {
 
 func NewConnectionPoolImpl(cfg ConnectionPoolConfig, logger log.Logger) (ConnectionPool, error) {
 	cache, err := lru.NewWithEvict[string, *HealthCheckedClient](
-		len(cfg.EthHTTPURLs)+len(cfg.EthWSURLs), func(_ string, v *HealthCheckedClient) {
+		len(cfg.EthHTTPURLs), func(_ string, v *HealthCheckedClient) {
+			defer v.Close()
+			// The timeout is added so that any in progress
+			// requests have a chance to complete before we close.
+			time.Sleep(cfg.DefaultTimeout)
+		})
+	if err != nil {
+		return nil, err
+	}
+	wsCache, err := lru.NewWithEvict[string, *HealthCheckedClient](
+		len(cfg.EthHTTPURLs), func(_ string, v *HealthCheckedClient) {
 			defer v.Close()
 			// The timeout is added so that any in progress
 			// requests have a chance to complete before we close.
@@ -51,9 +63,10 @@ func NewConnectionPoolImpl(cfg ConnectionPoolConfig, logger log.Logger) (Connect
 	}
 
 	return &ConnectionPoolImpl{
-		cache:  cache,
-		config: cfg,
-		logger: logger,
+		cache:   cache,
+		wsCache: wsCache,
+		config:  cfg,
+		logger:  logger,
 	}, nil
 }
 
@@ -85,16 +98,27 @@ func (c *ConnectionPoolImpl) DialContext(ctx context.Context, _ string) error {
 		if err := client.DialContext(ctx, url); err != nil {
 			return err
 		}
-		c.cache.Add(url, client)
+		c.wsCache.Add(url, client)
 	}
 	return nil
 }
 
-func (c *ConnectionPoolImpl) GetAnyChainClient() (*HealthCheckedClient, bool) {
+func (c *ConnectionPoolImpl) GetHTTP() (*HealthCheckedClient, bool) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 retry:
 	_, client, ok := c.cache.GetOldest()
+	if !client.Healthy() {
+		goto retry
+	}
+	return client, ok
+}
+
+func (c *ConnectionPoolImpl) GetWS() (*HealthCheckedClient, bool) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+retry:
+	_, client, ok := c.wsCache.GetOldest()
 	if !client.Healthy() {
 		goto retry
 	}

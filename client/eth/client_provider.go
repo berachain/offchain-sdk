@@ -40,7 +40,7 @@ func NewChainProviderImpl(pool ConnectionPool) (Client, error) {
 // BlockByNumber returns the block for the given number.
 func (c *ChainProviderImpl) BlockByNumber(
 	ctx context.Context, num *big.Int) (*types.Block, error) {
-	if client, ok := c.GetAnyChainClient(); ok {
+	if client, ok := c.GetHTTP(); ok {
 		return client.BlockByNumber(ctx, num)
 	}
 	return nil, ErrClientNotFound
@@ -49,7 +49,7 @@ func (c *ChainProviderImpl) BlockByNumber(
 // BlockReceipts returns the receipts for the given block number or hash.
 func (c *ChainProviderImpl) BlockReceipts(
 	ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) ([]*types.Receipt, error) {
-	if client, ok := c.GetAnyChainClient(); ok {
+	if client, ok := c.GetHTTP(); ok {
 		return client.BlockReceipts(ctx, blockNrOrHash)
 	}
 	return nil, ErrClientNotFound
@@ -58,7 +58,7 @@ func (c *ChainProviderImpl) BlockReceipts(
 // TransactionReceipt returns the receipt for the given transaction hash.
 func (c *ChainProviderImpl) TransactionReceipt(
 	ctx context.Context, txHash common.Hash) (*types.Receipt, error) {
-	if client, ok := c.GetAnyChainClient(); ok {
+	if client, ok := c.GetHTTP(); ok {
 		return client.TransactionReceipt(ctx, txHash)
 	}
 	return nil, ErrClientNotFound
@@ -67,7 +67,7 @@ func (c *ChainProviderImpl) TransactionReceipt(
 // SubscribeNewHead subscribes to new head events.
 func (c *ChainProviderImpl) SubscribeNewHead(
 	ctx context.Context) (chan *types.Header, ethereum.Subscription, error) {
-	if client, ok := c.GetAnyChainClient(); ok {
+	if client, ok := c.GetWS(); ok {
 		return client.SubscribeNewHead(ctx)
 	}
 	return nil, nil, ErrClientNotFound
@@ -75,7 +75,7 @@ func (c *ChainProviderImpl) SubscribeNewHead(
 
 // BlockNumber returns the current block number.
 func (c *ChainProviderImpl) BlockNumber(ctx context.Context) (uint64, error) {
-	if client, ok := c.GetAnyChainClient(); ok {
+	if client, ok := c.GetHTTP(); ok {
 		return client.BlockNumber(ctx)
 	}
 	return 0, ErrClientNotFound
@@ -83,7 +83,7 @@ func (c *ChainProviderImpl) BlockNumber(ctx context.Context) (uint64, error) {
 
 // ChainID returns the current chain ID.
 func (c *ChainProviderImpl) ChainID(ctx context.Context) (*big.Int, error) {
-	if client, ok := c.GetAnyChainClient(); ok {
+	if client, ok := c.GetHTTP(); ok {
 		return client.ChainID(ctx)
 	}
 	return nil, ErrClientNotFound
@@ -92,7 +92,7 @@ func (c *ChainProviderImpl) ChainID(ctx context.Context) (*big.Int, error) {
 // BalanceAt returns the balance of the given address at the given block number.
 func (c *ChainProviderImpl) BalanceAt(
 	ctx context.Context, address common.Address, blockNumber *big.Int) (*big.Int, error) {
-	if client, ok := c.GetAnyChainClient(); ok {
+	if client, ok := c.GetHTTP(); ok {
 		return client.BalanceAt(ctx, address, blockNumber)
 	}
 	return nil, ErrClientNotFound
@@ -101,7 +101,7 @@ func (c *ChainProviderImpl) BalanceAt(
 // CodeAt returns the code of the given account at the given block number.
 func (c *ChainProviderImpl) CodeAt(
 	ctx context.Context, account common.Address, blockNumber *big.Int) ([]byte, error) {
-	if client, ok := c.GetAnyChainClient(); ok {
+	if client, ok := c.GetHTTP(); ok {
 		return client.CodeAt(ctx, account, blockNumber)
 	}
 	return nil, ErrClientNotFound
@@ -110,7 +110,7 @@ func (c *ChainProviderImpl) CodeAt(
 // EstimateGas estimates the gas needed to execute a specific transaction.
 func (c *ChainProviderImpl) EstimateGas(
 	ctx context.Context, msg ethereum.CallMsg) (uint64, error) {
-	if client, ok := c.GetAnyChainClient(); ok {
+	if client, ok := c.GetHTTP(); ok {
 		return client.EstimateGas(ctx, msg)
 	}
 	return 0, ErrClientNotFound
@@ -119,7 +119,7 @@ func (c *ChainProviderImpl) EstimateGas(
 // FilterLogs returns the logs that satisfy the given filter query.
 func (c *ChainProviderImpl) FilterLogs(
 	ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error) {
-	if client, ok := c.GetAnyChainClient(); ok {
+	if client, ok := c.GetHTTP(); ok {
 		return client.FilterLogs(ctx, q)
 	}
 	return nil, ErrClientNotFound
@@ -128,7 +128,7 @@ func (c *ChainProviderImpl) FilterLogs(
 // HeaderByNumber returns the header of the block with the given number.
 func (c *ChainProviderImpl) HeaderByNumber(
 	ctx context.Context, number *big.Int) (*types.Header, error) {
-	if client, ok := c.GetAnyChainClient(); ok {
+	if client, ok := c.GetHTTP(); ok {
 		return client.HeaderByNumber(ctx, number)
 	}
 	return nil, ErrClientNotFound
@@ -137,7 +137,7 @@ func (c *ChainProviderImpl) HeaderByNumber(
 // PendingCodeAt returns the code of the given account in the pending state.
 func (c *ChainProviderImpl) PendingCodeAt(
 	ctx context.Context, account common.Address) ([]byte, error) {
-	if client, ok := c.GetAnyChainClient(); ok {
+	if client, ok := c.GetHTTP(); ok {
 		return client.PendingCodeAt(ctx, account)
 	}
 	return nil, ErrClientNotFound
@@ -146,7 +146,7 @@ func (c *ChainProviderImpl) PendingCodeAt(
 // PendingNonceAt returns the nonce of the given account in the pending state.
 func (c *ChainProviderImpl) PendingNonceAt(
 	ctx context.Context, account common.Address) (uint64, error) {
-	if client, ok := c.GetAnyChainClient(); ok {
+	if client, ok := c.GetHTTP(); ok {
 		return client.PendingNonceAt(ctx, account)
 	}
 	return 0, ErrClientNotFound
@@ -155,7 +155,7 @@ func (c *ChainProviderImpl) PendingNonceAt(
 // SendTransaction sends the given transaction.
 func (c *ChainProviderImpl) SendTransaction(
 	ctx context.Context, tx *types.Transaction) error {
-	if client, ok := c.GetAnyChainClient(); ok {
+	if client, ok := c.GetHTTP(); ok {
 		return client.SendTransaction(ctx, tx)
 	}
 	return ErrClientNotFound
@@ -165,7 +165,7 @@ func (c *ChainProviderImpl) SendTransaction(
 func (c *ChainProviderImpl) SubscribeFilterLogs(
 	ctx context.Context, q ethereum.FilterQuery, ch chan<- types.Log,
 ) (ethereum.Subscription, error) {
-	if client, ok := c.GetAnyChainClient(); ok {
+	if client, ok := c.GetWS(); ok {
 		return client.SubscribeFilterLogs(ctx, q, ch)
 	}
 	return nil, ErrClientNotFound
@@ -173,7 +173,7 @@ func (c *ChainProviderImpl) SubscribeFilterLogs(
 
 // SuggestGasPrice suggests a gas price.
 func (c *ChainProviderImpl) SuggestGasPrice(ctx context.Context) (*big.Int, error) {
-	if client, ok := c.GetAnyChainClient(); ok {
+	if client, ok := c.GetHTTP(); ok {
 		return client.SuggestGasPrice(ctx)
 	}
 	return nil, ErrClientNotFound
@@ -183,7 +183,7 @@ func (c *ChainProviderImpl) SuggestGasPrice(ctx context.Context) (*big.Int, erro
 func (c *ChainProviderImpl) CallContract(
 	ctx context.Context, msg ethereum.CallMsg, blockNumber *big.Int,
 ) ([]byte, error) {
-	if client, ok := c.GetAnyChainClient(); ok {
+	if client, ok := c.GetHTTP(); ok {
 		return client.CallContract(ctx, msg, blockNumber)
 	}
 	return nil, ErrClientNotFound
@@ -191,7 +191,7 @@ func (c *ChainProviderImpl) CallContract(
 
 // SuggestGasTipCap suggests a gas tip cap.
 func (c *ChainProviderImpl) SuggestGasTipCap(ctx context.Context) (*big.Int, error) {
-	if client, ok := c.GetAnyChainClient(); ok {
+	if client, ok := c.GetHTTP(); ok {
 		return client.SuggestGasTipCap(ctx)
 	}
 	return nil, ErrClientNotFound
@@ -201,7 +201,7 @@ func (c *ChainProviderImpl) SuggestGasTipCap(ctx context.Context) (*big.Int, err
 func (c *ChainProviderImpl) TransactionByHash(
 	ctx context.Context, hash common.Hash,
 ) (*types.Transaction, bool, error) {
-	if client, ok := c.GetAnyChainClient(); ok {
+	if client, ok := c.GetHTTP(); ok {
 		return client.TransactionByHash(ctx, hash)
 	}
 	return nil, false, ErrClientNotFound
@@ -220,7 +220,7 @@ func (c *ChainProviderImpl) TransactionByHash(
 func (c *ChainProviderImpl) TxPoolContent(ctx context.Context) (
 	map[string]map[string]map[string]*types.Transaction, error,
 ) {
-	if client, ok := c.GetAnyChainClient(); ok {
+	if client, ok := c.GetHTTP(); ok {
 		return client.TxPoolContent(ctx)
 	}
 	return nil, ErrClientNotFound
