@@ -51,7 +51,6 @@ func (c *HealthCheckedClient) Healthy() bool {
 func (c *HealthCheckedClient) SetHealthy(healthy bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.logger.With()
 	c.healthy = healthy
 }
 
@@ -64,8 +63,11 @@ func (c *HealthCheckedClient) StartHealthCheck(ctx context.Context) {
 			_, err := c.ChainID(ctx)
 			if err != nil {
 				c.SetHealthy(false)
+				c.logger.Error("eth client reporting unhealthy", "err", err, "url", c.dialurl)
+			} else {
+				c.SetHealthy(true)
+				c.logger.Info("eth client reporting healthy", "url", c.dialurl)
 			}
-			c.SetHealthy(true)
 		}
 		time.Sleep(c.healthCheckInterval)
 	}
