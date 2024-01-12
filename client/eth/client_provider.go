@@ -29,7 +29,7 @@ type ChainProviderImpl struct {
 }
 
 // NewChainProviderImpl creates a new ChainProviderImpl with the given ConnectionPool.
-func NewChainProviderImpl(pool ConnectionPool) (ChainProvider, error) {
+func NewChainProviderImpl(pool ConnectionPool) (Client, error) {
 	return &ChainProviderImpl{pool}, nil
 }
 
@@ -205,4 +205,23 @@ func (c *ChainProviderImpl) TransactionByHash(
 		return client.TransactionByHash(ctx, hash)
 	}
 	return nil, false, ErrClientNotFound
+}
+
+// "id": 1,
+// "result": {
+// 	"pending": {
+// 		"0xe74aA377Dbc22450349774d1C427337995120DCB": {
+// 			"3698316": {
+// 				"blockHash": null,
+// 				"blockNumber": null,
+// 				"from": "0xe74aa377dbc22450349774d1c427337995120dcb",
+// 				"gas": "0x715b",
+
+func (c *ChainProviderImpl) TxPoolContent(ctx context.Context) (
+	map[string]map[string]map[string]*types.Transaction, error,
+) {
+	if client, ok := c.GetAnyChainClient(); ok {
+		return client.TxPoolContent(ctx)
+	}
+	return nil, ErrClientNotFound
 }

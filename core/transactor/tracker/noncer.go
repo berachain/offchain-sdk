@@ -34,6 +34,11 @@ func (n *Noncer) SetClient(ethClient eth.Client) {
 	n.ethClient = ethClient
 }
 
+func (n *Noncer) InitializeExistingTxs(ctx context.Context) error {
+	_, err := n.ethClient.TxPoolContent(ctx)
+	return err
+}
+
 // Acquire gets the next available nonce.
 func (n *Noncer) Acquire(ctx context.Context) (uint64, error) {
 	n.mu.Lock()
