@@ -15,7 +15,7 @@ type Config[C any] struct {
 	App C
 
 	// EthClient config
-	Eth eth.Config
+	ConnectionPool eth.ConnectionPoolConfig
 
 	// Server Config
 	Server server.Config

@@ -2,13 +2,11 @@ package sender
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/berachain/offchain-sdk/core/transactor/tracker"
 	sdk "github.com/berachain/offchain-sdk/types"
 
-	"github.com/ethereum/go-ethereum/core/txpool"
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
@@ -44,12 +42,11 @@ func (s *Sender) SendTransaction(ctx context.Context, tx *coretypes.Transaction)
 	if err := ethClient.SendTransaction(ctx, tx); err != nil { // if sending the transaction fails
 		sCtx.Logger().Error(
 			"failed to resend replacement transaction", "hash", tx.Hash(), "err", err) // log the error
-
-		// If the err was due to pricing, we should retry with a higher priced transaction
-		if errors.Is(err, txpool.ErrUnderpriced) || errors.Is(err, txpool.ErrReplaceUnderpriced) {
-			tx = s.txReplacementPolicy(ctx, tx)
-		}
-
+		price := tx.GasPrice()
+		tx = s.txReplacementPolicy(ctx, tx)
+		sCtx.Logger().Info(
+			"retrying with new gas limit", "old", price, "new", tx.GasPrice(), "nonce", tx.Nonce(),
+		)
 		if retry, backoff := s.retryPolicy(ctx, tx, err); retry {
 			time.Sleep(backoff)                               // wait for the backoff time
 			if err = s.SendTransaction(ctx, tx); err != nil { // retry sending the transaction

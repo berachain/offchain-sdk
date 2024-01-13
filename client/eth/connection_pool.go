@@ -1,79 +1,128 @@
 package eth
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
 
+	"github.com/berachain/offchain-sdk/log"
 	lru "github.com/hashicorp/golang-lru/v2"
 )
 
 type ConnectionPool interface {
-	GetChainClient(string) (Client, bool)
-	GetAnyChainClient() (Client, bool)
-	AddChainClient(Config) bool
+	GetHTTP() (*HealthCheckedClient, bool)
+	GetWS() (*HealthCheckedClient, bool)
 	RemoveChainClient(string) error
+	Close() error
+	Dial(string) error
+	DialContext(context.Context, string) error
 }
 
 type ConnectionPoolImpl struct {
-	cache  *lru.Cache[string, Client]
-	mutex  sync.Mutex
-	config ConnectionPoolConfig
+	cache   *lru.Cache[string, *HealthCheckedClient]
+	wsCache *lru.Cache[string, *HealthCheckedClient]
+	mutex   sync.Mutex
+	config  ConnectionPoolConfig
+	logger  log.Logger
 }
 
 type ConnectionPoolConfig struct {
-	cacheSize      uint
-	defaultTimeout time.Duration
+	EthHTTPURLs    []string
+	EthWSURLs      []string
+	DefaultTimeout time.Duration
 }
 
-func NewConnectionPoolImpl(cfg ConnectionPoolConfig) (ConnectionPool, error) {
-	cache, err := lru.NewWithEvict[string, Client](int(cfg.cacheSize), func(_ string, v Client) {
-		defer v.Close()
-		// The timeout is added so that any in progress
-		// requests have a chance to complete before we close.
-		time.Sleep(cfg.defaultTimeout)
-	})
+func DefaultConnectPoolConfig() *ConnectionPoolConfig {
+	return &ConnectionPoolConfig{
+		EthHTTPURLs: []string{"http://localhost:8545"},
+		EthWSURLs:   []string{"ws://localhost:8546"},
+	}
+}
+
+func NewConnectionPoolImpl(cfg ConnectionPoolConfig, logger log.Logger) (ConnectionPool, error) {
+	cache, err := lru.NewWithEvict[string, *HealthCheckedClient](
+		len(cfg.EthHTTPURLs), func(_ string, v *HealthCheckedClient) {
+			defer v.Close()
+			// The timeout is added so that any in progress
+			// requests have a chance to complete before we close.
+			time.Sleep(cfg.DefaultTimeout)
+		})
 	if err != nil {
 		return nil, err
 	}
+	wsCache, err := lru.NewWithEvict[string, *HealthCheckedClient](
+		len(cfg.EthHTTPURLs), func(_ string, v *HealthCheckedClient) {
+			defer v.Close()
+			// The timeout is added so that any in progress
+			// requests have a chance to complete before we close.
+			time.Sleep(cfg.DefaultTimeout)
+		})
+	if err != nil {
+		return nil, err
+	}
+
 	return &ConnectionPoolImpl{
-		cache:  cache,
-		config: cfg,
+		cache:   cache,
+		wsCache: wsCache,
+		config:  cfg,
+		logger:  logger,
 	}, nil
 }
 
-// GetChainClient returns a chain client from the cache.
-// If clientAddr isn't specified, it returns any client from the cache.
-func (c *ConnectionPoolImpl) GetChainClient(clientAddr string) (Client, bool) {
-	// If a clientAddr is not specified, return any from the pool.
-	if clientAddr == "" {
-		return c.GetAnyChainClient()
-	}
+func (c *ConnectionPoolImpl) Close() error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
-	return c.cache.Get(clientAddr)
+	for _, client := range c.cache.Keys() {
+		if err := c.removeClient(client); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-func (c *ConnectionPoolImpl) GetAnyChainClient() (Client, bool) {
+func (c *ConnectionPoolImpl) Dial(string) error {
+	return c.DialContext(context.Background(), "")
+}
+
+func (c *ConnectionPoolImpl) DialContext(ctx context.Context, _ string) error {
+	for _, url := range c.config.EthHTTPURLs {
+		client := NewHealthCheckedClient(c.logger)
+		if err := client.DialContext(ctx, url); err != nil {
+			return err
+		}
+		c.cache.Add(url, client)
+	}
+	for _, url := range c.config.EthWSURLs {
+		client := NewHealthCheckedClient(c.logger)
+		if err := client.DialContext(ctx, url); err != nil {
+			return err
+		}
+		c.wsCache.Add(url, client)
+	}
+	return nil
+}
+
+func (c *ConnectionPoolImpl) GetHTTP() (*HealthCheckedClient, bool) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
+retry:
 	_, client, ok := c.cache.GetOldest()
+	if !client.Healthy() {
+		goto retry
+	}
 	return client, ok
 }
 
-func (c *ConnectionPoolImpl) AddChainClient(cfg Config) bool {
+func (c *ConnectionPoolImpl) GetWS() (*HealthCheckedClient, bool) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
-	// If replacing, be sure to close old client first.
-	// The LRU cache's eviction policy is not triggered on value updates/replacements.
-	if c.cache.Contains(cfg.EthHTTPURL) {
-		err := c.removeClient(cfg.EthHTTPURL)
-		if err != nil {
-			return false
-		}
+retry:
+	_, client, ok := c.wsCache.GetOldest()
+	if !client.Healthy() {
+		goto retry
 	}
-	client := NewClient(&cfg)
-	return c.cache.Add(cfg.EthHTTPURL, client)
+	return client, ok
 }
 
 func (c *ConnectionPoolImpl) RemoveChainClient(clientAddr string) error {

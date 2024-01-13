@@ -77,8 +77,9 @@ func (q *Queue[T]) Push(item T) (string, error) {
 	// Send the message to the SQS queue with the provided context
 	str := string(bz)
 	output, err := q.svc.SendMessage(context.TODO(), &sqs.SendMessageInput{
-		QueueUrl:    &q.queueURL,
-		MessageBody: &str,
+		QueueUrl:       &q.queueURL,
+		MessageBody:    &str,
+		MessageGroupId: &q.fifoQueueID,
 	})
 
 	if err != nil {
