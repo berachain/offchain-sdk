@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+
+	"github.com/rs/cors"
 )
 
 // Handler is a handler.
@@ -33,8 +35,9 @@ func (s *Server) RegisterHandler(h Handler) {
 
 // Start starts the server.
 func (s *Server) Start(_ context.Context) {
-	if err := http.ListenAndServe( //nolint:gosec // its okay for now.
-		fmt.Sprintf(":%d", s.cfg.HTTP.Port), s.mux); err != nil {
+	handler := cors.AllowAll().Handler(s.mux) // yeet for now
+	if err := http.ListenAndServe(            //nolint:gosec // its okay for now.
+		fmt.Sprintf(":%d", s.cfg.HTTP.Port), handler); err != nil {
 		panic(err)
 	}
 }
