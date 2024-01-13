@@ -2,8 +2,6 @@ package sqs
 
 import (
 	"context"
-	"fmt"
-	"math/rand"
 	"reflect"
 	"strconv"
 	"sync"
@@ -79,10 +77,10 @@ func (q *Queue[T]) Push(item T) (string, error) {
 	// Send the message to the SQS queue with the provided context
 	str := string(bz)
 	output, err := q.svc.SendMessage(context.TODO(), &sqs.SendMessageInput{
-		QueueUrl:               &q.queueURL,
-		MessageBody:            &str,
-		MessageGroupId:         &q.fifoQueueID,
-		MessageDeduplicationId: aws.String(fmt.Sprintf("%s-%d", q.fifoQueueID, rand.Int())),
+		QueueUrl:       &q.queueURL,
+		MessageBody:    &str,
+		MessageGroupId: &q.fifoQueueID,
+		// MessageDeduplicationId: aws.String(fmt.Sprintf("%s-%d", q.fifoQueueID, rand.Int())),
 	})
 
 	if err != nil {
