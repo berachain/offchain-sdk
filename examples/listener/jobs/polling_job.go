@@ -2,7 +2,6 @@ package jobs
 
 import (
 	"context"
-	"math/big"
 	"time"
 
 	"github.com/berachain/offchain-sdk/job"
@@ -28,7 +27,25 @@ func (w *Poller) IntervalTime(_ context.Context) time.Duration {
 // Execute implements job.Basic.
 func (w *Poller) Execute(ctx context.Context, args any) (any, error) {
 	sCtx := sdk.UnwrapContext(ctx)
-	myBlock, _ := sCtx.Chain().BlockNumber(ctx)
-	sCtx.Logger().Info("block", "block", new(big.Int).SetUint64(myBlock).String())
+
+	response, _ := sCtx.Chain().TxPoolContent(ctx)
+	pendingTx := response["pending"]
+	queuedTx := response["queued"]
+	sCtx.Logger().Info("txpool_content", "pending", len(pendingTx), "queued", len(queuedTx))
+	if len(pendingTx) > 0 {
+		sCtx.Logger().Info("txpool_content", "pending", pendingTx)
+		for txID := range pendingTx {
+			for _, tx := range pendingTx[txID] {
+				sCtx.Logger().Info("txpool_content", "tx", tx.Hash().Hex())
+			}
+		}
+	}
+
+	for txID := range pendingTx {
+		for _, tx := range pendingTx[txID] {
+			sCtx.DB().Put(tx.Hash().Bytes(), []byte{})
+		}
+	}
+
 	return nil, nil
 }

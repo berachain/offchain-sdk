@@ -3,11 +3,11 @@ AddressToListen = "0x18Df82C7E422A42D47345Ed86B0E935E9718eBda"
 EventName = "NumberChanged(uint256)"
 
 [App.Jobs.Poller]
-Interval = "1s"
+Interval = "5s"
 
 [ConnectionPool]
-EthHTTPURLs = ["http://localhost:10545"]
-EthWSURLs = ["ws://localhost:10546"]
+EthHTTPURLs = ["https://artio-bts-rpc.berachain.com"]
+EthWSURLs = ["wss://artio-bts-rpc.berachain.com:8547"]
 DefaultTimeout = "5s"
 
 [Server.HTTP]

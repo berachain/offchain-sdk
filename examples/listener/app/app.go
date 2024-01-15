@@ -36,22 +36,22 @@ func (app *ListenerApp) Setup(
 	logger log.Logger,
 ) {
 	// This job is subscribed to the `NumberChanged(uint256)` event.
-	ab.RegisterJob(
-		jobs.NewEthSub(
-			&ljobs.Listener{}, // We embed a Basic job inside.
-			config.Jobs.Sub.AddressToListen,
-			config.Jobs.Sub.EventName,
-		),
-	)
+	// ab.RegisterJob(
+	// 	jobs.NewEthSub(
+	// 		&ljobs.Listener{}, // We embed a Basic job inside.
+	// 		config.Jobs.Sub.AddressToListen,
+	// 		config.Jobs.Sub.EventName,
+	// 	),
+	// )
 
 	// This job is also subscribed to the `NumberChanged(uint256)` event.
-	ab.RegisterJob(
-		jobs.NewEthSub(
-			&ljobs.DbWriter{},
-			config.Jobs.Sub.AddressToListen,
-			config.Jobs.Sub.EventName,
-		),
-	)
+	// ab.RegisterJob(
+	// 	jobs.NewEthSub(
+	// 		&ljobs.DbWriter{},
+	// 		config.Jobs.Sub.AddressToListen,
+	// 		config.Jobs.Sub.EventName,
+	// 	),
+	// )
 
 	// This job is querying the chain on a 1 second time interval.
 	ab.RegisterJob(
