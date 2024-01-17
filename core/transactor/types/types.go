@@ -35,9 +35,16 @@ const (
 // Nil if the tx was successful, RevertReason nil if we have an ErrSend, ErrReceive, ErrDecode.
 type (
 	TxRequest struct {
-		To    common.Address `json:"to"`
-		Value *big.Int       `json:"value"`
-		Data  []byte         `json:"data"`
+		To      common.Address `json:"to"`
+		Value   *big.Int       `json:"value"`
+		Data    []byte         `json:"data"`
+		GasOpts *GasOpts       `json:"gasOpts"`
+	}
+
+	GasOpts struct {
+		GasTipCap *big.Int `json:"gasTipCap"`
+		GasFeeCap *big.Int `json:"gasFeeCap"`
+		GasLimit  uint64   `json:"gasLimit"`
 	}
 
 	TxResult struct {
