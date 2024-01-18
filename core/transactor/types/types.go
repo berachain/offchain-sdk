@@ -67,6 +67,7 @@ func (TxRequest) New() types.Marshallable {
 
 // NewTxResult returns a new TxResult with the given type and error.
 func (tx TxRequest) Marshal() ([]byte, error) {
+	//nolint:staticcheck,SA1026 // Resultor is not needed if marshalled.
 	return json.Marshal(tx)
 }
 
