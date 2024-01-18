@@ -176,7 +176,7 @@ func (t *TxrV2) retrieveBatch(_ context.Context) ([]string, []*types.TxRequest) 
 func (t *TxrV2) sendAndTrack(
 	ctx context.Context, msgIDs []string, batch []*types.TxRequest,
 ) error {
-	tx, err := t.factory.BuildTransactionFromRequests(ctx, batch)
+	tx, resultor, err := t.factory.BuildTransactionFromRequests(ctx, batch)
 	if err != nil {
 		return err
 	}
@@ -189,9 +189,14 @@ func (t *TxrV2) sendAndTrack(
 	// t.logger.Debug("📡 sent transaction", "tx-hash", tx.Hash().Hex(), "tx-reqs", len(batch))
 
 	// Spin off a goroutine to track the transaction.
-	t.tracker.Track(ctx, &tracker.InFlightTx{
-		Transaction: tx,
-		MsgIDs:      msgIDs,
-	}, true)
+	t.tracker.Track(
+		ctx,
+		&tracker.InFlightTx{
+			Transaction: tx,
+			MsgIDs:      msgIDs,
+		},
+		true,
+		resultor,
+	)
 	return nil
 }

@@ -7,7 +7,6 @@ import (
 	"github.com/berachain/offchain-sdk/contracts/bindings"
 	"github.com/berachain/offchain-sdk/core/transactor/types"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -15,12 +14,16 @@ import (
 // --private-key=0xfffdbb37105441e14b0ee6330d855d8504ff39e705c3afa8f859ac9865f99306.
 type Multicall3Batcher struct {
 	contractAddress common.Address
+	packer          *types.Packer
 }
 
 // NewMulticall3Batcher creates a new Multicall3Batcher instance.
 func NewMulticall3Batcher(address common.Address) *Multicall3Batcher {
 	return &Multicall3Batcher{
 		contractAddress: address,
+		packer: &types.Packer{
+			Metadata: bindings.Multicall3MetaData,
+		},
 	}
 }
 
@@ -30,7 +33,18 @@ func (mc *Multicall3Batcher) BatchTxRequests(
 	txReqs []*types.TxRequest,
 ) *types.TxRequest {
 	calls := make([]bindings.Multicall3Call, len(txReqs))
+	totalValue := big.NewInt(0)
+	var resultor types.ResultCallback
+
 	for i, txReq := range txReqs {
+		// use the summed value for the batched transaction.
+		totalValue = totalValue.Add(totalValue, txReq.Value)
+
+		// use the first resultor as the result callback for the batched transaction.
+		if resultor == nil && txReq.Resultor != nil {
+			resultor = txReq.Resultor
+		}
+
 		call := bindings.Multicall3Call{
 			Target:   txReq.To,
 			CallData: txReq.Data,
@@ -38,16 +52,8 @@ func (mc *Multicall3Batcher) BatchTxRequests(
 		calls[i] = call
 	}
 
-	txRequest, err := (&types.Packer[*bind.MetaData]{Metadata: bindings.Multicall3MetaData}).
-		CreateTxRequest(
-			mc.contractAddress,
-			big.NewInt(0),
-			"aggregate",
-			calls,
-		)
-	if err != nil {
-		return nil
-	}
-
+	txRequest, _ := mc.packer.CreateTxRequest(
+		mc.contractAddress, totalValue, resultor, "aggregate", calls,
+	)
 	return txRequest
 }
