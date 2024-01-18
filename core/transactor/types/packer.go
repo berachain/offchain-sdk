@@ -13,14 +13,15 @@ type Metadata interface {
 }
 
 // Packer struct for packing metadata.
-type Packer[T Metadata] struct {
-	Metadata T
+type Packer struct {
+	Metadata
 }
 
 // CreateTxRequest function for creating transaction request.
-func (p *Packer[T]) CreateTxRequest(
+func (p *Packer) CreateTxRequest(
 	to common.Address, // address to send transaction to
 	value *big.Int, // value to be sent in the transaction
+	resultor ResultCallback, // result callback for the transaction
 	method string, // method to be called in the transaction
 	args ...interface{}, // arguments for the method
 ) (*TxRequest, error) { // returns a transaction request or an error
@@ -35,8 +36,9 @@ func (p *Packer[T]) CreateTxRequest(
 	}
 
 	return &TxRequest{
-		To:    to,
-		Data:  bz,
-		Value: value,
+		To:       to,
+		Data:     bz,
+		Value:    value,
+		Resultor: resultor,
 	}, nil // return a new transaction request
 }

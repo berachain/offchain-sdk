@@ -44,13 +44,13 @@ func New(noncer Noncer, signer kmstypes.TxSigner, mc3Batcher *Multicall3Batcher)
 func (f *Factory) BuildTransactionFromRequests(
 	ctx context.Context,
 	txReqs []*types.TxRequest,
-) (*coretypes.Transaction, error) {
+) (*coretypes.Transaction, types.ResultCallback, error) {
 	switch len(txReqs) {
 	case 0:
-		return nil, errors.New("no transaction requests provided")
+		return nil, nil, errors.New("no transaction requests provided")
 	case 1:
 		// if len(txReqs) == 1 then build a single transaction.
-		return f.BuildTransaction(ctx, txReqs[0].To, txReqs[0].Value, txReqs[0].Data)
+		return f.BuildTransaction(ctx, txReqs[0])
 	default:
 		// len(txReqs) > 1 then build a multicall transaction.
 		ar := f.mc3Batcher.BatchTxRequests(ctx, txReqs)
@@ -58,63 +58,76 @@ func (f *Factory) BuildTransactionFromRequests(
 		// Build the transaction to include the calldata.
 		// ar.To should be the Multicall3 contract address
 		// ar.Data should be the calldata with the batched transactions.
-		// ar.Value TODO: needs to be implemented (right now current is always 0).
-		return f.BuildTransaction(ctx, ar.To, ar.Value, ar.Data)
+		// ar.Value is the sum of the values of the batched transactions.
+		return f.BuildTransaction(ctx, ar)
 	}
 }
 
 // BuildTransaction builds a transaction with the configured signer.
 func (f *Factory) BuildTransaction(
 	ctx context.Context,
-	to common.Address,
-	value *big.Int,
-	data []byte,
-) (*coretypes.Transaction, error) {
-	var err error
+	txReq *types.TxRequest,
+) (*coretypes.Transaction, types.ResultCallback, error) {
+	var (
+		gasOpts = txReq.GasOpts
+		err     error
+	)
+
 	ethClient := sdk.UnwrapContext(ctx).Chain()
-	gasFeeCap, err := ethClient.SuggestGasPrice(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	gasTipCap, err := ethClient.SuggestGasTipCap(ctx)
-	if err != nil {
-		return nil, err
-	}
-
 	if f.chainID == nil {
 		f.chainID, err = ethClient.ChainID(ctx)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
 	nonce, err := f.noncer.Acquire(ctx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	txData := &coretypes.DynamicFeeTx{
-		ChainID:   f.chainID,
-		Nonce:     nonce,
-		GasFeeCap: gasFeeCap,
-		GasTipCap: gasTipCap,
-		To:        &to,
-		Value:     value,
-		Data:      data,
+		ChainID: f.chainID,
+		To:      &txReq.To,
+		Value:   txReq.Value,
+		Data:    txReq.Data,
+		Nonce:   nonce,
 	}
 
-	if txData.Gas, err = ethClient.EstimateGas(ctx, ethereum.CallMsg{
-		From:      f.signerAddress,
-		To:        txData.To,
-		GasFeeCap: txData.GasFeeCap,
-		Value:     txData.Value,
-		Data:      txData.Data,
-	}); err != nil {
-		return nil, err
+	if gasOpts != nil && gasOpts.GasFeeCap != nil {
+		txData.GasFeeCap = gasOpts.GasFeeCap
+	} else {
+		txData.GasFeeCap, err = ethClient.SuggestGasPrice(ctx)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
-	return f.SignTransaction(coretypes.NewTx(txData))
+	if gasOpts != nil && gasOpts.GasTipCap != nil {
+		txData.GasTipCap = gasOpts.GasTipCap
+	} else {
+		txData.GasTipCap, err = ethClient.SuggestGasTipCap(ctx)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	if gasOpts != nil && gasOpts.GasLimit > 0 {
+		txData.Gas = gasOpts.GasLimit
+	} else {
+		if txData.Gas, err = ethClient.EstimateGas(ctx, ethereum.CallMsg{
+			From:      f.signerAddress,
+			To:        txData.To,
+			GasFeeCap: txData.GasFeeCap,
+			Value:     txData.Value,
+			Data:      txData.Data,
+		}); err != nil {
+			return nil, nil, err
+		}
+	}
+
+	signedTx, err := f.SignTransaction(coretypes.NewTx(txData))
+	return signedTx, txReq.Resultor, err
 }
 
 // signTransaction signs a transaction with the configured signer.

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/berachain/offchain-sdk/core/transactor/event"
+	"github.com/berachain/offchain-sdk/core/transactor/types"
 	sdk "github.com/berachain/offchain-sdk/types"
 
 	"github.com/ethereum/go-ethereum"
@@ -45,17 +46,18 @@ func (t *Tracker) Unsubscribe(ch chan *InFlightTx) {
 }
 
 // Track adds a transaction to the in-flight list.
-func (t *Tracker) Track(ctx context.Context, tx *InFlightTx, async bool) {
+func (t *Tracker) Track(
+	ctx context.Context, tx *InFlightTx, async bool, resultor types.ResultCallback,
+) {
 	if async {
-		// todo: handle error
-		go t.track(ctx, tx)
-		return
+		go t.track(ctx, tx, resultor)
+	} else {
+		t.track(ctx, tx, resultor)
 	}
-	t.track(ctx, tx)
 }
 
 // track adds a transaction to the in-flight list.
-func (t *Tracker) track(ctx context.Context, tx *InFlightTx) {
+func (t *Tracker) track(ctx context.Context, tx *InFlightTx, resultor types.ResultCallback) {
 	// If there is already a transaction that is being tracked for this nonce.
 	if oldTx := t.noncer.GetInFlight(tx.Nonce()); oldTx != nil {
 		// Watch for the old transaction to be replaced.
@@ -67,7 +69,7 @@ func (t *Tracker) track(ctx context.Context, tx *InFlightTx) {
 	}
 
 	t.noncer.SetInFlight(tx)
-	t.watchTx(ctx, tx)
+	t.watchTx(ctx, tx, resultor)
 }
 
 // watchTxForReplacement is watching for a transaction to be replaced by another.
@@ -96,12 +98,19 @@ loop:
 	return nil
 }
 
-func (t *Tracker) watchTx(ctx context.Context, tx *InFlightTx) {
+func (t *Tracker) watchTx(ctx context.Context, tx *InFlightTx, resultor types.ResultCallback) {
 	sCtx := sdk.UnwrapContext(ctx)
 	ethClient := sCtx.Chain()
+	var (
+		receipt *coretypes.Receipt
+		err     error
+	)
 
 	// We want to notify the dispatcher at the end of this function.
 	defer t.dispatcher.Dispatch(tx)
+
+	// Call the result callback for the transaction with the receipt.
+	defer resultor(sCtx, receipt)
 
 	// Loop until the context is done, the transaction status is determined,
 	// or the timeout is reached.
@@ -116,7 +125,7 @@ func (t *Tracker) watchTx(ctx context.Context, tx *InFlightTx) {
 			return
 		default:
 			// Else check for the receipt again.
-			receipt, err := ethClient.TransactionReceipt(ctx, tx.Hash())
+			receipt, err = ethClient.TransactionReceipt(ctx, tx.Hash())
 			switch {
 			case errors.Is(err, ethereum.NotFound):
 				time.Sleep(retryPendingBackoff)
