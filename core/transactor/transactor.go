@@ -78,6 +78,18 @@ func (t *TxrV2) RegistryKey() string {
 	return "transactor"
 }
 
+func (t *TxrV2) SubscribeTxs(
+	ctx context.Context, subscriber tracker.Subscriber, ch chan *tracker.InFlightTx,
+) *tracker.SubscriberWrapper {
+	sub := &tracker.SubscriberWrapper{Subscriber: subscriber}
+	go func() {
+		// TODO: handle error
+		_ = sub.Start(context.Background(), ch)
+	}()
+	t.dispatcher.Subscribe(ch)
+	return sub
+}
+
 // Execute implements job.Basic.
 // TODO: deprecate off being a job.
 func (t *TxrV2) Execute(_ context.Context, _ any) (any, error) {
