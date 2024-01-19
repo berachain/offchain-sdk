@@ -10,6 +10,10 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+const (
+	tryAggregate = `tryAggregate`
+)
+
 // forge create Multicall3 --rpc-url=http://devnet.beraswillmakeit.com:8545
 // --private-key=0xfffdbb37105441e14b0ee6330d855d8504ff39e705c3afa8f859ac9865f99306.
 type Multicall3Batcher struct {
@@ -49,7 +53,7 @@ func (mc *Multicall3Batcher) BatchTxRequests(
 	}
 
 	txRequest, _ := mc.packer.CreateTxRequest(
-		mc.contractAddress, totalValue, "aggregate", calls,
+		mc.contractAddress, totalValue, tryAggregate, false, calls,
 	)
 	return txRequest
 }

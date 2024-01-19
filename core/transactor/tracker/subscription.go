@@ -52,8 +52,8 @@ func (s *SubscriberWrapper) Start(ctx context.Context, ch chan *InFlightTx) erro
 			// TODO: if there is an error with any of the underlying calls, we should handle.
 			_ = err
 		case <-ctx.Done():
-			// If the context is done, return nil to stop the loop.
-			return nil
+			// If the context is done, return context error to stop the loop.
+			return ctx.Err()
 		}
 	}
 }

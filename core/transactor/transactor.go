@@ -61,13 +61,13 @@ func NewTransactor(
 	// Register the tracker as a subscriber to the tracker.
 	ch := make(chan *tracker.InFlightTx, 1024) //nolint:gomnd // its okay.
 	txrSub := tracker.SubscriberWrapper{Subscriber: txr}
-	go func() { _ = txrSub.Start(context.Background(), ch) }()
+	go func() { _ = txrSub.Start(context.Background(), ch) }() // TODO: handle error
 	dispatcher.Subscribe(ch)
 
 	// Register the sender as a subscriber to the tracker.
 	ch2 := make(chan *tracker.InFlightTx, 1024) //nolint:gomnd // its okay.
 	senderSub := tracker.SubscriberWrapper{Subscriber: txr.sender}
-	go func() { _ = senderSub.Start(context.Background(), ch2) }()
+	go func() { _ = senderSub.Start(context.Background(), ch2) }() // TODO: handle error
 	dispatcher.Subscribe(ch2)
 
 	return txr
