@@ -60,14 +60,18 @@ func NewTransactor(
 
 	// Register the tracker as a subscriber to the tracker.
 	ch := make(chan *tracker.InFlightTx, 1024) //nolint:gomnd // its okay.
-	txrSub := tracker.SubscriberWrapper{Subscriber: txr}
-	go func() { _ = txrSub.Start(context.Background(), ch) }() // TODO: handle error
+	go func() {
+		// TODO: handle error
+		_ = tracker.NewSubscription(txr, txr.logger).Start(context.Background(), ch)
+	}()
 	dispatcher.Subscribe(ch)
 
 	// Register the sender as a subscriber to the tracker.
 	ch2 := make(chan *tracker.InFlightTx, 1024) //nolint:gomnd // its okay.
-	senderSub := tracker.SubscriberWrapper{Subscriber: txr.sender}
-	go func() { _ = senderSub.Start(context.Background(), ch2) }() // TODO: handle error
+	go func() {
+		// TODO: handle error
+		_ = tracker.NewSubscription(txr.sender, txr.logger).Start(context.Background(), ch2)
+	}()
 	dispatcher.Subscribe(ch2)
 
 	return txr
@@ -78,16 +82,15 @@ func (t *TxrV2) RegistryKey() string {
 	return "transactor"
 }
 
-func (t *TxrV2) SubscribeTxs(
+// SubscribeTxResults sends the tx results (inflight) to the given channel.
+func (t *TxrV2) SubscribeTxResults(
 	ctx context.Context, subscriber tracker.Subscriber, ch chan *tracker.InFlightTx,
-) *tracker.SubscriberWrapper {
-	sub := &tracker.SubscriberWrapper{Subscriber: subscriber}
+) {
 	go func() {
 		// TODO: handle error
-		_ = sub.Start(ctx, ch)
+		_ = tracker.NewSubscription(subscriber, t.logger).Start(ctx, ch)
 	}()
 	t.dispatcher.Subscribe(ch)
-	return sub
 }
 
 // Execute implements job.Basic.
