@@ -34,15 +34,11 @@ func (mc *Multicall3Batcher) BatchTxRequests(
 ) *types.TxRequest {
 	calls := make([]bindings.Multicall3Call, len(txReqs))
 	totalValue := big.NewInt(0)
-	var resultor types.ResultCallback
 
 	for i, txReq := range txReqs {
 		// use the summed value for the batched transaction.
-		totalValue = totalValue.Add(totalValue, txReq.Value)
-
-		// use the first resultor as the result callback for the batched transaction.
-		if resultor == nil && txReq.Resultor != nil {
-			resultor = txReq.Resultor
+		if txReq.Value != nil {
+			totalValue = totalValue.Add(totalValue, txReq.Value)
 		}
 
 		call := bindings.Multicall3Call{
@@ -53,7 +49,7 @@ func (mc *Multicall3Batcher) BatchTxRequests(
 	}
 
 	txRequest, _ := mc.packer.CreateTxRequest(
-		mc.contractAddress, totalValue, resultor, "aggregate", calls,
+		mc.contractAddress, totalValue, "aggregate", calls,
 	)
 	return txRequest
 }

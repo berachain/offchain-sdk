@@ -176,7 +176,7 @@ func (t *TxrV2) retrieveBatch(_ context.Context) ([]string, []*types.TxRequest) 
 func (t *TxrV2) sendAndTrack(
 	ctx context.Context, msgIDs []string, batch []*types.TxRequest,
 ) error {
-	tx, resultor, err := t.factory.BuildTransactionFromRequests(ctx, batch)
+	tx, err := t.factory.BuildTransactionFromRequests(ctx, batch)
 	if err != nil {
 		return err
 	}
@@ -196,7 +196,6 @@ func (t *TxrV2) sendAndTrack(
 			MsgIDs:      msgIDs,
 		},
 		true,
-		resultor,
 	)
 	return nil
 }

@@ -21,7 +21,6 @@ type Packer struct {
 func (p *Packer) CreateTxRequest(
 	to common.Address, // address to send transaction to
 	value *big.Int, // value to be sent in the transaction
-	resultor ResultCallback, // result callback for the transaction
 	method string, // method to be called in the transaction
 	args ...interface{}, // arguments for the method
 ) (*TxRequest, error) { // returns a transaction request or an error
@@ -36,9 +35,8 @@ func (p *Packer) CreateTxRequest(
 	}
 
 	return &TxRequest{
-		To:       to,
-		Data:     bz,
-		Value:    value,
-		Resultor: resultor,
+		To:    to,
+		Data:  bz,
+		Value: value,
 	}, nil // return a new transaction request
 }

@@ -44,10 +44,10 @@ func New(noncer Noncer, signer kmstypes.TxSigner, mc3Batcher *Multicall3Batcher)
 func (f *Factory) BuildTransactionFromRequests(
 	ctx context.Context,
 	txReqs []*types.TxRequest,
-) (*coretypes.Transaction, types.ResultCallback, error) {
+) (*coretypes.Transaction, error) {
 	switch len(txReqs) {
 	case 0:
-		return nil, nil, errors.New("no transaction requests provided")
+		return nil, errors.New("no transaction requests provided")
 	case 1:
 		// if len(txReqs) == 1 then build a single transaction.
 		return f.BuildTransaction(ctx, txReqs[0])
@@ -67,7 +67,7 @@ func (f *Factory) BuildTransactionFromRequests(
 func (f *Factory) BuildTransaction(
 	ctx context.Context,
 	txReq *types.TxRequest,
-) (*coretypes.Transaction, types.ResultCallback, error) {
+) (*coretypes.Transaction, error) {
 	var (
 		gasOpts = txReq.GasOpts
 		err     error
@@ -77,13 +77,13 @@ func (f *Factory) BuildTransaction(
 	if f.chainID == nil {
 		f.chainID, err = ethClient.ChainID(ctx)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 	}
 
 	nonce, err := f.noncer.Acquire(ctx)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	txData := &coretypes.DynamicFeeTx{
@@ -99,7 +99,7 @@ func (f *Factory) BuildTransaction(
 	} else {
 		txData.GasFeeCap, err = ethClient.SuggestGasPrice(ctx)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 	}
 
@@ -108,7 +108,7 @@ func (f *Factory) BuildTransaction(
 	} else {
 		txData.GasTipCap, err = ethClient.SuggestGasTipCap(ctx)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 	}
 
@@ -122,12 +122,12 @@ func (f *Factory) BuildTransaction(
 			Value:     txData.Value,
 			Data:      txData.Data,
 		}); err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 	}
 
 	signedTx, err := f.SignTransaction(coretypes.NewTx(txData))
-	return signedTx, txReq.Resultor, err
+	return signedTx, err
 }
 
 // signTransaction signs a transaction with the configured signer.
