@@ -84,7 +84,7 @@ func (t *TxrV2) SubscribeTxs(
 	sub := &tracker.SubscriberWrapper{Subscriber: subscriber}
 	go func() {
 		// TODO: handle error
-		_ = sub.Start(context.Background(), ch)
+		_ = sub.Start(ctx, ch)
 	}()
 	t.dispatcher.Subscribe(ch)
 	return sub
