@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/berachain/offchain-sdk/core/transactor/event"
-	"github.com/berachain/offchain-sdk/core/transactor/types"
 	sdk "github.com/berachain/offchain-sdk/types"
 
 	"github.com/ethereum/go-ethereum"
@@ -47,17 +46,17 @@ func (t *Tracker) Unsubscribe(ch chan *InFlightTx) {
 
 // Track adds a transaction to the in-flight list.
 func (t *Tracker) Track(
-	ctx context.Context, tx *InFlightTx, async bool, resultor types.ResultCallback,
+	ctx context.Context, tx *InFlightTx, async bool,
 ) {
 	if async {
-		go t.track(ctx, tx, resultor)
+		go t.track(ctx, tx)
 	} else {
-		t.track(ctx, tx, resultor)
+		t.track(ctx, tx)
 	}
 }
 
 // track adds a transaction to the in-flight list.
-func (t *Tracker) track(ctx context.Context, tx *InFlightTx, resultor types.ResultCallback) {
+func (t *Tracker) track(ctx context.Context, tx *InFlightTx) {
 	// If there is already a transaction that is being tracked for this nonce.
 	if oldTx := t.noncer.GetInFlight(tx.Nonce()); oldTx != nil {
 		// Watch for the old transaction to be replaced.
@@ -69,7 +68,7 @@ func (t *Tracker) track(ctx context.Context, tx *InFlightTx, resultor types.Resu
 	}
 
 	t.noncer.SetInFlight(tx)
-	t.watchTx(ctx, tx, resultor)
+	t.watchTx(ctx, tx)
 }
 
 // watchTxForReplacement is watching for a transaction to be replaced by another.
@@ -98,7 +97,7 @@ loop:
 	return nil
 }
 
-func (t *Tracker) watchTx(ctx context.Context, tx *InFlightTx, resultor types.ResultCallback) {
+func (t *Tracker) watchTx(ctx context.Context, tx *InFlightTx) {
 	sCtx := sdk.UnwrapContext(ctx)
 	ethClient := sCtx.Chain()
 	var (
@@ -108,9 +107,6 @@ func (t *Tracker) watchTx(ctx context.Context, tx *InFlightTx, resultor types.Re
 
 	// We want to notify the dispatcher at the end of this function.
 	defer t.dispatcher.Dispatch(tx)
-
-	// Call the result callback for the transaction with the receipt.
-	defer resultor(sCtx, receipt)
 
 	// Loop until the context is done, the transaction status is determined,
 	// or the timeout is reached.

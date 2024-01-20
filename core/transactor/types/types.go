@@ -2,13 +2,11 @@ package types
 
 import (
 	"encoding/json"
-	"math/big"
 
-	sdk "github.com/berachain/offchain-sdk/types"
 	"github.com/berachain/offchain-sdk/types/queue/types"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
-	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
 // TxResultType represents the type of error that occurred when sending a tx.
@@ -33,25 +31,12 @@ const (
 	StatusSuccess
 )
 
-// TxResult represents the error that occurred when sending a tx.
-// Nil if the tx was successful, RevertReason nil if we have an ErrSend, ErrReceive, ErrDecode.
 type (
-	TxRequest struct {
-		To       common.Address `json:"to"`
-		Value    *big.Int       `json:"value"`
-		Data     []byte         `json:"data"`
-		GasOpts  *GasOpts       `json:"gasOpts"`
-		Resultor ResultCallback
-	}
+	// TxRequest is a transaction request, using the go-ethereum call msg.
+	TxRequest ethereum.CallMsg
 
-	ResultCallback func(*sdk.Context, *coretypes.Receipt)
-
-	GasOpts struct {
-		GasTipCap *big.Int `json:"gasTipCap"`
-		GasFeeCap *big.Int `json:"gasFeeCap"`
-		GasLimit  uint64   `json:"gasLimit"`
-	}
-
+	// TxResult represents the error that occurred when sending a tx.
+	// Nil if the tx was successful, RevertReason nil if we have an ErrSend, ErrReceive, ErrDecode.
 	TxResult struct {
 		Type         uint8       // always non-empty
 		Error        error       // only non-empty if Type == ErrSend, ErrReceive, ErrCall
@@ -60,14 +45,13 @@ type (
 	}
 )
 
-// NewTxResult returns a new TxResult with the given type.
+// NewTxRequest returns a new TxRequest with the given type.
 func (TxRequest) New() types.Marshallable {
 	return &TxRequest{}
 }
 
-// NewTxResult returns a new TxResult with the given type and error.
+// NewTxRequest returns a new TxRequest with the given type and error.
 func (tx TxRequest) Marshal() ([]byte, error) {
-	//nolint:staticcheck,SA1026 // Resultor is not needed if marshalled.
 	return json.Marshal(tx)
 }
 

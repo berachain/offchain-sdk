@@ -60,14 +60,18 @@ func NewTransactor(
 
 	// Register the tracker as a subscriber to the tracker.
 	ch := make(chan *tracker.InFlightTx, 1024) //nolint:gomnd // its okay.
-	txrSub := tracker.SubscriberWrapper{Subscriber: txr}
-	go func() { _ = txrSub.Start(context.Background(), ch) }()
+	go func() {
+		// TODO: handle error
+		_ = tracker.NewSubscription(txr, txr.logger).Start(context.Background(), ch)
+	}()
 	dispatcher.Subscribe(ch)
 
 	// Register the sender as a subscriber to the tracker.
 	ch2 := make(chan *tracker.InFlightTx, 1024) //nolint:gomnd // its okay.
-	senderSub := tracker.SubscriberWrapper{Subscriber: txr.sender}
-	go func() { _ = senderSub.Start(context.Background(), ch2) }()
+	go func() {
+		// TODO: handle error
+		_ = tracker.NewSubscription(txr.sender, txr.logger).Start(context.Background(), ch2)
+	}()
 	dispatcher.Subscribe(ch2)
 
 	return txr
@@ -76,6 +80,17 @@ func NewTransactor(
 // RegistryKey implements job.Basic.
 func (t *TxrV2) RegistryKey() string {
 	return "transactor"
+}
+
+// SubscribeTxResults sends the tx results (inflight) to the given channel.
+func (t *TxrV2) SubscribeTxResults(
+	ctx context.Context, subscriber tracker.Subscriber, ch chan *tracker.InFlightTx,
+) {
+	go func() {
+		// TODO: handle error
+		_ = tracker.NewSubscription(subscriber, t.logger).Start(ctx, ch)
+	}()
+	t.dispatcher.Subscribe(ch)
 }
 
 // Execute implements job.Basic.
@@ -176,7 +191,7 @@ func (t *TxrV2) retrieveBatch(_ context.Context) ([]string, []*types.TxRequest) 
 func (t *TxrV2) sendAndTrack(
 	ctx context.Context, msgIDs []string, batch []*types.TxRequest,
 ) error {
-	tx, resultor, err := t.factory.BuildTransactionFromRequests(ctx, batch)
+	tx, err := t.factory.BuildTransactionFromRequests(ctx, batch)
 	if err != nil {
 		return err
 	}
@@ -196,7 +211,6 @@ func (t *TxrV2) sendAndTrack(
 			MsgIDs:      msgIDs,
 		},
 		true,
-		resultor,
 	)
 	return nil
 }

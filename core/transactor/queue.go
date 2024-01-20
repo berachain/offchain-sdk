@@ -30,7 +30,7 @@ func (wq *WrappedQueue) Push(
 	}
 
 	return wq.Queue.Push(&types.TxRequest{
-		To:    to,
+		To:    &to,
 		Value: big.NewInt(0),
 		Data:  bz,
 	})

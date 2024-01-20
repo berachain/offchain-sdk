@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/berachain/offchain-sdk/log"
+
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
@@ -19,13 +21,18 @@ type Subscriber interface {
 	OnError(context.Context, *InFlightTx, error)
 }
 
-// SubscriberWrapper wraps a Subscriber, allowing it to be started and stopped.
-type SubscriberWrapper struct {
+// Subscription manages a Subscriber, allowing it to be started and stopped.
+type Subscription struct {
 	Subscriber
+	logger log.Logger
 }
 
-// Start starts the SubscriberWrapper, listening for transaction events.
-func (s *SubscriberWrapper) Start(ctx context.Context, ch chan *InFlightTx) error {
+func NewSubscription(s Subscriber, logger log.Logger) *Subscription {
+	return &Subscription{Subscriber: s, logger: logger}
+}
+
+// Start starts the Subscription, listening for transaction events.
+func (sub *Subscription) Start(ctx context.Context, ch chan *InFlightTx) error {
 	// Loop over the channel, handling events as they come in.
 	for {
 		var err error
@@ -35,25 +42,31 @@ func (s *SubscriberWrapper) Start(ctx context.Context, ch chan *InFlightTx) erro
 			switch e.ID() {
 			case int(StatusSuccess):
 				// If the transaction was successful, call OnSuccess.
-				err = s.OnSuccess(e, e.Receipt)
+				if err = sub.OnSuccess(e, e.Receipt); err != nil {
+					sub.logger.Error("failed to handle successful tx", "err", err)
+				}
 			case int(StatusReverted):
 				// If the transaction was reverted, call OnRevert.
-				err = s.OnRevert(e, e.Receipt)
+				if err = sub.OnRevert(e, e.Receipt); err != nil {
+					sub.logger.Error("failed to handle reverted tx", "err", err)
+				}
 			case int(StatusStale):
 				// If the transaction is stale, call OnStale.
-				err = s.OnStale(ctx, e)
+				if err = sub.OnStale(ctx, e); err != nil {
+					sub.logger.Error("failed to handle stale tx", "err", err)
+				}
 			case int(StatusError):
 				// If there was an error with the transaction, call OnError.
-				s.OnError(ctx, e, e.Err())
+				sub.logger.Error("error with transaction", "err", e)
+				sub.OnError(ctx, e, e.Err())
 			case int(StatusPending):
 				// If the transaction is pending, do nothing.
 				time.Sleep(retryPendingBackoff)
 			}
-			// TODO: if there is an error with any of the underlying calls, we should handle.
-			_ = err
+			// TODO: if there is an error with any of the underlying calls, we should propagate.
 		case <-ctx.Done():
-			// If the context is done, return nil to stop the loop.
-			return nil
+			// If the context is done, return context error to stop the loop.
+			return ctx.Err()
 		}
 	}
 }
