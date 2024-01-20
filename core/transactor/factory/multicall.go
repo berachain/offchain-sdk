@@ -2,6 +2,7 @@ package factory
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"strings"
@@ -101,20 +102,33 @@ func (mc *Multicall3Batcher) BatchCallRequests(
 	}
 
 	// unpack the return data into call responses
-	callResults, err := mc.packer.GetCallResponse(tryAggregate, ret)
+	callResult, err := mc.packer.GetCallResponse(tryAggregate, ret)
 	if err != nil {
 		sCtx.Logger().Error("failed to unpack call response", "err", err)
 		return nil, err
 	}
+	if len(callResult) != 1 {
+		err := fmt.Errorf("expected 1 list of Multicall3Results, got %d", len(callResult))
+		sCtx.Logger().Error("failed to unpack call response", "err", err)
+		return nil, err
+	}
+	callResults, ok := callResult[0].([]struct {
+		Success    bool    "json:\"success\""
+		ReturnData []uint8 "json:\"returnData\""
+	})
+	if !ok {
+		err := errors.New("expected return type as list of Multicall3Results")
+		sCtx.Logger().Error("failed to unpack call response", "err", err)
+		return nil, err
+	}
 
-	var ok bool
-	callResponses := make([]bindings.Multicall3Result, len(callResults))
-	for i, result := range callResults {
-		if callResponses[i], ok = result.(bindings.Multicall3Result); !ok {
-			return nil, fmt.Errorf(
-				"failed to convert call response to Multicall3Result: %v", result,
-			)
+	// convert the call responses into Multicall3Results
+	multicall3Results := make([]bindings.Multicall3Result, len(callResults))
+	for i, callResult := range callResults {
+		multicall3Results[i] = bindings.Multicall3Result{
+			Success:    callResult.Success,
+			ReturnData: callResult.ReturnData,
 		}
 	}
-	return callResponses, nil
+	return multicall3Results, nil
 }
