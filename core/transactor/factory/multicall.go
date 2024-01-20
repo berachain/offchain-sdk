@@ -108,7 +108,7 @@ func (mc *Multicall3Batcher) BatchCallRequests(
 		return nil, err
 	}
 	if len(callResult) != 1 {
-		err := fmt.Errorf("expected 1 list of Multicall3Results, got %d", len(callResult))
+		err = fmt.Errorf("expected 1 list of Multicall3Results, got %d", len(callResult))
 		sCtx.Logger().Error("failed to unpack call response", "err", err)
 		return nil, err
 	}
@@ -117,7 +117,7 @@ func (mc *Multicall3Batcher) BatchCallRequests(
 		ReturnData []uint8 "json:\"returnData\""
 	})
 	if !ok {
-		err := errors.New("expected return type as list of Multicall3Results")
+		err = errors.New("expected return type as list of Multicall3Results")
 		sCtx.Logger().Error("failed to unpack call response", "err", err)
 		return nil, err
 	}

@@ -6,23 +6,23 @@ import (
 	"os"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/common"
-	ethclient "github.com/ethereum/go-ethereum/ethclient"
-	"github.com/stretchr/testify/assert"
-
 	"github.com/berachain/offchain-sdk/client/eth"
 	"github.com/berachain/offchain-sdk/contracts/bindings"
 	"github.com/berachain/offchain-sdk/core/transactor/factory"
 	"github.com/berachain/offchain-sdk/core/transactor/types"
 	"github.com/berachain/offchain-sdk/log"
 	sdk "github.com/berachain/offchain-sdk/types"
+	"github.com/stretchr/testify/assert"
+
+	"github.com/ethereum/go-ethereum/common"
+	ethclient "github.com/ethereum/go-ethereum/ethclient"
 )
 
 var (
 	multicallAddress = common.HexToAddress("0x9d1dB8253105b007DDDE65Ce262f701814B91125")
 	erc20Address     = common.HexToAddress("0x7EeCA4205fF31f947EdBd49195a7A88E6A91161B")
 	from             = common.Address{}
-	ETH_HTTP_URL     = "http://localhost:8545" // configure this
+	ethHTTPURL       = "http://localhost:8545" // configure this
 )
 
 // TestMulticall demonstrates how to use the multicall contract to batch multiple calls to other
@@ -30,7 +30,7 @@ var (
 func TestMulticall(t *testing.T) {
 	// setup eth client and multicaller
 	ctx := context.Background()
-	chain, err := ethclient.DialContext(ctx, ETH_HTTP_URL)
+	chain, err := ethclient.DialContext(ctx, ethHTTPURL)
 	if err != nil {
 		t.Fatal(err)
 	}
