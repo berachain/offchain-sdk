@@ -56,8 +56,6 @@ type Reader interface {
 
 type Writer interface {
 	SendTransaction(ctx context.Context, tx *ethcoretypes.Transaction) error
-	CallContract(ctx context.Context, msg ethereum.CallMsg,
-		blockNumber *big.Int) ([]byte, error)
 }
 
 // client is the indexer eth client.
@@ -68,6 +66,16 @@ type ExtendedEthClient struct {
 // ==================================================================
 // Client Lifecycle
 // ==================================================================
+
+func (c *ExtendedEthClient) DialContext(ctx context.Context, rawurl string) error {
+	if c.Client != nil {
+		return nil
+	}
+
+	var err error
+	c.Client, err = ethclient.DialContext(ctx, rawurl)
+	return err
+}
 
 // Close closes the client.
 func (c *ExtendedEthClient) Close() error {
