@@ -37,11 +37,14 @@ func (s *Sender) SendTransaction(ctx context.Context, tx *coretypes.Transaction)
 	sCtx := sdk.UnwrapContext(ctx) // unwrap the context to get the SDK context
 	ethClient := sCtx.Chain()      // get the Ethereum client from the SDK context
 
-	// Send the replacement transaction.
 	// TODO: needs to be resigned by factory.
+	// TODO: this returns the revert error message, handle it.
 	if err := ethClient.SendTransaction(ctx, tx); err != nil { // if sending the transaction fails
 		sCtx.Logger().Error(
-			"failed to resend replacement transaction", "hash", tx.Hash(), "err", err) // log the error
+			"failed to send tx transaction", "hash", tx.Hash(), "err", err, // log the error
+		)
+
+		// Send the replacement transaction.
 		price := tx.GasPrice()
 		tx = s.txReplacementPolicy(ctx, tx)
 		sCtx.Logger().Info(
@@ -53,9 +56,13 @@ func (s *Sender) SendTransaction(ctx context.Context, tx *coretypes.Transaction)
 				return err // if it fails again, return the error
 			}
 		}
-		return err // if the retry policy does not allow for a retry, return the error
+
+		// if the retry policy does not allow for a retry, return the error
+		return err
 	}
-	return nil // if the transaction was sent successfully, return nil
+
+	// if the transaction was sent successfully, return nil
+	return nil
 }
 
 // On Success for the sender is a no-op since there is nothing else to do if the transaction

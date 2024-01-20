@@ -68,10 +68,7 @@ func (f *Factory) BuildTransaction(
 	ctx context.Context,
 	txReq *types.TxRequest,
 ) (*coretypes.Transaction, error) {
-	var (
-		gasOpts = txReq.GasOpts
-		err     error
-	)
+	var err error
 
 	ethClient := sdk.UnwrapContext(ctx).Chain()
 	if f.chainID == nil {
@@ -88,14 +85,14 @@ func (f *Factory) BuildTransaction(
 
 	txData := &coretypes.DynamicFeeTx{
 		ChainID: f.chainID,
-		To:      &txReq.To,
+		To:      txReq.To,
 		Value:   txReq.Value,
 		Data:    txReq.Data,
 		Nonce:   nonce,
 	}
 
-	if gasOpts != nil && gasOpts.GasFeeCap != nil {
-		txData.GasFeeCap = gasOpts.GasFeeCap
+	if txReq.GasFeeCap != nil {
+		txData.GasFeeCap = txReq.GasFeeCap
 	} else {
 		txData.GasFeeCap, err = ethClient.SuggestGasPrice(ctx)
 		if err != nil {
@@ -103,8 +100,8 @@ func (f *Factory) BuildTransaction(
 		}
 	}
 
-	if gasOpts != nil && gasOpts.GasTipCap != nil {
-		txData.GasTipCap = gasOpts.GasTipCap
+	if txReq.GasTipCap != nil {
+		txData.GasTipCap = txReq.GasTipCap
 	} else {
 		txData.GasTipCap, err = ethClient.SuggestGasTipCap(ctx)
 		if err != nil {
@@ -112,8 +109,8 @@ func (f *Factory) BuildTransaction(
 		}
 	}
 
-	if gasOpts != nil && gasOpts.GasLimit > 0 {
-		txData.Gas = gasOpts.GasLimit
+	if txReq.Gas > 0 {
+		txData.Gas = txReq.Gas
 	} else {
 		if txData.Gas, err = ethClient.EstimateGas(ctx, ethereum.CallMsg{
 			From:      f.signerAddress,
