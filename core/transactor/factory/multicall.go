@@ -36,8 +36,7 @@ func NewMulticall3Batcher(address common.Address) *Multicall3Batcher {
 
 // BatchTxRequests creates a batched transaction request for the given transaction requests.
 func (mc *Multicall3Batcher) BatchTxRequests(
-	_ context.Context,
-	txReqs []*types.TxRequest,
+	_ context.Context, txReqs ...*types.TxRequest,
 ) *types.TxRequest {
 	var (
 		calls       = make([]bindings.Multicall3Call, len(txReqs))
@@ -82,12 +81,12 @@ func (mc *Multicall3Batcher) BatchTxRequests(
 func (mc *Multicall3Batcher) BatchCallRequests(
 	ctx context.Context,
 	from common.Address,
-	txReqs []*types.TxRequest,
+	txReqs ...*types.TxRequest,
 ) ([]bindings.Multicall3Result, error) {
 	sCtx := sdk.UnwrapContext(ctx)
 
 	// get the batched tx (call) requests
-	batchedCall := mc.BatchTxRequests(ctx, txReqs)
+	batchedCall := mc.BatchTxRequests(ctx, txReqs...)
 	batchedCall.From = from
 
 	// call the multicall3 contract with the batched call request

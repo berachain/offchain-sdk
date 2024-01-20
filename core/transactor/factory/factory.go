@@ -43,7 +43,7 @@ func New(noncer Noncer, signer kmstypes.TxSigner, mc3Batcher *Multicall3Batcher)
 // BuildTransactionFromRequests builds a transaction from a list of requests.
 func (f *Factory) BuildTransactionFromRequests(
 	ctx context.Context,
-	txReqs []*types.TxRequest,
+	txReqs ...*types.TxRequest,
 ) (*coretypes.Transaction, error) {
 	switch len(txReqs) {
 	case 0:
@@ -53,7 +53,7 @@ func (f *Factory) BuildTransactionFromRequests(
 		return f.BuildTransaction(ctx, txReqs[0])
 	default:
 		// len(txReqs) > 1 then build a multicall transaction.
-		ar := f.mc3Batcher.BatchTxRequests(ctx, txReqs)
+		ar := f.mc3Batcher.BatchTxRequests(ctx, txReqs...)
 
 		// Build the transaction to include the calldata.
 		// ar.To should be the Multicall3 contract address

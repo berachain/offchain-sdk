@@ -155,7 +155,7 @@ func (t *TxrV2) mainLoop(ctx context.Context) {
 			t.mu.Lock()
 			go func() {
 				defer t.mu.Unlock()
-				if err := t.sendAndTrack(ctx, msgIDs, batch); err != nil {
+				if err := t.sendAndTrack(ctx, msgIDs, batch...); err != nil {
 					t.logger.Error("failed to process batch", "err", err)
 				}
 			}()
@@ -189,9 +189,9 @@ func (t *TxrV2) retrieveBatch(_ context.Context) ([]string, []*types.TxRequest) 
 // It builds a transaction from the batch and sends it.
 // It also tracks the transaction for future reference.
 func (t *TxrV2) sendAndTrack(
-	ctx context.Context, msgIDs []string, batch []*types.TxRequest,
+	ctx context.Context, msgIDs []string, batch ...*types.TxRequest,
 ) error {
-	tx, err := t.factory.BuildTransactionFromRequests(ctx, batch)
+	tx, err := t.factory.BuildTransactionFromRequests(ctx, batch...)
 	if err != nil {
 		return err
 	}
