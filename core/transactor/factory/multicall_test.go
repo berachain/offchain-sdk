@@ -22,7 +22,7 @@ var (
 	multicallAddress = common.HexToAddress("0x9d1dB8253105b007DDDE65Ce262f701814B91125")
 	erc20Address     = common.HexToAddress("0x7EeCA4205fF31f947EdBd49195a7A88E6A91161B")
 	from             = common.Address{}
-	ETH_HTTP_URL     = "http://localhost:8545"
+	ETH_HTTP_URL     = "http://localhost:8545" // configure this
 )
 
 // TestMulticall demonstrates how to use the multicall contract to batch multiple calls to other
@@ -32,6 +32,12 @@ func TestMulticall(t *testing.T) {
 	ctx := context.Background()
 	chain, err := ethclient.DialContext(ctx, ETH_HTTP_URL)
 	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = chain.ChainID(ctx); err != nil {
+		if assert.ErrorContains(t, err, "connection refused") {
+			t.Skipf("Skipping test: %s", err)
+		}
 		t.Fatal(err)
 	}
 	sCtx := sdk.NewContext(
