@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/berachain/offchain-sdk/log"
+
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
@@ -62,7 +63,7 @@ func (sub *Subscription) Start(ctx context.Context, ch chan *InFlightTx) error {
 				// If the transaction is pending, do nothing.
 				time.Sleep(retryPendingBackoff)
 			}
-			// TODO: if there is an error with any of the underlying calls, we should propogate.
+			// TODO: if there is an error with any of the underlying calls, we should propagate.
 		case <-ctx.Done():
 			// If the context is done, return context error to stop the loop.
 			return ctx.Err()
