@@ -75,7 +75,7 @@ func (n *Noncer) Acquire(ctx context.Context) (uint64, error) {
 	if val != nil {
 		// Iterate through the inFlight objects to ensure there are no gaps
 		// TODO: convert to use a binary tree to go from O(n) to O(log(n))
-		for i := n.latestConfirmedNonce; i < val.Value.(*InFlightTx).Nonce(); i++ {
+		for i := n.latestConfirmedNonce; i <= val.Value.(*InFlightTx).Nonce(); i++ {
 			if n.inFlight.Get(i) == nil {
 				// If a gap is found, use that
 				nextNonce = i
