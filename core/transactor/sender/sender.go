@@ -122,7 +122,6 @@ func (s *Sender) OnError(ctx context.Context, tx *tracker.InFlightTx, err error)
 		// Assign the new transaction to the in-flight transaction.
 		tx.Transaction = ethTx
 		tx.Receipt = nil
-
 	}
 
 	replacementTx, err := s.factory.SignTransaction(s.txReplacementPolicy(ctx, tx.Transaction))
