@@ -51,7 +51,7 @@ func NewTransactor(
 		dispatcher: dispatcher,
 		cfg:        cfg,
 		factory:    factory,
-		sender:     sender.New(factory),
+		sender:     sender.New(factory, noncer),
 		noncer:     noncer,
 		tracker:    tracker.New(noncer, dispatcher, cfg.TxReceiptTimeout),
 		requests:   queue,

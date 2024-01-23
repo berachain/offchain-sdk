@@ -2,29 +2,39 @@ package sender
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/berachain/offchain-sdk/core/transactor/tracker"
+	"github.com/berachain/offchain-sdk/core/transactor/types"
 	sdk "github.com/berachain/offchain-sdk/types"
 
+	"github.com/ethereum/go-ethereum/core"
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
+type Noncer interface {
+	RemoveInFlight(tx *tracker.InFlightTx)
+}
+
 // Factory interface for signing transactions.
 type Factory interface {
+	BuildTransaction(context.Context, *types.TxRequest) (*coretypes.Transaction, error)
 	SignTransaction(*coretypes.Transaction) (*coretypes.Transaction, error)
 }
 
 // Sender struct holds the transaction replacement and retry policies.
 type Sender struct {
+	noncer              Noncer // noncer to acquire nonces
 	factory             Factory
 	txReplacementPolicy TxReplacementPolicy // policy to replace transactions
 	retryPolicy         RetryPolicy         // policy to retry transactions
 }
 
 // New creates a new Sender with default replacement and retry policies.
-func New(factory Factory) *Sender {
+func New(factory Factory, noncer Noncer) *Sender {
 	return &Sender{
+		noncer:              noncer,                     // noncer to acquire nonces
 		factory:             factory,                    // factory to sign transactions
 		txReplacementPolicy: DefaultTxReplacementPolicy, // default transaction replacement policy
 		retryPolicy:         DefaultRetryPolicy,         // default retry policy
@@ -94,12 +104,32 @@ func (s *Sender) OnStale(ctx context.Context, tx *tracker.InFlightTx) error {
 // transaction is replaced with a new transaction with a higher gas price as defined by
 // the txReplacementPolicy.
 // TODO: make this more robust probably.
-func (s *Sender) OnError(ctx context.Context, tx *tracker.InFlightTx, _ error) {
+func (s *Sender) OnError(ctx context.Context, tx *tracker.InFlightTx, err error) {
+	if errors.Is(err, core.ErrNonceTooLow) {
+		ethTx, buildErr := s.factory.BuildTransaction(ctx, &types.TxRequest{
+			To:    tx.To(),
+			Value: tx.Value(),
+			Data:  tx.Data(),
+		})
+		if buildErr != nil {
+			sdk.UnwrapContext(ctx).Logger().Error(
+				"failed to build replacement transaction", "err", err)
+			return
+		}
+		tx.Transaction = ethTx
+		// The transition was never sent so we remove from the in-flight list.
+		s.noncer.RemoveInFlight(tx)
+	}
+
 	replacementTx, err := s.factory.SignTransaction(s.txReplacementPolicy(ctx, tx.Transaction))
 	if err != nil {
 		sdk.UnwrapContext(ctx).Logger().Error(
 			"failed to sign replacement transaction", "err", err)
 		return
 	}
-	_ = s.SendTransaction(ctx, replacementTx)
+	if err = s.SendTransaction(ctx, replacementTx); err != nil {
+		sdk.UnwrapContext(ctx).Logger().Error(
+			"failed to send replacement transaction", "err", err)
+		return
+	}
 }
