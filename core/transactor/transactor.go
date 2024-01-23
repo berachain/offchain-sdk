@@ -127,6 +127,7 @@ func (t *TxrV2) SendTxRequest(txReq *types.TxRequest) (string, error) {
 // Start starts the transactor.
 func (t *TxrV2) Start(ctx context.Context) {
 	go t.mainLoop(ctx)
+	go t.noncer.RefreshLoop(ctx)
 }
 
 // mainLoop is the main transaction sending / batching loop.

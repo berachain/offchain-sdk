@@ -34,7 +34,7 @@ func NewNoncer(sender common.Address) *Noncer {
 
 func (n *Noncer) RefreshLoop(ctx context.Context) {
 	go func() {
-		timer := time.NewTimer(5 * time.Second)
+		timer := time.NewTimer(5 * time.Second) //nolint:gomnd // fix later.
 		for {
 			select {
 			case <-ctx.Done():
@@ -51,7 +51,7 @@ func (n *Noncer) refreshConfirmedNonce(ctx context.Context) {
 	if err != nil {
 		return
 	}
-	latestConfirmedNonce = latestConfirmedNonce
+	n.latestConfirmedNonce = latestConfirmedNonce
 }
 
 // Start initiates the nonce synchronization.
