@@ -7,6 +7,7 @@ import (
 	"github.com/berachain/offchain-sdk/job"
 	"github.com/berachain/offchain-sdk/log"
 	"github.com/berachain/offchain-sdk/server"
+	sdk "github.com/berachain/offchain-sdk/types"
 
 	ethdb "github.com/ethereum/go-ethereum/ethdb"
 )
@@ -24,6 +25,8 @@ type BaseApp struct {
 
 	// svr is the server for the baseapp.
 	svr *server.Server
+
+	ethClient eth.Client
 }
 
 // New creates a new baseapp.
@@ -36,8 +39,9 @@ func New(
 	svr *server.Server,
 ) *BaseApp {
 	return &BaseApp{
-		name:   name,
-		logger: logger,
+		name:      name,
+		logger:    logger,
+		ethClient: ethClient,
 		jobMgr: NewManager(
 			jobs,
 			&contextFactory{
@@ -61,8 +65,13 @@ func (b *BaseApp) Start(ctx context.Context) error {
 	defer b.Logger().Info("successfully started")
 
 	// Start the job manager and the producers.
-	b.jobMgr.Start(ctx)
-	b.jobMgr.RunProducers(ctx)
+
+	// TODO: this is a hacky place for this.
+	sCtx := sdk.NewContext(
+		ctx, b.ethClient, b.logger, nil,
+	)
+	b.jobMgr.Start(sCtx)
+	b.jobMgr.RunProducers(sCtx)
 
 	if b.svr == nil {
 		b.Logger().Info("no server registered, skipping")

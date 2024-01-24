@@ -97,6 +97,7 @@ func StartCmdWithOptions[C any](
 
 			// Build the application, then start it.
 			app.Setup(ab, cfg.App, logger)
+
 			if err = app.Start(ctx); err != nil {
 				return err
 			}
