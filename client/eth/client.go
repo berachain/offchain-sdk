@@ -42,6 +42,7 @@ type Reader interface {
 	HeaderByNumber(ctx context.Context, number *big.Int) (*ethcoretypes.Header, error)
 	PendingCodeAt(ctx context.Context, account common.Address) ([]byte, error)
 	PendingNonceAt(ctx context.Context, account common.Address) (uint64, error)
+	NonceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error)
 	SendTransaction(ctx context.Context, tx *ethcoretypes.Transaction) error
 	SubscribeFilterLogs(ctx context.Context, q ethereum.FilterQuery,
 		ch chan<- ethcoretypes.Log) (ethereum.Subscription, error)

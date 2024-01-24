@@ -152,6 +152,15 @@ func (c *ChainProviderImpl) PendingNonceAt(
 	return 0, ErrClientNotFound
 }
 
+// PendingNonceAt returns the nonce of the given account in the pending state.
+func (c *ChainProviderImpl) NonceAt(
+	ctx context.Context, account common.Address, bn *big.Int) (uint64, error) {
+	if client, ok := c.GetHTTP(); ok {
+		return client.NonceAt(ctx, account, bn)
+	}
+	return 0, ErrClientNotFound
+}
+
 // SendTransaction sends the given transaction.
 func (c *ChainProviderImpl) SendTransaction(
 	ctx context.Context, tx *types.Transaction) error {

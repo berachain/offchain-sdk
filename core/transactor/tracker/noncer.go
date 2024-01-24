@@ -3,6 +3,7 @@ package tracker
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/berachain/offchain-sdk/client/eth"
 	"github.com/huandu/skiplist"
@@ -17,6 +18,8 @@ type Noncer struct {
 	acquired  *skiplist.SkipList // The list of acquired nonces.
 	inFlight  *skiplist.SkipList // The list of nonces currently in flight.
 	mu        sync.Mutex         // Mutex for thread-safe operations.
+
+	latestConfirmedNonce uint64
 }
 
 // NewNoncer creates a new Noncer instance.
@@ -27,6 +30,28 @@ func NewNoncer(sender common.Address) *Noncer {
 		inFlight: skiplist.New(skiplist.Uint64),
 		mu:       sync.Mutex{},
 	}
+}
+
+func (n *Noncer) RefreshLoop(ctx context.Context) {
+	go func() {
+		timer := time.NewTimer(5 * time.Second) //nolint:gomnd // fix later.
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-timer.C:
+				n.refreshConfirmedNonce(ctx)
+			}
+		}
+	}()
+}
+
+func (n *Noncer) refreshConfirmedNonce(ctx context.Context) {
+	latestConfirmedNonce, err := n.ethClient.NonceAt(ctx, n.sender, nil)
+	if err != nil {
+		return
+	}
+	n.latestConfirmedNonce = latestConfirmedNonce
 }
 
 // Start initiates the nonce synchronization.
@@ -46,8 +71,22 @@ func (n *Noncer) Acquire(ctx context.Context) (uint64, error) {
 	val := n.inFlight.Back()
 
 	var nextNonce uint64
+	foundGap := false
 	if val != nil {
-		nextNonce = val.Value.(*InFlightTx).Nonce() + 1
+		// Iterate through the inFlight objects to ensure there are no gaps
+		// TODO: convert to use a binary tree to go from O(n) to O(log(n))
+		for i := n.latestConfirmedNonce; i <= val.Value.(*InFlightTx).Nonce(); i++ {
+			if n.inFlight.Get(i) == nil {
+				// If a gap is found, use that
+				nextNonce = i
+				foundGap = false
+				break
+			}
+		}
+		// If we didn't find a gap, use the next nonce.
+		if !foundGap {
+			nextNonce = val.Value.(*InFlightTx).Nonce() + 1
+		}
 	} else {
 		var err error
 		// TODO: doing a network call while holding the lock is a bit dangerous
