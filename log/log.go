@@ -28,6 +28,9 @@ type Logger interface {
 	// With returns a new wrapped logger with additional context provided by a set
 	With(keyVals ...any) Logger
 
+	// Fatal takes a message and a set of key/value pairs and logs with level FATAL.
+	Fatal(msg string, keyVals ...any)
+
 	// Impl returns the underlying logger implementation
 	// It is used to access the full functionalities of the underlying logger
 	// Advanced users can type cast the returned value to the actual logger
@@ -62,6 +65,11 @@ func (l zeroLogWrapper) Warn(msg string, keyVals ...interface{}) {
 // The key of the tuple must be a string.
 func (l zeroLogWrapper) Debug(msg string, keyVals ...interface{}) {
 	l.Logger.Debug().Fields(keyVals).Msg(msg)
+}
+
+// Fatal takes a message and a set of key/value pairs and logs with level FATAL.
+func (l zeroLogWrapper) Fatal(msg string, keyVals ...interface{}) {
+	l.Logger.Fatal().Fields(keyVals).Msg(msg)
 }
 
 // With returns a new wrapped logger with additional context provided by a set.
