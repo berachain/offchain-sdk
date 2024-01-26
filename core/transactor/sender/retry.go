@@ -15,5 +15,5 @@ type (
 func DefaultRetryPolicy(
 	_ context.Context, _ *coretypes.Transaction, _ error,
 ) (bool, time.Duration) {
-	return false, 5 //nolint:gomnd // todo fix later.
+	return false, 30 * time.Second //nolint:gomnd // todo fix later.
 }

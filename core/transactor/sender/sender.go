@@ -58,7 +58,7 @@ func (s *Sender) SendTransaction(ctx context.Context, tx *coretypes.Transaction)
 		price := tx.GasPrice()
 		tx = s.txReplacementPolicy(ctx, tx)
 		sCtx.Logger().Info(
-			"retrying with new gas limit", "old", price, "new", tx.GasPrice(), "nonce", tx.Nonce(),
+			"retrying with higher gas price", "old", price, "new", tx.GasPrice(), "nonce", tx.Nonce(),
 		)
 		if retry, backoff := s.retryPolicy(ctx, tx, err); retry {
 			time.Sleep(backoff)                               // wait for the backoff time
