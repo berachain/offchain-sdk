@@ -55,12 +55,12 @@ func (s *Sender) SendTransaction(ctx context.Context, tx *coretypes.Transaction)
 		)
 
 		// Send the replacement transaction.
-		price := tx.GasPrice()
 		tx = s.txReplacementPolicy(ctx, tx)
-		sCtx.Logger().Info(
-			"retrying with higher gas price", "old", price, "new", tx.GasPrice(), "nonce", tx.Nonce(),
-		)
 		if retry, backoff := s.retryPolicy(ctx, tx, err); retry {
+			price := tx.GasPrice()
+			sCtx.Logger().Info(
+				"retrying with higher gas price", "old", price, "new", tx.GasPrice(), "nonce", tx.Nonce(),
+			)
 			time.Sleep(backoff)                               // wait for the backoff time
 			if err = s.SendTransaction(ctx, tx); err != nil { // retry sending the transaction
 				return err // if it fails again, return the error
@@ -106,11 +106,13 @@ func (s *Sender) OnStale(ctx context.Context, tx *tracker.InFlightTx) error {
 // TODO: make this more robust probably.
 func (s *Sender) OnError(ctx context.Context, tx *tracker.InFlightTx, err error) {
 	if errors.Is(err, core.ErrNonceTooLow) {
-		ethTx, buildErr := s.factory.BuildTransaction(ctx, &types.TxRequest{
-			To:    tx.To(),
-			Value: tx.Value(),
-			Data:  tx.Data(),
-		})
+		ethTx, buildErr := s.factory.BuildTransaction(
+			ctx, &types.TxRequest{
+				To:    tx.To(),
+				Value: tx.Value(),
+				Data:  tx.Data(),
+			},
+		)
 		if buildErr != nil {
 			sdk.UnwrapContext(ctx).Logger().Error(
 				"failed to build replacement transaction", "err", err)
@@ -124,15 +126,22 @@ func (s *Sender) OnError(ctx context.Context, tx *tracker.InFlightTx, err error)
 		tx.Receipt = nil
 	}
 
+	sCtx := sdk.UnwrapContext(ctx)
 	replacementTx, err := s.factory.SignTransaction(s.txReplacementPolicy(ctx, tx.Transaction))
 	if err != nil {
 		sdk.UnwrapContext(ctx).Logger().Error(
 			"failed to sign replacement transaction", "err", err)
 		return
 	}
-	if err = s.SendTransaction(ctx, replacementTx); err != nil {
-		sdk.UnwrapContext(ctx).Logger().Error(
-			"failed to send replacement transaction", "err", err)
-		return
+
+	if retry, backoff := s.retryPolicy(ctx, replacementTx, err); retry {
+		price := tx.GasPrice()
+		sCtx.Logger().Info(
+			"retrying with higher gas price", "old", price, "new", tx.GasPrice(), "nonce", tx.Nonce(),
+		)
+		time.Sleep(backoff)                                          // wait for the backoff time
+		if err = s.SendTransaction(ctx, replacementTx); err != nil { // retry sending the transaction
+			return // if it fails again, return the error
+		}
 	}
 }
