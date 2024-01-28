@@ -92,21 +92,23 @@ func (f *Factory) BuildTransaction(
 	}
 
 	if txReq.GasFeeCap != nil {
-		txData.GasFeeCap = txReq.GasFeeCap
+		txData.GasFeeCap = new(big.Int).Mul(txReq.GasFeeCap, big.NewInt(125)).Div(txReq.GasFeeCap, big.NewInt(100)) // Increase by 25%
 	} else {
 		txData.GasFeeCap, err = ethClient.SuggestGasPrice(ctx)
 		if err != nil {
 			return nil, err
 		}
+		txData.GasFeeCap = new(big.Int).Mul(txData.GasFeeCap, big.NewInt(125)).Div(txData.GasFeeCap, big.NewInt(100)) // Increase by 25%
 	}
 
 	if txReq.GasTipCap != nil {
-		txData.GasTipCap = txReq.GasTipCap
+		txData.GasTipCap = new(big.Int).Mul(txReq.GasTipCap, big.NewInt(125)).Div(txReq.GasTipCap, big.NewInt(100)) // Increase by 25%
 	} else {
 		txData.GasTipCap, err = ethClient.SuggestGasTipCap(ctx)
 		if err != nil {
 			return nil, err
 		}
+		txData.GasTipCap = new(big.Int).Mul(txData.GasTipCap, big.NewInt(125)).Div(txData.GasTipCap, big.NewInt(100)) // Increase by 25%
 	}
 
 	if txReq.Gas > 0 {
