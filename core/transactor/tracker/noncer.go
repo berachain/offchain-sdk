@@ -70,8 +70,10 @@ func (n *Noncer) Acquire(ctx context.Context) (uint64, error) {
 	defer n.mu.Unlock()
 	val := n.inFlight.Back()
 
-	var nextNonce uint64
-	foundGap := false
+	var (
+		nextNonce uint64
+		foundGap  bool
+	)
 	if val != nil {
 		// Iterate through the inFlight objects to ensure there are no gaps
 		// TODO: convert to use a binary tree to go from O(n) to O(log(n))
@@ -79,7 +81,7 @@ func (n *Noncer) Acquire(ctx context.Context) (uint64, error) {
 			if n.inFlight.Get(i) == nil {
 				// If a gap is found, use that
 				nextNonce = i
-				foundGap = false
+				foundGap = true
 				break
 			}
 		}
