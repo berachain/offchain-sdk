@@ -79,7 +79,7 @@ func (n *Noncer) Acquire(ctx context.Context) (uint64, error) {
 			if n.inFlight.Get(i) == nil {
 				// If a gap is found, use that
 				nextNonce = i
-				foundGap = false
+				foundGap = true
 				break
 			}
 		}
