@@ -58,7 +58,7 @@ func NewLogger(dst io.Writer, runner string) Logger {
 
 // NewJsonLogger creates a new logger with the given writer and runner name.
 // It sets the output of the logger to JSON.
-func NewJsonLogger(dst io.Writer, runner string) Logger {
+func NewJSONLogger(dst io.Writer, runner string) Logger {
 	opts := []log.Option{
 		log.OutputJSONOption(),
 		log.TimeFormatOption(time.RFC3339),
