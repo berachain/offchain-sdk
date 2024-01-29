@@ -7,7 +7,7 @@ import (
 	"cosmossdk.io/log"
 )
 
-// Logger is the interface for the logger. It's a wrapper around zerolog.
+// Logger is the interface for the logger. It's based on cosmossdk.io/log.
 type Logger interface {
 	// Info takes a message and a set of key/value pairs and logs with level INFO.
 	// The key of the tuple must be a string.
@@ -50,7 +50,7 @@ func (l *loggerImpl) With(keyVals ...any) Logger {
 func NewLogger(dst io.Writer, runner string) Logger {
 	opts := []log.Option{
 		log.ColorOption(true),
-		log.TimeFormatOption(time.RFC822),
+		log.TimeFormatOption(time.RFC3339),
 	}
 	logger := log.NewLogger(dst, opts...)
 	return &loggerImpl{logger.With("namespace", runner)}
@@ -61,7 +61,7 @@ func NewLogger(dst io.Writer, runner string) Logger {
 func NewJsonLogger(dst io.Writer, runner string) Logger {
 	opts := []log.Option{
 		log.OutputJSONOption(),
-		log.TimeFormatOption(time.RFC822),
+		log.TimeFormatOption(time.RFC3339),
 	}
 
 	logger := log.NewLogger(dst, opts...)
