@@ -4,10 +4,10 @@ import (
 	"io"
 	"time"
 
-	"github.com/rs/zerolog"
+	"cosmossdk.io/log"
 )
 
-// Logger is the interface for the logger. It's a wrapper around zerolog.
+// Logger is the interface for the logger. It's based on cosmossdk.io/log.
 type Logger interface {
 	// Info takes a message and a set of key/value pairs and logs with level INFO.
 	// The key of the tuple must be a string.
@@ -34,60 +34,48 @@ type Logger interface {
 	Impl() any
 }
 
-// zeroLogWrapper is the implementation of the Logger interface.
-// It wraps a zerolog logger.
-type zeroLogWrapper struct {
-	*zerolog.Logger
-}
-
-// Info takes a message and a set of key/value pairs and logs with level INFO.
-// The key of the tuple must be a string.
-func (l zeroLogWrapper) Info(msg string, keyVals ...interface{}) {
-	l.Logger.Info().Fields(keyVals).Msg(msg)
-}
-
-// Error takes a message and a set of key/value pairs and logs with level DEBUG.
-// The key of the tuple must be a string.
-func (l zeroLogWrapper) Error(msg string, keyVals ...interface{}) {
-	l.Logger.Error().Fields(keyVals).Msg(msg)
-}
-
-// Warn takes a message and a set of key/value pairs and logs with level WARN.
-// The key of the tuple must be a string.
-func (l zeroLogWrapper) Warn(msg string, keyVals ...interface{}) {
-	l.Logger.Warn().Fields(keyVals).Msg(msg)
-}
-
-// Debug takes a message and a set of key/value pairs and logs with level ERR.
-// The key of the tuple must be a string.
-func (l zeroLogWrapper) Debug(msg string, keyVals ...interface{}) {
-	l.Logger.Debug().Fields(keyVals).Msg(msg)
+// loggerImpl is the implementation of the Logger interface.
+type loggerImpl struct {
+	log.Logger
 }
 
 // With returns a new wrapped logger with additional context provided by a set.
-func (l zeroLogWrapper) With(keyVals ...interface{}) Logger {
-	logger := l.Logger.With().Fields(keyVals).Logger()
-	return zeroLogWrapper{&logger}
-}
-
-// Impl returns the underlying zerolog logger.
-// It can be used to used zerolog structured API directly instead of the wrapper.
-func (l zeroLogWrapper) Impl() interface{} {
-	return l.Logger
+func (l *loggerImpl) With(keyVals ...any) Logger {
+	logger := l.Logger.With(keyVals...)
+	return &loggerImpl{logger}
 }
 
 // NewLogger creates a new logger with the given writer and runner name.
-// The logger is a wrapper around zerolog.
+// The logger is a wrapper around cosmossdk logger.
 func NewLogger(dst io.Writer, runner string) Logger {
-	output := zerolog.ConsoleWriter{Out: dst, TimeFormat: time.Kitchen}
-	logger := zerolog.New(output).With().Timestamp().Str("namespace", runner).Logger()
-	return zeroLogWrapper{&logger}
+	opts := []log.Option{
+		log.ColorOption(true),
+		log.TimeFormatOption(time.RFC3339),
+	}
+	logger := log.NewLogger(dst, opts...)
+	return &loggerImpl{logger.With("namespace", runner)}
 }
 
-// NewBlankLogger creates a new logger with the given writer and runner name.
-// The logger is a wrapper around zerolog.
+// NewJsonLogger creates a new logger with the given writer and runner name.
+// It sets the output of the logger to JSON.
+func NewJSONLogger(dst io.Writer, runner string) Logger {
+	opts := []log.Option{
+		log.OutputJSONOption(),
+		log.TimeFormatOption(time.RFC3339),
+	}
+
+	logger := log.NewLogger(dst, opts...)
+	return &loggerImpl{logger.With("namespace", runner)}
+}
+
+// NewBlankLogger creates a new logger with the given writer.
+// The logger is a wrapper around cosmossdk logger.
 func NewBlankLogger(dst io.Writer) Logger {
-	output := zerolog.ConsoleWriter{Out: dst, TimeFormat: time.Kitchen}
-	logger := zerolog.New(output).With().Timestamp().Logger()
-	return zeroLogWrapper{&logger}
+	opts := []log.Option{
+		log.ColorOption(true),
+		log.TimeFormatOption(time.Kitchen),
+	}
+
+	logger := log.NewLogger(dst, opts...)
+	return &loggerImpl{logger}
 }
