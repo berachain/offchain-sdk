@@ -4,8 +4,9 @@ import (
 	"io"
 	"time"
 
-	"cosmossdk.io/log"
 	"github.com/rs/zerolog"
+
+	"cosmossdk.io/log"
 )
 
 // Logger is the interface for the logger. It's based on cosmossdk.io/log.
