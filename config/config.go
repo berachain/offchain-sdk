@@ -22,5 +22,5 @@ type Config[C any] struct {
 	Server server.Config
 
 	// Log Config
-	Log log.LogConfig
+	Log log.Config
 }

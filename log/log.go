@@ -35,7 +35,7 @@ type Logger interface {
 	Impl() any
 }
 
-type LogConfig struct {
+type Config struct {
 	Format string
 	Level  string
 }
@@ -51,7 +51,7 @@ func (l *loggerImpl) With(keyVals ...any) Logger {
 	return &loggerImpl{logger}
 }
 
-func NewWithCfg(dst io.Writer, runner string, cfg LogConfig) Logger {
+func NewWithCfg(dst io.Writer, runner string, cfg Config) Logger {
 	level, err := zerolog.ParseLevel(cfg.Level)
 	if err != nil {
 		level = zerolog.DebugLevel
