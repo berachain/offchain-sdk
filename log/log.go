@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"cosmossdk.io/log"
+	"github.com/rs/zerolog"
 )
 
 // Logger is the interface for the logger. It's based on cosmossdk.io/log.
@@ -34,6 +35,11 @@ type Logger interface {
 	Impl() any
 }
 
+type LogConfig struct {
+	Format string
+	Level  string
+}
+
 // loggerImpl is the implementation of the Logger interface.
 type loggerImpl struct {
 	log.Logger
@@ -43,6 +49,24 @@ type loggerImpl struct {
 func (l *loggerImpl) With(keyVals ...any) Logger {
 	logger := l.Logger.With(keyVals...)
 	return &loggerImpl{logger}
+}
+
+func NewWithCfg(dst io.Writer, runner string, cfg LogConfig) Logger {
+	level, err := zerolog.ParseLevel(cfg.Level)
+	if err != nil {
+		level = zerolog.DebugLevel
+	}
+	opts := []log.Option{
+		log.LevelOption(level),
+		log.TimeFormatOption(time.RFC3339),
+	}
+	if cfg.Format == "json" {
+		opts = append(opts, log.OutputJSONOption())
+	} else {
+		opts = append(opts, log.ColorOption(true))
+	}
+	logger := log.NewLogger(dst, opts...)
+	return &loggerImpl{logger.With("namespace", runner)}
 }
 
 // NewLogger creates a new logger with the given writer and runner name.

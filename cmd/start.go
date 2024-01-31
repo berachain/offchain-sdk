@@ -37,7 +37,6 @@ func StartCmdWithOptions[C any](
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create a context that will be cancelled when the user presses Ctrl+C
 			// (process receives termination signal).
-			logger := log.NewBlankLogger(cmd.OutOrStdout())
 			ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
 
 			configPath, err := cmd.Flags().GetString(flags.ConfigPath)
@@ -66,6 +65,13 @@ func StartCmdWithOptions[C any](
 			}
 
 			ab := baseapp.NewAppBuilder(app.Name())
+
+			var logger log.Logger
+			if cfg.Log.Level != "" || cfg.Log.Format != ""{
+				logger = log.NewWithCfg(cmd.OutOrStdout(), app.Name(), cfg.Log)
+			} else {
+				logger = log.NewBlankLogger(cmd.OutOrStdout())
+			}
 
 			// // Maybe move this to BuildApp?
 			// ethClient := eth.NewHealthCheckedClient(&cfg.Eth)

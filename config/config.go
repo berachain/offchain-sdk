@@ -2,6 +2,7 @@ package config
 
 import (
 	"github.com/berachain/offchain-sdk/client/eth"
+	"github.com/berachain/offchain-sdk/log"
 	"github.com/berachain/offchain-sdk/server"
 )
 
@@ -19,4 +20,7 @@ type Config[C any] struct {
 
 	// Server Config
 	Server server.Config
+
+	// Log Config
+	Log log.LogConfig
 }
