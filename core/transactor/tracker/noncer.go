@@ -19,22 +19,24 @@ type Noncer struct {
 	inFlight  *skiplist.SkipList // The list of nonces currently in flight.
 	mu        sync.Mutex         // Mutex for thread-safe operations.
 
+	pendingNonceTimeout  time.Duration
 	latestConfirmedNonce uint64
 }
 
 // NewNoncer creates a new Noncer instance.
-func NewNoncer(sender common.Address) *Noncer {
+func NewNoncer(sender common.Address, pendingNonceTimeout time.Duration) *Noncer {
 	return &Noncer{
-		sender:   sender,
-		acquired: skiplist.New(skiplist.Uint64),
-		inFlight: skiplist.New(skiplist.Uint64),
-		mu:       sync.Mutex{},
+		sender:              sender,
+		acquired:            skiplist.New(skiplist.Uint64),
+		inFlight:            skiplist.New(skiplist.Uint64),
+		mu:                  sync.Mutex{},
+		pendingNonceTimeout: pendingNonceTimeout,
 	}
 }
 
 func (n *Noncer) RefreshLoop(ctx context.Context) {
 	n.refreshConfirmedNonce(ctx)
-	timer := time.NewTimer(5 * time.Second) //nolint:gomnd // fix later.
+	timer := time.NewTimer(5 * time.Second) //nolint:gomnd // should be once per block.
 	for {
 		select {
 		case <-ctx.Done():
@@ -46,6 +48,7 @@ func (n *Noncer) RefreshLoop(ctx context.Context) {
 }
 
 func (n *Noncer) refreshConfirmedNonce(ctx context.Context) {
+	// TODO: try pending nonce here? (if some are already backed up in mempool)
 	latestConfirmedNonce, err := n.ethClient.NonceAt(ctx, n.sender, nil)
 	if err != nil {
 		return
@@ -90,8 +93,8 @@ func (n *Noncer) Acquire(ctx context.Context) (uint64, error) {
 		}
 	} else {
 		var err error
-		// TODO: Network call holds the lock for at most 5s, which is not ideal.
-		ctxWithTimeout, cancel := context.WithTimeout(ctx, 5*time.Second) //nolint:gomnd // fix.
+		// TODO: Network call holds the lock for at most the pending timeout, which is not ideal.
+		ctxWithTimeout, cancel := context.WithTimeout(ctx, n.pendingNonceTimeout)
 		nextNonce, err = n.ethClient.PendingNonceAt(ctxWithTimeout, n.sender)
 		cancel()
 		if err != nil {

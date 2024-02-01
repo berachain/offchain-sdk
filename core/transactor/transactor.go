@@ -39,7 +39,7 @@ type TxrV2 struct {
 func NewTransactor(
 	cfg Config, queue queuetypes.Queue[*types.TxRequest], signer kmstypes.TxSigner,
 ) *TxrV2 {
-	noncer := tracker.NewNoncer(signer.Address())
+	noncer := tracker.NewNoncer(signer.Address(), cfg.PendingNonceTimeout)
 	factory := factory.New(
 		noncer, signer,
 		factory.NewMulticall3Batcher(common.HexToAddress(cfg.Multicall3Address)),
@@ -59,7 +59,7 @@ func NewTransactor(
 	}
 
 	// Register the tracker as a subscriber to the tracker.
-	ch := make(chan *tracker.InFlightTx, 1024) //nolint:gomnd // its okay.
+	ch := make(chan *tracker.InFlightTx, cfg.MaxInFlightBacklog)
 	go func() {
 		// TODO: handle error
 		_ = tracker.NewSubscription(txr, txr.logger).Start(context.Background(), ch)
@@ -67,7 +67,7 @@ func NewTransactor(
 	dispatcher.Subscribe(ch)
 
 	// Register the sender as a subscriber to the tracker.
-	ch2 := make(chan *tracker.InFlightTx, 1024) //nolint:gomnd // its okay.
+	ch2 := make(chan *tracker.InFlightTx, cfg.MaxInFlightBacklog)
 	go func() {
 		// TODO: handle error
 		_ = tracker.NewSubscription(txr.sender, txr.logger).Start(context.Background(), ch2)
@@ -83,9 +83,8 @@ func (t *TxrV2) RegistryKey() string {
 }
 
 // SubscribeTxResults sends the tx results (inflight) to the given channel.
-func (t *TxrV2) SubscribeTxResults(
-	ctx context.Context, subscriber tracker.Subscriber, ch chan *tracker.InFlightTx,
-) {
+func (t *TxrV2) SubscribeTxResults(ctx context.Context, subscriber tracker.Subscriber) {
+	ch := make(chan *tracker.InFlightTx, t.cfg.MaxInFlightBacklog)
 	go func() {
 		// TODO: handle error
 		_ = tracker.NewSubscription(subscriber, t.logger).Start(ctx, ch)
