@@ -33,17 +33,16 @@ func NewNoncer(sender common.Address) *Noncer {
 }
 
 func (n *Noncer) RefreshLoop(ctx context.Context) {
-	go func() {
-		timer := time.NewTimer(5 * time.Second) //nolint:gomnd // fix later.
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-timer.C:
-				n.refreshConfirmedNonce(ctx)
-			}
+	n.refreshConfirmedNonce(ctx)
+	timer := time.NewTimer(5 * time.Second) //nolint:gomnd // fix later.
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-timer.C:
+			n.refreshConfirmedNonce(ctx)
 		}
-	}()
+	}
 }
 
 func (n *Noncer) refreshConfirmedNonce(ctx context.Context) {
@@ -91,8 +90,10 @@ func (n *Noncer) Acquire(ctx context.Context) (uint64, error) {
 		}
 	} else {
 		var err error
-		// TODO: doing a network call while holding the lock is a bit dangerous
-		nextNonce, err = n.ethClient.PendingNonceAt(ctx, n.sender)
+		// TODO: Network call holds the lock for at most 5s, which is not ideal.
+		ctxWithTimeout, cancel := context.WithTimeout(ctx, 5*time.Second) //nolint:gomnd // fix.
+		nextNonce, err = n.ethClient.PendingNonceAt(ctxWithTimeout, n.sender)
+		cancel()
 		if err != nil {
 			return 0, err
 		}
