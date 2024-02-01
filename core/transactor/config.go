@@ -9,7 +9,6 @@ type Config struct {
 	TxReceiptTimeout    time.Duration // how long to wait for a tx to be mined
 	PendingNonceTimeout time.Duration // how long to wait for the pending nonce
 	EmtpyQueueDelay     time.Duration // how long to wait if the queue is empty
-	MaxInFlightBacklog  int           // how many can accumulate in the inflight queue
 	TxBatchSize         int
 	TxBatchTimeout      time.Duration // how long to wait for a batch to be flushed
 	CallTxTimeout       time.Duration // how long to wait for a eth call result

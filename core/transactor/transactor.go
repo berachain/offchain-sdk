@@ -18,8 +18,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-// awsMaxBatchSize is the max batch size for AWS.
-const awsMaxBatchSize = 10
+// TODO: find a more appropriate value.
+const inflightChanSize = 1024
 
 // TxrV2 is the main transactor object.
 type TxrV2 struct {
@@ -59,7 +59,7 @@ func NewTransactor(
 	}
 
 	// Register the tracker as a subscriber to the tracker.
-	ch := make(chan *tracker.InFlightTx, cfg.MaxInFlightBacklog)
+	ch := make(chan *tracker.InFlightTx, inflightChanSize)
 	go func() {
 		// TODO: handle error
 		_ = tracker.NewSubscription(txr, txr.logger).Start(context.Background(), ch)
@@ -67,7 +67,7 @@ func NewTransactor(
 	dispatcher.Subscribe(ch)
 
 	// Register the sender as a subscriber to the tracker.
-	ch2 := make(chan *tracker.InFlightTx, cfg.MaxInFlightBacklog)
+	ch2 := make(chan *tracker.InFlightTx, inflightChanSize)
 	go func() {
 		// TODO: handle error
 		_ = tracker.NewSubscription(txr.sender, txr.logger).Start(context.Background(), ch2)
@@ -84,7 +84,7 @@ func (t *TxrV2) RegistryKey() string {
 
 // SubscribeTxResults sends the tx results (inflight) to the given channel.
 func (t *TxrV2) SubscribeTxResults(ctx context.Context, subscriber tracker.Subscriber) {
-	ch := make(chan *tracker.InFlightTx, t.cfg.MaxInFlightBacklog)
+	ch := make(chan *tracker.InFlightTx, inflightChanSize)
 	go func() {
 		// TODO: handle error
 		_ = tracker.NewSubscription(subscriber, t.logger).Start(ctx, ch)
@@ -170,11 +170,9 @@ func (t *TxrV2) retrieveBatch(_ context.Context) ([]string, []*types.TxRequest) 
 	var retMsgIDs []string
 	startTime := time.Now()
 
-	// Retrieve the smaller of the aws max batch size or the delta between the max total batch size.
+	// Retrieve the delta between the max total batch size.
 	for len(batch) < t.cfg.TxBatchSize && time.Since(startTime) < t.cfg.TxBatchTimeout {
-		msgIDs, txReq, err := t.requests.ReceiveMany(
-			int32(min(awsMaxBatchSize, t.cfg.TxBatchSize-len(batch))),
-		)
+		msgIDs, txReq, err := t.requests.ReceiveMany(int32(t.cfg.TxBatchSize - len(batch)))
 		if err != nil {
 			t.logger.Error("failed to receive tx request", "err", err)
 			continue
