@@ -48,11 +48,10 @@ func (s *Sender) SendTransaction(ctx context.Context, tx *coretypes.Transaction)
 	sCtx := sdk.UnwrapContext(ctx) // unwrap the context to get the SDK context
 	ethClient := sCtx.Chain()      // get the Ethereum client from the SDK context
 
-	if err := ethClient.SendTransaction(ctx, tx); err != nil { // if sending the transaction fails
-		sCtx.Logger().Error(
-			"failed to send tx", "hash", tx.Hash(), "err", err, // log the error
-		)
-		go s.retryTxWithPolicy(sCtx, tx, err) // retry according to the retry policy
+	if err := ethClient.SendTransaction(ctx, tx); err != nil {
+		sCtx.Logger().Error("failed to send tx", "hash", tx.Hash(), "err", err)
+		// if sending the transaction fails, retry according to the retry policy
+		go s.retryTxWithPolicy(sCtx, tx, err)
 		return err
 	}
 
