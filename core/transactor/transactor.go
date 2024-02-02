@@ -18,8 +18,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-// awsMaxBatchSize is the max batch size for AWS.
-const awsMaxBatchSize = 10
+// TODO: find a more appropriate value.
+const inflightChanSize = 1024
 
 // TxrV2 is the main transactor object.
 type TxrV2 struct {
@@ -39,7 +39,7 @@ type TxrV2 struct {
 func NewTransactor(
 	cfg Config, queue queuetypes.Queue[*types.TxRequest], signer kmstypes.TxSigner,
 ) *TxrV2 {
-	noncer := tracker.NewNoncer(signer.Address())
+	noncer := tracker.NewNoncer(signer.Address(), cfg.PendingNonceTimeout)
 	factory := factory.New(
 		noncer, signer,
 		factory.NewMulticall3Batcher(common.HexToAddress(cfg.Multicall3Address)),
@@ -59,7 +59,7 @@ func NewTransactor(
 	}
 
 	// Register the tracker as a subscriber to the tracker.
-	ch := make(chan *tracker.InFlightTx, 1024) //nolint:gomnd // its okay.
+	ch := make(chan *tracker.InFlightTx, inflightChanSize)
 	go func() {
 		// TODO: handle error
 		_ = tracker.NewSubscription(txr, txr.logger).Start(context.Background(), ch)
@@ -67,7 +67,7 @@ func NewTransactor(
 	dispatcher.Subscribe(ch)
 
 	// Register the sender as a subscriber to the tracker.
-	ch2 := make(chan *tracker.InFlightTx, 1024) //nolint:gomnd // its okay.
+	ch2 := make(chan *tracker.InFlightTx, inflightChanSize)
 	go func() {
 		// TODO: handle error
 		_ = tracker.NewSubscription(txr.sender, txr.logger).Start(context.Background(), ch2)
@@ -84,7 +84,7 @@ func (t *TxrV2) RegistryKey() string {
 
 // SubscribeTxResults sends the tx results (inflight) to the given channel.
 func (t *TxrV2) SubscribeTxResults(subscriber tracker.Subscriber) {
-	ch := make(chan *tracker.InFlightTx, 1024) //nolint:gomnd // its okay.
+	ch := make(chan *tracker.InFlightTx, inflightChanSize)
 	go func() {
 		// TODO: handle error
 		_ = tracker.NewSubscription(subscriber, t.logger).Start(context.Background(), ch)
@@ -131,9 +131,7 @@ func (t *TxrV2) Start(ctx context.Context) {
 
 // mainLoop is the main transaction sending / batching loop.
 func (t *TxrV2) mainLoop(ctx context.Context) {
-	if err := t.noncer.InitializeExistingTxs(ctx); err != nil {
-		panic(err)
-	}
+	t.noncer.MustInitializeExistingTxs(ctx)
 
 	for {
 		select {
@@ -172,11 +170,9 @@ func (t *TxrV2) retrieveBatch(_ context.Context) ([]string, []*types.TxRequest) 
 	var retMsgIDs []string
 	startTime := time.Now()
 
-	// Retrieve the smaller of the aws max batch size or the delta between the max total batch size.
+	// Retrieve the delta between the max total batch size.
 	for len(batch) < t.cfg.TxBatchSize && time.Since(startTime) < t.cfg.TxBatchTimeout {
-		msgIDs, txReq, err := t.requests.ReceiveMany(
-			int32(min(awsMaxBatchSize, t.cfg.TxBatchSize-len(batch))),
-		)
+		msgIDs, txReq, err := t.requests.ReceiveMany(int32(t.cfg.TxBatchSize - len(batch)))
 		if err != nil {
 			t.logger.Error("failed to receive tx request", "err", err)
 			continue

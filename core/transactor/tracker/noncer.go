@@ -19,39 +19,31 @@ type Noncer struct {
 	inFlight  *skiplist.SkipList // The list of nonces currently in flight.
 	mu        sync.Mutex         // Mutex for thread-safe operations.
 
+	pendingNonceTimeout  time.Duration
 	latestConfirmedNonce uint64
 }
 
 // NewNoncer creates a new Noncer instance.
-func NewNoncer(sender common.Address) *Noncer {
+func NewNoncer(sender common.Address, pendingNonceTimeout time.Duration) *Noncer {
 	return &Noncer{
-		sender:   sender,
-		acquired: skiplist.New(skiplist.Uint64),
-		inFlight: skiplist.New(skiplist.Uint64),
-		mu:       sync.Mutex{},
+		sender:              sender,
+		acquired:            skiplist.New(skiplist.Uint64),
+		inFlight:            skiplist.New(skiplist.Uint64),
+		mu:                  sync.Mutex{},
+		pendingNonceTimeout: pendingNonceTimeout,
 	}
 }
 
 func (n *Noncer) RefreshLoop(ctx context.Context) {
-	go func() {
-		timer := time.NewTimer(5 * time.Second) //nolint:gomnd // fix later.
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-timer.C:
-				n.refreshConfirmedNonce(ctx)
-			}
+	timer := time.NewTimer(5 * time.Second) //nolint:gomnd // should be once per block.
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-timer.C:
+			n.latestConfirmedNonce, _ = n.ethClient.NonceAt(ctx, n.sender, nil)
 		}
-	}()
-}
-
-func (n *Noncer) refreshConfirmedNonce(ctx context.Context) {
-	latestConfirmedNonce, err := n.ethClient.NonceAt(ctx, n.sender, nil)
-	if err != nil {
-		return
 	}
-	n.latestConfirmedNonce = latestConfirmedNonce
 }
 
 // Start initiates the nonce synchronization.
@@ -59,9 +51,18 @@ func (n *Noncer) SetClient(ethClient eth.Client) {
 	n.ethClient = ethClient
 }
 
-func (n *Noncer) InitializeExistingTxs(ctx context.Context) error {
-	_, err := n.ethClient.TxPoolContent(ctx)
-	return err
+// MustInitializeExistingTxs ensures we can read into the mempool for checking nonces later on.
+func (n *Noncer) MustInitializeExistingTxs(ctx context.Context) {
+	var err error
+
+	// use pending nonce to initialize if some txs are already backed up in mempool
+	if n.latestConfirmedNonce, err = n.ethClient.PendingNonceAt(ctx, n.sender); err != nil {
+		panic(err)
+	}
+
+	if _, err = n.ethClient.TxPoolContent(ctx); err != nil {
+		panic(err)
+	}
 }
 
 // Acquire gets the next available nonce.
@@ -91,8 +92,10 @@ func (n *Noncer) Acquire(ctx context.Context) (uint64, error) {
 		}
 	} else {
 		var err error
-		// TODO: doing a network call while holding the lock is a bit dangerous
-		nextNonce, err = n.ethClient.PendingNonceAt(ctx, n.sender)
+		// TODO: Network call holds the lock for at most the pending timeout, which is not ideal.
+		ctxWithTimeout, cancel := context.WithTimeout(ctx, n.pendingNonceTimeout)
+		nextNonce, err = n.ethClient.PendingNonceAt(ctxWithTimeout, n.sender)
+		cancel()
 		if err != nil {
 			return 0, err
 		}
