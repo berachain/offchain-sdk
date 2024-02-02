@@ -83,12 +83,11 @@ func (t *TxrV2) RegistryKey() string {
 }
 
 // SubscribeTxResults sends the tx results (inflight) to the given channel.
-func (t *TxrV2) SubscribeTxResults(
-	ctx context.Context, subscriber tracker.Subscriber, ch chan *tracker.InFlightTx,
-) {
+func (t *TxrV2) SubscribeTxResults(subscriber tracker.Subscriber) {
+	ch := make(chan *tracker.InFlightTx, 1024) //nolint:gomnd // its okay.
 	go func() {
 		// TODO: handle error
-		_ = tracker.NewSubscription(subscriber, t.logger).Start(ctx, ch)
+		_ = tracker.NewSubscription(subscriber, t.logger).Start(context.Background(), ch)
 	}()
 	t.dispatcher.Subscribe(ch)
 }
@@ -157,7 +156,9 @@ func (t *TxrV2) mainLoop(ctx context.Context) {
 			go func() {
 				defer t.mu.Unlock()
 				if err := t.sendAndTrack(ctx, msgIDs, batch...); err != nil {
-					t.logger.Error("failed to process batch", "err", err)
+					t.logger.Error(
+						"failed to process batch", "msgs", msgIDs, "err", err,
+					)
 				}
 			}()
 		}
@@ -202,7 +203,7 @@ func (t *TxrV2) sendAndTrack(
 		return err
 	}
 
-	// t.logger.Debug("📡 sent transaction", "tx-hash", tx.Hash().Hex(), "tx-reqs", len(batch))
+	t.logger.Debug("📡 sent transaction", "tx-hash", tx.Hash().Hex(), "tx-reqs", len(batch))
 
 	// Spin off a goroutine to track the transaction.
 	t.tracker.Track(

@@ -254,6 +254,9 @@ func withRetry(task func() bool, logger log.Logger) func() {
 			if retry := task(); retry {
 				// Exponential backoff with jitter.
 				jitter, _ := rand.Int(rand.Reader, big.NewInt(jitterRange))
+				if jitter == nil {
+					jitter = new(big.Int)
+				}
 				sleep := backoff + time.Duration(jitter.Int64())*time.Millisecond
 				logger.Info(fmt.Sprintf("retrying task in %s...", sleep))
 				time.Sleep(sleep)

@@ -19,10 +19,12 @@ type HealthCheckedClient struct {
 	mu                  sync.Mutex
 }
 
-func NewHealthCheckedClient(logger log.Logger) *HealthCheckedClient {
+func NewHealthCheckedClient(
+	healthCheckInterval time.Duration, logger log.Logger,
+) *HealthCheckedClient {
 	return &HealthCheckedClient{
 		logger:              logger,
-		healthCheckInterval: 5 * time.Second, //nolint:gomnd // todo paramaterize.
+		healthCheckInterval: healthCheckInterval,
 	}
 }
 
