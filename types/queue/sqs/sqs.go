@@ -14,6 +14,9 @@ import (
 	"github.com/berachain/offchain-sdk/types/queue/types"
 )
 
+// awsMaxBatchSize is the max batch size for AWS.
+const awsMaxBatchSize = 10
+
 // SQSClient is an interface that defines the necessary methods for interacting
 // with the SQS service.
 type Client interface {
@@ -123,6 +126,10 @@ func (q *Queue[T]) Receive() (string, T, bool) {
 }
 
 func (q *Queue[T]) ReceiveMany(num int32) ([]string, []T, error) {
+	if num > awsMaxBatchSize {
+		num = awsMaxBatchSize
+	}
+
 	ts := make([]T, 0)
 	msgIDs := make([]string, 0)
 
