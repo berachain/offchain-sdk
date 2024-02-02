@@ -9,7 +9,7 @@ Interval = "1s"
 EthHTTPURLs = ["http://localhost:10545"]
 EthWSURLs = ["ws://localhost:10546"]
 DefaultTimeout = "5s"
-HealthCheckInverval = "5s"
+HealthCheckInterval = "5s"
 
 [Server.HTTP]
 Port = 8080
