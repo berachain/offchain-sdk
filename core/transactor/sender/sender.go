@@ -51,7 +51,7 @@ func (s *Sender) SendTransaction(ctx context.Context, tx *coretypes.Transaction)
 		sCtx.Logger().Error(
 			"failed to send tx", "hash", tx.Hash(), "err", err, // log the error
 		)
-		go s.retryTxWithPolicy(sCtx, tx, err)
+		go s.retryTxWithPolicy(sCtx, tx, err) // retry according to the retry policy
 		return err
 	}
 
@@ -75,26 +75,42 @@ func (s *Sender) OnRevert(*tracker.InFlightTx, *coretypes.Receipt) error {
 // transaction is replaced with a new transaction with a higher gas price as defined by the
 // txReplacementPolicy.
 func (s *Sender) OnStale(ctx context.Context, tx *tracker.InFlightTx) error {
-	replacementTx, err := s.factory.SignTransaction(s.txReplacementPolicy(ctx, tx.Transaction))
-	if err != nil {
-		sdk.UnwrapContext(ctx).Logger().Error(
-			"failed to sign replacement transaction", "err", err)
-		return err
-	}
-	return s.SendTransaction(ctx, replacementTx)
+	return s.retryTx(sdk.UnwrapContext(ctx), tx.Transaction)
 }
 
 // OnError is called when an error occurs while sending a transaction. In this case, the
 // transaction is replaced with a new transaction with a higher gas price as defined by
 // the txReplacementPolicy.
-// TODO: make this more robust probably.
 func (s *Sender) OnError(ctx context.Context, tx *tracker.InFlightTx, err error) {
 	sCtx := sdk.UnwrapContext(ctx)
-	s.handleNonceTooLow(sCtx, tx, err)
+
+	// Assign the new transaction to the in-flight transaction.
+	tx.Transaction = s.handleNonceTooLow(sCtx, tx.Transaction, err)
+	tx.Receipt = nil
+
+	// The original tx was never sent so we remove from the in-flight list.
+	s.noncer.RemoveInFlight(tx)
 
 	_ = s.retryTx(sCtx, tx.Transaction)
 }
 
+// retryTxWithPolicy retries the tx according to the retry policy. If the nonce is too low, builds
+// a new tx with the latest nonce from the factory & noncer.
+func (s *Sender) retryTxWithPolicy(sCtx *sdk.Context, tx *coretypes.Transaction, err error) {
+	tx = s.handleNonceTooLow(sCtx, tx, err)
+
+	for {
+		retry, backoff := s.retryPolicy(sCtx, tx, err)
+		if !retry {
+			return
+		}
+
+		time.Sleep(backoff) // wait for the backoff time
+		err = s.retryTx(sCtx, tx)
+	}
+}
+
+// retryTx manages the logic for replacing a tx according to the replacement policy and resending.
 func (s *Sender) retryTx(sCtx *sdk.Context, tx *coretypes.Transaction) error {
 	replacementTx := s.txReplacementPolicy(sCtx, tx)
 	sCtx.Logger().Debug(
@@ -113,36 +129,27 @@ func (s *Sender) retryTx(sCtx *sdk.Context, tx *coretypes.Transaction) error {
 	return s.SendTransaction(sCtx, signedTx)
 }
 
-func (s *Sender) retryTxWithPolicy(sCtx *sdk.Context, tx *coretypes.Transaction, err error) {
-	for {
-		retry, backoff := s.retryPolicy(sCtx, tx, err)
-		if !retry {
-			return
-		}
-
-		time.Sleep(backoff) // wait for the backoff time
-		err = s.retryTx(sCtx, tx)
-	}
-}
-
-func (s *Sender) handleNonceTooLow(sCtx *sdk.Context, tx *tracker.InFlightTx, err error) {
+// handleNonceTooLow will replace a transaction with a new one if the nonce is too low.
+func (s *Sender) handleNonceTooLow(
+	sCtx *sdk.Context, tx *coretypes.Transaction, err error,
+) *coretypes.Transaction {
 	if !errors.Is(err, core.ErrNonceTooLow) {
-		return
+		return tx
 	}
 
 	ethTx, buildErr := s.factory.BuildTransaction(sCtx, &types.TxRequest{
-		To:    tx.To(),
-		Value: tx.Value(),
-		Data:  tx.Data(),
+		To:        tx.To(),
+		Gas:       tx.Gas(),
+		GasPrice:  tx.GasPrice(),
+		GasFeeCap: tx.GasFeeCap(),
+		GasTipCap: tx.GasTipCap(),
+		Value:     tx.Value(),
+		Data:      tx.Data(),
 	})
 	if buildErr != nil {
 		sCtx.Logger().Error("failed to build replacement transaction", "err", err)
-		return
+		return tx
 	}
-	// The original tx was never sent so we remove from the in-flight list.
-	s.noncer.RemoveInFlight(tx)
 
-	// Assign the new transaction to the in-flight transaction.
-	tx.Transaction = ethTx
-	tx.Receipt = nil
+	return ethTx
 }

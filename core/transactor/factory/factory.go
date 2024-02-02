@@ -112,13 +112,7 @@ func (f *Factory) BuildTransaction(
 	if txReq.Gas > 0 {
 		txData.Gas = txReq.Gas
 	} else {
-		if txData.Gas, err = ethClient.EstimateGas(ctx, ethereum.CallMsg{
-			From:      f.signerAddress,
-			To:        txData.To,
-			GasFeeCap: txData.GasFeeCap,
-			Value:     txData.Value,
-			Data:      txData.Data,
-		}); err != nil {
+		if txData.Gas, err = ethClient.EstimateGas(ctx, ethereum.CallMsg(*txReq)); err != nil {
 			return nil, err
 		}
 	}
