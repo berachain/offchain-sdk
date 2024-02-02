@@ -15,9 +15,10 @@ type CancellableContext interface {
 
 type Context struct {
 	context.Context
-	chain  eth.Client
-	logger log.Logger
-	db     ethdb.KeyValueStore
+	chain    eth.Client
+	logger   log.Logger
+	db       ethdb.KeyValueStore
+	connPool eth.ConnectionPool
 }
 
 // UnwrapContext unwraps the sdk context.
@@ -59,4 +60,8 @@ func (c *Context) Logger() log.Logger {
 
 func (c *Context) DB() ethdb.KeyValueStore {
 	return c.db
+}
+
+func (c *Context) ConnectionPool() eth.ConnectionPool {
+	return c.connPool
 }
