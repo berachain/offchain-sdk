@@ -154,9 +154,7 @@ func (t *TxrV2) mainLoop(ctx context.Context) {
 			go func() {
 				defer t.mu.Unlock()
 				if err := t.sendAndTrack(ctx, msgIDs, batch...); err != nil {
-					t.logger.Error(
-						"failed to process batch", "msgs", msgIDs, "err", err,
-					)
+					t.logger.Error("failed to process batch", "msgs", msgIDs, "err", err)
 				}
 			}()
 		}
