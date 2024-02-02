@@ -131,9 +131,7 @@ func (t *TxrV2) Start(ctx context.Context) {
 
 // mainLoop is the main transaction sending / batching loop.
 func (t *TxrV2) mainLoop(ctx context.Context) {
-	if err := t.noncer.InitializeExistingTxs(ctx); err != nil {
-		panic(err)
-	}
+	t.noncer.MustInitializeExistingTxs(ctx)
 
 	for {
 		select {
