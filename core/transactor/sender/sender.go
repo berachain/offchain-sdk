@@ -3,6 +3,7 @@ package sender
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/berachain/offchain-sdk/core/transactor/tracker"
@@ -34,10 +35,10 @@ type Sender struct {
 // New creates a new Sender with default replacement and retry policies.
 func New(factory Factory, noncer Noncer) *Sender {
 	return &Sender{
-		noncer:              noncer,                     // noncer to acquire nonces
-		factory:             factory,                    // factory to sign transactions
-		txReplacementPolicy: DefaultTxReplacementPolicy, // default transaction replacement policy
-		retryPolicy:         DefaultRetryPolicy,         // default retry policy
+		noncer:              noncer,                      // noncer to acquire nonces
+		factory:             factory,                     // factory to sign transactions
+		txReplacementPolicy: DefaultTxReplacementPolicy,  // default tx replacement policy
+		retryPolicy:         NewExponentialRetryPolicy(), // exponential backoff retry policy
 	}
 }
 
@@ -47,27 +48,10 @@ func (s *Sender) SendTransaction(ctx context.Context, tx *coretypes.Transaction)
 	sCtx := sdk.UnwrapContext(ctx) // unwrap the context to get the SDK context
 	ethClient := sCtx.Chain()      // get the Ethereum client from the SDK context
 
-	// TODO: needs to be resigned by factory.
-	// TODO: this returns the revert error message, handle it.
-	if err := ethClient.SendTransaction(ctx, tx); err != nil { // if sending the transaction fails
-		sCtx.Logger().Error(
-			"failed to send tx transaction", "hash", tx.Hash(), "err", err, // log the error
-		)
-
-		// Send the replacement transaction.
-		price := tx.GasPrice()
-		tx = s.txReplacementPolicy(ctx, tx)
-		sCtx.Logger().Info(
-			"retrying with new gas limit", "old", price, "new", tx.GasPrice(), "nonce", tx.Nonce(),
-		)
-		if retry, backoff := s.retryPolicy(ctx, tx, err); retry {
-			time.Sleep(backoff)                               // wait for the backoff time
-			if err = s.SendTransaction(ctx, tx); err != nil { // retry sending the transaction
-				return err // if it fails again, return the error
-			}
-		}
-
-		// if the retry policy does not allow for a retry, return the error
+	if err := ethClient.SendTransaction(ctx, tx); err != nil {
+		sCtx.Logger().Error("failed to send tx", "hash", tx.Hash(), "err", err)
+		// if sending the transaction fails, retry according to the retry policy
+		go s.retryTxWithPolicy(sCtx, tx, err)
 		return err
 	}
 
@@ -91,48 +75,81 @@ func (s *Sender) OnRevert(*tracker.InFlightTx, *coretypes.Receipt) error {
 // transaction is replaced with a new transaction with a higher gas price as defined by the
 // txReplacementPolicy.
 func (s *Sender) OnStale(ctx context.Context, tx *tracker.InFlightTx) error {
-	replacementTx, err := s.factory.SignTransaction(s.txReplacementPolicy(ctx, tx.Transaction))
-	if err != nil {
-		sdk.UnwrapContext(ctx).Logger().Error(
-			"failed to sign replacement transaction", "err", err)
-		return err
-	}
-	return s.SendTransaction(ctx, replacementTx)
+	return s.retryTx(sdk.UnwrapContext(ctx), tx.Transaction)
 }
 
 // OnError is called when an error occurs while sending a transaction. In this case, the
 // transaction is replaced with a new transaction with a higher gas price as defined by
 // the txReplacementPolicy.
-// TODO: make this more robust probably.
 func (s *Sender) OnError(ctx context.Context, tx *tracker.InFlightTx, err error) {
-	if errors.Is(err, core.ErrNonceTooLow) {
-		ethTx, buildErr := s.factory.BuildTransaction(ctx, &types.TxRequest{
-			To:    tx.To(),
-			Value: tx.Value(),
-			Data:  tx.Data(),
-		})
-		if buildErr != nil {
-			sdk.UnwrapContext(ctx).Logger().Error(
-				"failed to build replacement transaction", "err", err)
+	sCtx := sdk.UnwrapContext(ctx)
+
+	// Assign the new transaction to the in-flight transaction.
+	tx.Transaction = s.handleNonceTooLow(sCtx, tx.Transaction, err)
+	tx.Receipt = nil
+
+	// The original tx was never sent so we remove from the in-flight list.
+	s.noncer.RemoveInFlight(tx)
+
+	_ = s.retryTx(sCtx, tx.Transaction)
+}
+
+// retryTxWithPolicy retries the tx according to the retry policy. If the nonce is too low, builds
+// a new tx with the latest nonce from the factory & noncer.
+func (s *Sender) retryTxWithPolicy(sCtx *sdk.Context, tx *coretypes.Transaction, err error) {
+	tx = s.handleNonceTooLow(sCtx, tx, err)
+
+	for {
+		retry, backoff := s.retryPolicy(sCtx, tx, err)
+		if !retry {
 			return
 		}
-		// The original tx was never sent so we remove from the in-flight list.
-		s.noncer.RemoveInFlight(tx)
 
-		// Assign the new transaction to the in-flight transaction.
-		tx.Transaction = ethTx
-		tx.Receipt = nil
+		time.Sleep(backoff) // wait for the backoff time
+		err = s.retryTx(sCtx, tx)
 	}
+}
 
-	replacementTx, err := s.factory.SignTransaction(s.txReplacementPolicy(ctx, tx.Transaction))
+// retryTx manages the logic for replacing a tx according to the replacement policy and resending.
+func (s *Sender) retryTx(sCtx *sdk.Context, tx *coretypes.Transaction) error {
+	replacementTx := s.txReplacementPolicy(sCtx, tx)
+	sCtx.Logger().Debug(
+		"retrying with new gas and nonce",
+		"old", tx.GasPrice(), "new", replacementTx.GasPrice(), "nonce", tx.Nonce(),
+	)
+
+	// sign the tx with the new gas price
+	signedTx, err := s.factory.SignTransaction(replacementTx)
 	if err != nil {
-		sdk.UnwrapContext(ctx).Logger().Error(
-			"failed to sign replacement transaction", "err", err)
-		return
+		sCtx.Logger().Error("failed to sign replacement transaction", "err", err)
+		return err
 	}
-	if err = s.SendTransaction(ctx, replacementTx); err != nil {
-		sdk.UnwrapContext(ctx).Logger().Error(
-			"failed to send replacement transaction", "err", err)
-		return
+
+	// retry sending the transaction
+	return s.SendTransaction(sCtx, signedTx)
+}
+
+// handleNonceTooLow will replace a transaction with a new one if the nonce is too low.
+func (s *Sender) handleNonceTooLow(
+	sCtx *sdk.Context, tx *coretypes.Transaction, err error,
+) *coretypes.Transaction {
+	if !(errors.Is(err, core.ErrNonceTooLow) || strings.Contains(err.Error(), "nonce too low")) {
+		return tx
 	}
+
+	ethTx, buildErr := s.factory.BuildTransaction(sCtx, &types.TxRequest{
+		To:        tx.To(),
+		Gas:       tx.Gas(),
+		GasPrice:  tx.GasPrice(),
+		GasFeeCap: tx.GasFeeCap(),
+		GasTipCap: tx.GasTipCap(),
+		Value:     tx.Value(),
+		Data:      tx.Data(),
+	})
+	if buildErr != nil {
+		sCtx.Logger().Error("failed to build replacement transaction", "err", err)
+		return tx
+	}
+
+	return ethTx
 }

@@ -154,7 +154,7 @@ func (t *TxrV2) mainLoop(ctx context.Context) {
 			go func() {
 				defer t.mu.Unlock()
 				if err := t.sendAndTrack(ctx, msgIDs, batch...); err != nil {
-					t.logger.Error("failed to process batch", "err", err)
+					t.logger.Error("failed to process batch", "msgs", msgIDs, "err", err)
 				}
 			}()
 		}
@@ -197,7 +197,7 @@ func (t *TxrV2) sendAndTrack(
 		return err
 	}
 
-	// t.logger.Debug("📡 sent transaction", "tx-hash", tx.Hash().Hex(), "tx-reqs", len(batch))
+	t.logger.Debug("📡 sent transaction", "tx-hash", tx.Hash().Hex(), "tx-reqs", len(batch))
 
 	// Spin off a goroutine to track the transaction.
 	t.tracker.Track(

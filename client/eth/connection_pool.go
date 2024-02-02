@@ -28,15 +28,18 @@ type ConnectionPoolImpl struct {
 }
 
 type ConnectionPoolConfig struct {
-	EthHTTPURLs    []string
-	EthWSURLs      []string
-	DefaultTimeout time.Duration
+	EthHTTPURLs         []string
+	EthWSURLs           []string
+	DefaultTimeout      time.Duration
+	HealthCheckInterval time.Duration
 }
 
 func DefaultConnectPoolConfig() *ConnectionPoolConfig {
 	return &ConnectionPoolConfig{
-		EthHTTPURLs: []string{"http://localhost:8545"},
-		EthWSURLs:   []string{"ws://localhost:8546"},
+		EthHTTPURLs:         []string{"http://localhost:8545"},
+		EthWSURLs:           []string{"ws://localhost:8546"},
+		DefaultTimeout:      5 * time.Second, //nolint:gomnd // fix later.
+		HealthCheckInterval: 5 * time.Second, //nolint:gomnd // fix later.
 	}
 }
 
@@ -87,14 +90,14 @@ func (c *ConnectionPoolImpl) Dial(string) error {
 
 func (c *ConnectionPoolImpl) DialContext(ctx context.Context, _ string) error {
 	for _, url := range c.config.EthHTTPURLs {
-		client := NewHealthCheckedClient(c.logger)
+		client := NewHealthCheckedClient(c.config.HealthCheckInterval, c.logger)
 		if err := client.DialContext(ctx, url); err != nil {
 			return err
 		}
 		c.cache.Add(url, client)
 	}
 	for _, url := range c.config.EthWSURLs {
-		client := NewHealthCheckedClient(c.logger)
+		client := NewHealthCheckedClient(c.config.HealthCheckInterval, c.logger)
 		if err := client.DialContext(ctx, url); err != nil {
 			return err
 		}
