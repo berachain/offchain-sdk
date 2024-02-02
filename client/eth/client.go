@@ -20,6 +20,7 @@ const (
 type Client interface {
 	DialContext(ctx context.Context, rawurl string) error
 	Close() error
+	Health() bool
 	Reader
 	Writer
 }
@@ -85,6 +86,11 @@ func (c *ExtendedEthClient) Close() error {
 	}
 	c.Close()
 	return nil
+}
+
+func (c *ExtendedEthClient) Health() bool {
+	_, err := c.ChainID(context.TODO())
+	return err == nil
 }
 
 // ==================================================================

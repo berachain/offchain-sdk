@@ -16,13 +16,6 @@ var (
 	ErrClientNotFound = errors.New("client not found")
 )
 
-// ChainProvider is an interface that groups the Reader, Writer, and ConnectionPool interfaces.
-type ChainProvider interface {
-	Reader
-	Writer
-	ConnectionPool
-}
-
 // ChainProviderImpl is an implementation of the ChainProvider interface.
 type ChainProviderImpl struct {
 	ConnectionPool
@@ -233,4 +226,15 @@ func (c *ChainProviderImpl) TxPoolContent(ctx context.Context) (
 		return client.TxPoolContent(ctx)
 	}
 	return nil, ErrClientNotFound
+}
+
+func (c *ChainProviderImpl) Health() bool {
+	httpOk, wsOk := false, false
+	if client, ok := c.GetHTTP(); ok {
+		httpOk = client.Healthy()
+	}
+	if client, ok := c.GetWS(); ok {
+		wsOk = client.Healthy()
+	}
+	return httpOk && wsOk
 }
