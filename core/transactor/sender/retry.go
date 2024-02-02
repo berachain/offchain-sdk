@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"math/big"
+	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -32,9 +33,13 @@ func NoRetryPolicy(context.Context, *coretypes.Transaction, error) (bool, time.D
 // retried.
 func NewExponentialRetryPolicy() RetryPolicy {
 	backoff := backoffStart
+	retriesMu := &sync.Mutex{}
 	retries := make(map[common.Hash]int)
 
-	return func(ctx context.Context, tx *coretypes.Transaction, err error) (bool, time.Duration) {
+	return func(ctx context.Context, tx *coretypes.Transaction, err error) (bool, time.Duration) {)
+		retriesMu.Lock()
+		defer retriesMu.Unlock()
+
 		txHash := tx.Hash()
 		if retries[txHash] >= maxRetriesPerTx {
 			delete(retries, txHash)
