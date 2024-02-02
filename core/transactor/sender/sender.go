@@ -3,6 +3,7 @@ package sender
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/berachain/offchain-sdk/core/transactor/tracker"
@@ -133,7 +134,7 @@ func (s *Sender) retryTx(sCtx *sdk.Context, tx *coretypes.Transaction) error {
 func (s *Sender) handleNonceTooLow(
 	sCtx *sdk.Context, tx *coretypes.Transaction, err error,
 ) *coretypes.Transaction {
-	if !errors.Is(err, core.ErrNonceTooLow) {
+	if !(errors.Is(err, core.ErrNonceTooLow) || strings.Contains(err.Error(), "nonce too low")) {
 		return tx
 	}
 
