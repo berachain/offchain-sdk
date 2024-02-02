@@ -38,8 +38,8 @@ func DefaultConnectPoolConfig() *ConnectionPoolConfig {
 	return &ConnectionPoolConfig{
 		EthHTTPURLs:         []string{"http://localhost:8545"},
 		EthWSURLs:           []string{"ws://localhost:8546"},
-		DefaultTimeout:      5 * time.Second,
-		HealthCheckInterval: 5 * time.Second,
+		DefaultTimeout:      5 * time.Second, //nolint:gomnd // fix later.
+		HealthCheckInterval: 5 * time.Second, //nolint:gomnd // fix later.
 	}
 }
 

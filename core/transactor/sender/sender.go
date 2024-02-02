@@ -92,7 +92,7 @@ func (s *Sender) OnError(ctx context.Context, tx *tracker.InFlightTx, err error)
 	sCtx := sdk.UnwrapContext(ctx)
 	s.handleNonceTooLow(sCtx, tx, err)
 
-	_ = s.retryTx(sCtx, tx.Transaction) //nolint:errcheck // the error is logged.
+	_ = s.retryTx(sCtx, tx.Transaction)
 }
 
 func (s *Sender) retryTx(sCtx *sdk.Context, tx *coretypes.Transaction) error {
@@ -120,8 +120,8 @@ func (s *Sender) retryTxWithPolicy(sCtx *sdk.Context, tx *coretypes.Transaction,
 			return
 		}
 
-		time.Sleep(backoff)       // wait for the backoff time
-		err = s.retryTx(sCtx, tx) //nolint:go-staticcheck // used by retry policy.
+		time.Sleep(backoff) // wait for the backoff time
+		err = s.retryTx(sCtx, tx)
 	}
 }
 
