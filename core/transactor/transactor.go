@@ -83,11 +83,11 @@ func (t *TxrV2) RegistryKey() string {
 }
 
 // SubscribeTxResults sends the tx results (inflight) to the given channel.
-func (t *TxrV2) SubscribeTxResults(ctx context.Context, subscriber tracker.Subscriber) {
+func (t *TxrV2) SubscribeTxResults(subscriber tracker.Subscriber) {
 	ch := make(chan *tracker.InFlightTx, inflightChanSize)
 	go func() {
 		// TODO: handle error
-		_ = tracker.NewSubscription(subscriber, t.logger).Start(ctx, ch)
+		_ = tracker.NewSubscription(subscriber, t.logger).Start(context.Background(), ch)
 	}()
 	t.dispatcher.Subscribe(ch)
 }
