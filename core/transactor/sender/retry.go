@@ -36,7 +36,7 @@ func NewExponentialRetryPolicy() RetryPolicy {
 	retriesMu := &sync.Mutex{}
 	retries := make(map[common.Hash]int)
 
-	return func(ctx context.Context, tx *coretypes.Transaction, err error) (bool, time.Duration) {)
+	return func(ctx context.Context, tx *coretypes.Transaction, err error) (bool, time.Duration) {
 		retriesMu.Lock()
 		defer retriesMu.Unlock()
 
