@@ -125,14 +125,12 @@ func (t *TxrV2) SendTxRequest(txReq *types.TxRequest) (string, error) {
 
 // Start starts the transactor.
 func (t *TxrV2) Start(ctx context.Context) {
-	go t.mainLoop(ctx)
 	go t.noncer.RefreshLoop(ctx)
+	go t.mainLoop(ctx)
 }
 
 // mainLoop is the main transaction sending / batching loop.
 func (t *TxrV2) mainLoop(ctx context.Context) {
-	t.noncer.MustInitializeExistingTxs(ctx)
-
 	for {
 		select {
 		case <-ctx.Done():

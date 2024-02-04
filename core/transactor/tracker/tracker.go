@@ -3,6 +3,7 @@ package tracker
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/berachain/offchain-sdk/core/transactor/event"
@@ -80,7 +81,8 @@ loop:
 	for {
 		inMempoolTx, isPending, err := ethClient.TransactionByHash(ctx, tx.Hash())
 		switch {
-		case inMempoolTx == nil || errors.Is(err, ethereum.NotFound):
+		case inMempoolTx == nil, errors.Is(err, ethereum.NotFound),
+			err != nil && strings.Contains(err.Error(), "not found"):
 			// Desired behaviour: the transaction was replaced.
 			// wait for removal from mempool before doing anything
 			// make sure that the oldtx gets removed first
@@ -123,7 +125,8 @@ func (t *Tracker) watchTx(ctx context.Context, tx *InFlightTx) {
 			// Else check for the receipt again.
 			receipt, err = ethClient.TransactionReceipt(ctx, tx.Hash())
 			switch {
-			case errors.Is(err, ethereum.NotFound):
+			case errors.Is(err, ethereum.NotFound),
+				err != nil && strings.Contains(err.Error(), "not found"):
 				time.Sleep(retryPendingBackoff)
 				continue
 			case err != nil:

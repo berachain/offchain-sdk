@@ -21,6 +21,7 @@ type Noncer struct {
 
 	pendingNonceTimeout  time.Duration
 	latestConfirmedNonce uint64
+	latestPendingNonce   uint64
 }
 
 // NewNoncer creates a new Noncer instance.
@@ -34,34 +35,35 @@ func NewNoncer(sender common.Address, pendingNonceTimeout time.Duration) *Noncer
 	}
 }
 
-func (n *Noncer) RefreshLoop(ctx context.Context) {
-	timer := time.NewTimer(5 * time.Second) //nolint:gomnd // should be once per block.
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-timer.C:
-			n.latestConfirmedNonce, _ = n.ethClient.NonceAt(ctx, n.sender, nil)
-		}
-	}
-}
-
-// Start initiates the nonce synchronization.
 func (n *Noncer) SetClient(ethClient eth.Client) {
 	n.ethClient = ethClient
 }
 
-// MustInitializeExistingTxs ensures we can read into the mempool for checking nonces later on.
-func (n *Noncer) MustInitializeExistingTxs(ctx context.Context) {
-	var err error
+func (n *Noncer) RefreshLoop(ctx context.Context) {
+	ticker := time.NewTicker(n.pendingNonceTimeout)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			n.refreshNonces(ctx)
+		}
+	}
+}
 
-	// use pending nonce to initialize if some txs are already backed up in mempool
-	if n.latestConfirmedNonce, err = n.ethClient.PendingNonceAt(ctx, n.sender); err != nil {
-		panic(err)
+// refreshNonces refreshes the confirmed and pending nonces.
+func (n *Noncer) refreshNonces(ctx context.Context) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+
+	confirmedNonce, err := n.ethClient.NonceAt(ctx, n.sender, nil)
+	if err == nil {
+		n.latestConfirmedNonce = confirmedNonce
 	}
 
-	if _, err = n.ethClient.TxPoolContent(ctx); err != nil {
-		panic(err)
+	pendingNonce, err := n.ethClient.PendingNonceAt(ctx, n.sender)
+	if err == nil {
+		n.latestPendingNonce = pendingNonce
 	}
 }
 
@@ -69,9 +71,9 @@ func (n *Noncer) MustInitializeExistingTxs(ctx context.Context) {
 func (n *Noncer) Acquire(ctx context.Context) (uint64, error) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
-	val := n.inFlight.Back()
 
 	var (
+		val       = n.inFlight.Back()
 		nextNonce uint64
 		foundGap  bool
 	)
@@ -91,14 +93,7 @@ func (n *Noncer) Acquire(ctx context.Context) (uint64, error) {
 			nextNonce = val.Value.(*InFlightTx).Nonce() + 1
 		}
 	} else {
-		var err error
-		// TODO: Network call holds the lock for at most the pending timeout, which is not ideal.
-		ctxWithTimeout, cancel := context.WithTimeout(ctx, n.pendingNonceTimeout)
-		nextNonce, err = n.ethClient.PendingNonceAt(ctxWithTimeout, n.sender)
-		cancel()
-		if err != nil {
-			return 0, err
-		}
+		nextNonce = n.latestPendingNonce
 	}
 
 	n.acquired.Set(nextNonce, nextNonce)
