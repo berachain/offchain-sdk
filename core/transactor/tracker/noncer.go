@@ -40,6 +40,7 @@ func (n *Noncer) SetClient(ethClient eth.Client) {
 }
 
 func (n *Noncer) RefreshLoop(ctx context.Context) {
+	n.refreshNonces(ctx)
 	ticker := time.NewTicker(n.pendingNonceTimeout)
 	for {
 		select {
