@@ -145,6 +145,11 @@ func (t *Tracker) markIncluded(
 ) {
 	t.noncer.RemoveInFlight(tx)
 	tx.Receipt = receipt
+
+	// Set the contract address field on the receipt since geth doesn't do this.
+	if contractAddr := tx.To(); contractAddr != nil && tx.Receipt != nil {
+		tx.Receipt.ContractAddress = *contractAddr
+	}
 }
 
 // markStale marks a transaction as stale if it's in the in-flight list

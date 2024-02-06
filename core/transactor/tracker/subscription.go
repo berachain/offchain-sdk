@@ -38,11 +38,6 @@ func (sub *Subscription) Start(ctx context.Context, ch chan *InFlightTx) error {
 		var err error
 		select {
 		case e := <-ch:
-			// Set the contract address field on the receipt since geth doesn't do this.
-			if contractAddr := e.To(); contractAddr != nil && e.Receipt != nil {
-				e.Receipt.ContractAddress = *contractAddr
-			}
-
 			// Handle the event based on its ID.
 			switch e.ID() {
 			case int(StatusSuccess):
