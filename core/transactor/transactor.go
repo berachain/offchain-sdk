@@ -48,7 +48,7 @@ func NewTransactor(
 
 	dispatcher := event.NewDispatcher[*tracker.InFlightTx]()
 
-	txr := &TxrV2{
+	return &TxrV2{
 		dispatcher: dispatcher,
 		cfg:        cfg,
 		factory:    factory,
@@ -59,16 +59,6 @@ func NewTransactor(
 		requests: queue,
 		mu:       sync.Mutex{},
 	}
-
-	// Register the tracker as a subscriber to the tracker.
-	ch := make(chan *tracker.InFlightTx, inflightChanSize)
-	go func() {
-		// TODO: handle error
-		_ = tracker.NewSubscription(txr, txr.logger).Start(context.Background(), ch)
-	}()
-	dispatcher.Subscribe(ch)
-
-	return txr
 }
 
 // RegistryKey implements job.Basic.
@@ -108,6 +98,14 @@ func (t *TxrV2) Setup(ctx context.Context) error {
 	sCtx := sdk.UnwrapContext(ctx)
 	t.chain = sCtx.Chain()
 	t.logger = sCtx.Logger()
+
+	// Register the transactor as a subscriber to the tracker.
+	ch := make(chan *tracker.InFlightTx, inflightChanSize)
+	go func() {
+		// TODO: handle error
+		_ = tracker.NewSubscription(t, t.logger).Start(context.Background(), ch)
+	}()
+	t.dispatcher.Subscribe(ch)
 
 	// todo: need lock on nonce to support more than one
 	t.noncer.SetClient(t.chain)

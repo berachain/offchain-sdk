@@ -65,14 +65,8 @@ func (t *TxrV2) OnStale(
 		"nonce", inFlightTx.Nonce(), "gas-price", inFlightTx.GasPrice(),
 	)
 
-	var (
-		sCtx = sdk.NewContext(ctx, t.chain, t.logger, nil)
-		tx   *coretypes.Transaction
-		err  error
-	)
-
-
-	tx, err = t.factory.BuildTransactionFromRequests(sCtx, &types.TxRequest{
+	sCtx := sdk.NewContext(ctx, t.chain, t.logger, nil)
+	tx, err := t.factory.BuildTransactionFromRequests(sCtx, &types.TxRequest{
 		To:        inFlightTx.To(),
 		Value:     inFlightTx.Value(),
 		Data:      inFlightTx.Data(),
@@ -81,10 +75,11 @@ func (t *TxrV2) OnStale(
 		GasTipCap: inFlightTx.GasTipCap(),
 		GasPrice:  inFlightTx.GasPrice(),
 	})
-	if err == nil {
-		return t.sender.SendTransactionAndTrack(sCtx, tx, inFlightTx.MsgIDs, true)
+	if err != nil {
+		return err
 	}
-	return err
+
+	return t.sender.SendTransactionAndTrack(sCtx, tx, inFlightTx.MsgIDs, true)
 }
 
 func (t *TxrV2) OnError(_ context.Context, tx *tracker.InFlightTx, _ error) {
