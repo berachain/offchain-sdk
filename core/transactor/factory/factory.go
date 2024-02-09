@@ -5,6 +5,7 @@ import (
 	"errors"
 	"math/big"
 
+	"github.com/berachain/offchain-sdk/core/transactor/sender"
 	"github.com/berachain/offchain-sdk/core/transactor/types"
 	sdk "github.com/berachain/offchain-sdk/types"
 	kmstypes "github.com/berachain/offchain-sdk/types/kms/types"
@@ -16,7 +17,8 @@ import (
 
 // Noncer is an interface for acquiring nonces.
 type Noncer interface {
-	Acquire(context.Context) (uint64, error)
+	Acquire(context.Context) (uint64, bool)
+	RemoveAcquired(uint64)
 }
 
 // Factory is a transaction factory that builds transactions with the configured signer.
@@ -42,15 +44,14 @@ func New(noncer Noncer, signer kmstypes.TxSigner, mc3Batcher *Multicall3Batcher)
 
 // BuildTransactionFromRequests builds a transaction from a list of requests.
 func (f *Factory) BuildTransactionFromRequests(
-	ctx context.Context,
-	txReqs ...*types.TxRequest,
+	ctx context.Context, txReqs ...*types.TxRequest,
 ) (*coretypes.Transaction, error) {
 	switch len(txReqs) {
 	case 0:
 		return nil, errors.New("no transaction requests provided")
 	case 1:
 		// if len(txReqs) == 1 then build a single transaction.
-		return f.BuildTransaction(ctx, txReqs[0])
+		return f.buildTransaction(ctx, txReqs[0])
 	default:
 		// len(txReqs) > 1 then build a multicall transaction.
 		ar := f.mc3Batcher.BatchTxRequests(ctx, txReqs...)
@@ -59,18 +60,20 @@ func (f *Factory) BuildTransactionFromRequests(
 		// ar.To should be the Multicall3 contract address
 		// ar.Data should be the calldata with the batched transactions.
 		// ar.Value is the sum of the values of the batched transactions.
-		return f.BuildTransaction(ctx, ar)
+		return f.buildTransaction(ctx, ar)
 	}
 }
 
-// BuildTransaction builds a transaction with the configured signer.
-func (f *Factory) BuildTransaction(
-	ctx context.Context,
-	txReq *types.TxRequest,
+// buildTransaction builds a transaction with the configured signer.
+func (f *Factory) buildTransaction(
+	ctx context.Context, txReq *types.TxRequest,
 ) (*coretypes.Transaction, error) {
-	var err error
+	var (
+		ethClient = sdk.UnwrapContext(ctx).Chain()
+		err       error
+	)
 
-	ethClient := sdk.UnwrapContext(ctx).Chain()
+	// get the chain ID
 	if f.chainID == nil {
 		f.chainID, err = ethClient.ChainID(ctx)
 		if err != nil {
@@ -78,11 +81,15 @@ func (f *Factory) BuildTransaction(
 		}
 	}
 
-	nonce, err := f.noncer.Acquire(ctx)
-	if err != nil {
-		return nil, err
-	}
+	// get the nonce from the noncer
+	nonce, isReplacing := f.noncer.Acquire(ctx)
+	defer func() {
+		if err != nil {
+			f.MarkTransactionNotSent(nonce)
+		}
+	}()
 
+	// start building the 1559 transaction
 	txData := &coretypes.DynamicFeeTx{
 		ChainID: f.chainID,
 		To:      txReq.To,
@@ -91,6 +98,7 @@ func (f *Factory) BuildTransaction(
 		Nonce:   nonce,
 	}
 
+	// set gas fee cap from eth client if not already provided
 	if txReq.GasFeeCap != nil {
 		txData.GasFeeCap = txReq.GasFeeCap
 	} else {
@@ -100,6 +108,7 @@ func (f *Factory) BuildTransaction(
 		}
 	}
 
+	// set gas tip cap from eth client if not already provided
 	if txReq.GasTipCap != nil {
 		txData.GasTipCap = txReq.GasTipCap
 	} else {
@@ -109,6 +118,7 @@ func (f *Factory) BuildTransaction(
 		}
 	}
 
+	// set gas limit from eth client if not already provided
 	if txReq.Gas > 0 {
 		txData.Gas = txReq.Gas
 	} else {
@@ -117,8 +127,13 @@ func (f *Factory) BuildTransaction(
 		}
 	}
 
-	signedTx, err := f.SignTransaction(coretypes.NewTx(txData))
-	return signedTx, err
+	// bump gas (if necessary) and sign the transaction.
+	tx := coretypes.NewTx(txData)
+	if isReplacing {
+		tx = sender.DefaultTxReplacementPolicy(ctx, tx)
+	}
+	tx, err = f.SignTransaction(tx)
+	return tx, err
 }
 
 // signTransaction signs a transaction with the configured signer.
@@ -128,4 +143,9 @@ func (f *Factory) SignTransaction(tx *coretypes.Transaction) (*coretypes.Transac
 		return nil, err
 	}
 	return signer(f.signerAddress, tx)
+}
+
+// MarkTransactionNotSent lets the noncer know that the acquired nonce could not be sent.
+func (f *Factory) MarkTransactionNotSent(nonce uint64) {
+	f.noncer.RemoveAcquired(nonce)
 }

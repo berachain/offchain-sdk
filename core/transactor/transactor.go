@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/berachain/offchain-sdk/client/eth"
 	"github.com/berachain/offchain-sdk/core/transactor/event"
 	"github.com/berachain/offchain-sdk/core/transactor/factory"
 	"github.com/berachain/offchain-sdk/core/transactor/sender"
@@ -28,8 +29,8 @@ type TxrV2 struct {
 	sender     *sender.Sender
 	factory    *factory.Factory
 	noncer     *tracker.Noncer
-	tracker    *tracker.Tracker
 	dispatcher *event.Dispatcher[*tracker.InFlightTx]
+	chain      eth.Client
 	logger     log.Logger
 	mu         sync.Mutex
 }
@@ -51,11 +52,12 @@ func NewTransactor(
 		dispatcher: dispatcher,
 		cfg:        cfg,
 		factory:    factory,
-		sender:     sender.New(factory, noncer),
-		noncer:     noncer,
-		tracker:    tracker.New(noncer, dispatcher, cfg.TxReceiptTimeout),
-		requests:   queue,
-		mu:         sync.Mutex{},
+		sender: sender.New(
+			factory, tracker.New(noncer, dispatcher, cfg.TxReceiptTimeout, cfg.InMempoolTimeout),
+		),
+		noncer:   noncer,
+		requests: queue,
+		mu:       sync.Mutex{},
 	}
 
 	// Register the tracker as a subscriber to the tracker.
@@ -65,14 +67,6 @@ func NewTransactor(
 		_ = tracker.NewSubscription(txr, txr.logger).Start(context.Background(), ch)
 	}()
 	dispatcher.Subscribe(ch)
-
-	// Register the sender as a subscriber to the tracker.
-	ch2 := make(chan *tracker.InFlightTx, inflightChanSize)
-	go func() {
-		// TODO: handle error
-		_ = tracker.NewSubscription(txr.sender, txr.logger).Start(context.Background(), ch2)
-	}()
-	dispatcher.Subscribe(ch2)
 
 	return txr
 }
@@ -111,10 +105,13 @@ func (t *TxrV2) IntervalTime(_ context.Context) time.Duration {
 // Setup implements job.HasSetup.
 // TODO: deprecate off being a job.
 func (t *TxrV2) Setup(ctx context.Context) error {
+	sCtx := sdk.UnwrapContext(ctx)
+	t.chain = sCtx.Chain()
+	t.logger = sCtx.Logger()
+
 	// todo: need lock on nonce to support more than one
-	t.logger = sdk.UnwrapContext(ctx).Logger()
-	t.noncer.SetClient(sdk.UnwrapContext(ctx).Chain())
-	t.Start(sdk.UnwrapContext(ctx))
+	t.noncer.SetClient(t.chain)
+	t.Start(sCtx)
 	return nil
 }
 
@@ -191,20 +188,10 @@ func (t *TxrV2) sendAndTrack(
 	}
 
 	// Send the transaction to the chain.
-	if err = t.sender.SendTransaction(ctx, tx, false); err != nil {
+	if err = t.sender.SendTransactionAndTrack(ctx, tx, msgIDs, true); err != nil {
 		return err
 	}
 
 	t.logger.Debug("📡 sent transaction", "tx-hash", tx.Hash().Hex(), "tx-reqs", len(batch))
-
-	// Spin off a goroutine to track the transaction.
-	t.tracker.Track(
-		ctx,
-		&tracker.InFlightTx{
-			Transaction: tx,
-			MsgIDs:      msgIDs,
-		},
-		true,
-	)
 	return nil
 }

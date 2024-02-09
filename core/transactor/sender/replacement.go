@@ -9,11 +9,14 @@ import (
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
-// TxReplacementPolicy is a function type that takes a transaction and returns a
-// replacement transaction.
-type TxReplacementPolicy func(
-	ctx context.Context, tx *coretypes.Transaction,
-) *coretypes.Transaction
+var (
+	multiplier = big.NewInt(11500)
+	quotient   = big.NewInt(10000)
+)
+
+// TxReplacementPolicy is a function type that takes a transaction and returns a replacement
+// transaction.
+type TxReplacementPolicy func(context.Context, *coretypes.Transaction) *coretypes.Transaction
 
 // DefaultTxReplacementPolicy is the default transaction replacement policy.
 // It bumps the gas price by 15% (only 10% is required but we add a buffer to be safe)
@@ -21,31 +24,24 @@ type TxReplacementPolicy func(
 func DefaultTxReplacementPolicy(
 	ctx context.Context, tx *coretypes.Transaction,
 ) *coretypes.Transaction {
-	sCtx := sdk.UnwrapContext(ctx)
-	ethClient := sCtx.Chain()
+	sdk.UnwrapContext(ctx).Logger().Warn("processing replacement tx", "tx_hash", tx.Hash())
 
-	sCtx.Logger().Warn("processing replacement tx", "tx_hash", tx.Hash())
+	// Bump the existing gas tip cap 15% (10% is required but we add a buffer to be safe).
+	bumpedGasTipCap := new(big.Int).Mul(tx.GasTipCap(), multiplier) //nolint:gomnd // its okay.
+	bumpedGasTipCap = new(big.Int).Quo(bumpedGasTipCap, quotient)   //nolint:gomnd // its okay.
 
-	// Get the chain to suggest a new gas price.
-	newGas, err := ethClient.SuggestGasPrice(ctx)
-	if err != nil {
-		return nil
-	}
+	// Bump the existing gas fee cap 15% (only 10% required but we add a buffer to be safe).
+	bumpedGasFeeCap := new(big.Int).Mul(tx.GasFeeCap(), multiplier) //nolint:gomnd // its okay.
+	bumpedGasFeeCap = new(big.Int).Quo(bumpedGasFeeCap, quotient)   //nolint:gomnd // its okay.
 
-	// Bump the existing gas price 15% (only 10% required but we add a buffer to be safe).
-	bumpedGasPrice := new(big.Int).Mul(tx.GasPrice(), big.NewInt(11500)) //nolint:gomnd // its okay.
-	bumpedGasPrice = new(big.Int).Quo(bumpedGasPrice, big.NewInt(10000)) //nolint:gomnd // its okay.
-
-	// Use the higher of the two.
-	var gasToUse *big.Int
-	if newGas.Cmp(bumpedGasPrice) > 0 {
-		gasToUse = newGas
-	} else {
-		gasToUse = bumpedGasPrice
-	}
-
-	// Generate the replacement transaction.
-	return coretypes.NewTransaction(
-		tx.Nonce(), *tx.To(), tx.Value(), tx.Gas(), gasToUse, tx.Data(),
-	)
+	return coretypes.NewTx(&coretypes.DynamicFeeTx{
+		ChainID:   tx.ChainId(),
+		Nonce:     tx.Nonce(),
+		GasTipCap: bumpedGasTipCap,
+		GasFeeCap: bumpedGasFeeCap,
+		Gas:       tx.Gas(),
+		To:        tx.To(),
+		Value:     tx.Value(),
+		Data:      tx.Data(),
+	})
 }

@@ -5,6 +5,8 @@ import (
 	"sync"
 
 	"github.com/berachain/offchain-sdk/core/transactor/tracker"
+	"github.com/berachain/offchain-sdk/core/transactor/types"
+	sdk "github.com/berachain/offchain-sdk/types"
 
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
@@ -55,15 +57,34 @@ func (t *TxrV2) OnRevert(tx *tracker.InFlightTx, receipt *coretypes.Receipt) err
 	return nil
 }
 
-func (t *TxrV2) OnStale(_ context.Context, tx *tracker.InFlightTx) error {
+func (t *TxrV2) OnStale(
+	ctx context.Context, inFlightTx *tracker.InFlightTx,
+) error {
 	t.logger.Warn(
-		"🔄 transaction is stale",
-		"tx-hash", tx.Hash(),
-		"nonce", tx.Nonce(),
-		"gas-price", tx.GasPrice(),
+		"🔄 transaction is stale", "tx-hash", inFlightTx.Hash(),
+		"nonce", inFlightTx.Nonce(), "gas-price", inFlightTx.GasPrice(),
 	)
 
-	return nil
+	var (
+		sCtx = sdk.NewContext(ctx, t.chain, t.logger, nil)
+		tx   *coretypes.Transaction
+		err  error
+	)
+
+
+	tx, err = t.factory.BuildTransactionFromRequests(sCtx, &types.TxRequest{
+		To:        inFlightTx.To(),
+		Value:     inFlightTx.Value(),
+		Data:      inFlightTx.Data(),
+		Gas:       inFlightTx.Gas(),
+		GasFeeCap: inFlightTx.GasFeeCap(),
+		GasTipCap: inFlightTx.GasTipCap(),
+		GasPrice:  inFlightTx.GasPrice(),
+	})
+	if err == nil {
+		return t.sender.SendTransactionAndTrack(sCtx, tx, inFlightTx.MsgIDs, true)
+	}
+	return err
 }
 
 func (t *TxrV2) OnError(_ context.Context, tx *tracker.InFlightTx, _ error) {

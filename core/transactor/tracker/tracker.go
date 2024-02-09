@@ -2,14 +2,11 @@ package tracker
 
 import (
 	"context"
-	"errors"
-	"strings"
 	"time"
 
 	"github.com/berachain/offchain-sdk/core/transactor/event"
 	sdk "github.com/berachain/offchain-sdk/types"
 
-	"github.com/ethereum/go-ethereum"
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
@@ -17,133 +14,126 @@ const retryPendingBackoff = time.Second
 
 // Tracker.
 type Tracker struct {
-	noncer       *Noncer
-	staleTimeout time.Duration
-	dispatcher   *event.Dispatcher[*InFlightTx]
+	noncer           *Noncer
+	staleTimeout     time.Duration // for a tx receipt
+	inMempoolTimeout time.Duration // for hitting mempool
+	dispatcher       *event.Dispatcher[*InFlightTx]
 }
 
 // NewTracker creates a new transaction tracker.
 func New(
-	noncer *Noncer, dispatcher *event.Dispatcher[*InFlightTx], staleTimeout time.Duration,
+	noncer *Noncer, dispatcher *event.Dispatcher[*InFlightTx],
+	staleTimeout time.Duration, inMempoolTimeout time.Duration,
 ) *Tracker {
 	return &Tracker{
-		noncer:       noncer,
-		staleTimeout: staleTimeout,
-		dispatcher:   dispatcher,
+		noncer:           noncer,
+		staleTimeout:     staleTimeout,
+		inMempoolTimeout: inMempoolTimeout,
+		dispatcher:       dispatcher,
 	}
 }
 
-// AddSubscriber adds a subscriber to the tracker.
-func (t *Tracker) Subscribe(ch chan *InFlightTx) {
-	t.dispatcher.Subscribe(ch)
-}
-
-// Unsubscribe removes a subscriber from the tracker.
-func (t *Tracker) Unsubscribe(ch chan *InFlightTx) {
-	t.dispatcher.Unsubscribe(ch)
-}
-
-// Track adds a transaction to the in-flight list.
-func (t *Tracker) Track(
-	ctx context.Context, tx *InFlightTx, async bool,
-) {
-	if async {
-		go t.track(ctx, tx)
-	} else {
-		t.track(ctx, tx)
-	}
-}
-
-// track adds a transaction to the in-flight list.
-func (t *Tracker) track(ctx context.Context, tx *InFlightTx) {
-	// If there is already a transaction that is being tracked for this nonce.
-	if oldTx := t.noncer.GetInFlight(tx.Nonce()); oldTx != nil {
-		// Watch for the old transaction to be replaced.
-		if err := t.watchTxForReplacement(ctx, oldTx); err != nil {
-			// Need to notify subscribers of this error.
-			t.markErr(ctx, tx, err)
-			t.dispatcher.Dispatch(tx)
-		}
-	}
-
+// Track adds a transaction to the in-flight list and waits for a status.
+func (t *Tracker) Track(ctx context.Context, tx *InFlightTx) {
 	t.noncer.SetInFlight(tx)
-	t.watchTx(ctx, tx)
+	go t.trackStatus(ctx, tx)
 }
 
-// watchTxForReplacement is watching for a transaction to be replaced by another.
-func (t *Tracker) watchTxForReplacement(ctx context.Context, tx *InFlightTx) error {
-	sCtx := sdk.UnwrapContext(ctx)
-
-	// Loop until we see the transaction get replaced.
-loop:
-	for {
-		inMempoolTx, isPending, err := sCtx.Chain().TransactionByHash(ctx, tx.Hash())
-		switch {
-		case inMempoolTx == nil, errors.Is(err, ethereum.NotFound),
-			err != nil && strings.Contains(err.Error(), "not found"):
-			// Desired behaviour: the transaction was replaced.
-			// wait for removal from mempool before doing anything
-			// make sure that the oldtx gets removed first
-			t.noncer.RemoveInFlight(tx)
-			break loop
-		case isPending:
-			// If the transaction is still pending we wait....
-			time.Sleep(retryPendingBackoff)
-			continue
-		case !isPending:
-			return errors.New("failed to replace transaction, original tx was included in block")
-		}
-	}
-
-	return nil
-}
-
-func (t *Tracker) watchTx(ctx context.Context, tx *InFlightTx) {
-	sCtx := sdk.UnwrapContext(ctx)
-	ethClient := sCtx.Chain()
+// trackStatus polls the for transaction status and updates the in-flight list.
+func (t *Tracker) trackStatus(ctx context.Context, tx *InFlightTx) {
 	var (
-		receipt *coretypes.Receipt
-		err     error
+		sCtx      = sdk.UnwrapContext(ctx)
+		ethClient = sCtx.Chain()
+		receipt   *coretypes.Receipt
+		err       error
+		txHash    = tx.Hash()
+		txHashHex = txHash.Hex()
+		timer     = time.NewTimer(t.inMempoolTimeout)
 	)
 
-	// We want to notify the dispatcher at the end of this function.
-	defer t.dispatcher.Dispatch(tx)
-
-	// TODO: replace below with bind.WaitMined with a new context that cancels after staleTimeout
-
-	// Loop until the context is done, the transaction status is determined,
-	// or the timeout is reached.
+	// Loop until the context is done, the transaction status is determined, or the timeout is
+	// reached.
 	for {
 		select {
 		case <-ctx.Done():
 			// If the context is done, it could be due to cancellation or other reasons.
 			return
-		case <-time.After(t.staleTimeout):
-			// If the timeout is reached, mark the transaction as stale.
-			t.markStale(ctx, tx)
+		case <-timer.C:
+			// Not found in mempool, wait for it to be mined or go stale.
+			t.waitMined(sCtx, tx, false)
 			return
 		default:
-			// Else check for the receipt again.
-			receipt, err = ethClient.TransactionReceipt(ctx, tx.Hash())
-			switch {
-			case errors.Is(err, ethereum.NotFound),
-				err != nil && strings.Contains(err.Error(), "not found"):
-				time.Sleep(retryPendingBackoff)
-				continue
-			case err != nil:
-				t.markErr(sCtx, tx, err)
-			default:
-				t.markIncluded(ctx, tx, receipt)
+			// Check the mempool again.
+			if content, err := ethClient.TxPoolContent(ctx); err == nil {
+				if _, isPending := content["pending"][txHashHex]; isPending {
+					t.markPending(sCtx, tx)
+					return
+				}
+
+				if _, isQueued := content["queued"][txHashHex]; isQueued {
+					// mark the transaction as stale, but it does exist in the mempool.
+					t.markStale(tx, false)
+				}
 			}
-			return
+
+			// Check for the receipt again.
+			if receipt, err = ethClient.TransactionReceipt(ctx, txHash); err == nil {
+				t.markConfirmed(tx, receipt)
+				return
+			}
+
+			// If not found anywhere, wait for a backoff and try again.
+			time.Sleep(retryPendingBackoff)
+			continue
 		}
 	}
 }
 
-// markIncluded is called once a transaction has been included in a block.
-func (t *Tracker) markIncluded(
-	_ context.Context, tx *InFlightTx, receipt *coretypes.Receipt,
-) {
+// waitMined waits for a receipt until the transaction is either confirmed or marked stale.
+func (t *Tracker) waitMined(sCtx *sdk.Context, tx *InFlightTx, isAlreadyPending bool) {
+	var (
+		ethClient = sCtx.Chain()
+		receipt   *coretypes.Receipt
+		err       error
+		timer     = time.NewTimer(t.staleTimeout)
+	)
+
+	// Loop until the context is done, the transaction status is determined,
+	// or the timeout is reached.
+	for {
+		select {
+		case <-sCtx.Done():
+			// If the context is done, it could be due to cancellation or other reasons.
+			return
+		case <-timer.C:
+			// If the timeout is reached, mark the transaction as stale (the tx has been lost and
+			// not found anywhere if isAlreadyPending == false).
+			t.markStale(tx, isAlreadyPending)
+			return
+		default:
+			// Else check for the receipt again.
+			if receipt, err = ethClient.TransactionReceipt(sCtx, tx.Hash()); err == nil {
+				t.markConfirmed(tx, receipt)
+				return
+			}
+
+			// on any error, search for the receipt after a backoff
+			time.Sleep(retryPendingBackoff)
+			continue
+		}
+	}
+}
+
+// markPending marks the transaction as pending. The transaction is sitting in the "pending" set of
+// the mempool --> up to the chain to confirm, remove from inflight.
+func (t *Tracker) markPending(sCtx *sdk.Context, tx *InFlightTx) {
+	t.noncer.RemoveInFlight(tx)
+
+	t.waitMined(sCtx, tx, true)
+}
+
+// markConfirmed is called once a transaction has been included in the canonical chain.
+func (t *Tracker) markConfirmed(tx *InFlightTx, receipt *coretypes.Receipt) {
 	t.noncer.RemoveInFlight(tx)
 	tx.Receipt = receipt
 
@@ -151,17 +141,17 @@ func (t *Tracker) markIncluded(
 	if contractAddr := tx.To(); contractAddr != nil && tx.Receipt != nil {
 		tx.Receipt.ContractAddress = *contractAddr
 	}
+
+	t.dispatcher.Dispatch(tx)
 }
 
-// markStale marks a transaction as stale if it's in the in-flight list
-// and its nonce is less than the current nonce. It doesn't mark the transaction
-// as not in flight, since it's still out in the wild somewhere.
-func (t *Tracker) markStale(_ context.Context, tx *InFlightTx) {
-	tx.isStale = true
-}
+// markStale marks a stale transaction that needs to be resent if not pending.
+func (t *Tracker) markStale(tx *InFlightTx, isPending bool) {
+	t.noncer.RemoveInFlight(tx)
 
-// markError notifies the subscriber if there is an error with any of the steps
-// in the transaction lifecycle.
-func (t *Tracker) markErr(_ context.Context, tx *InFlightTx, err error) {
-	tx.err = err
+	if !isPending {
+		tx.isStale = true
+	}
+
+	t.dispatcher.Dispatch(tx)
 }

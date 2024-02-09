@@ -13,24 +13,30 @@ import (
 
 // Noncer is a struct that manages nonces for transactions.
 type Noncer struct {
-	sender    common.Address     // The address of the sender.
-	ethClient eth.Client         // The Ethereum client.
-	acquired  *skiplist.SkipList // The list of acquired nonces.
-	inFlight  *skiplist.SkipList // The list of nonces currently in flight.
-	mu        sync.Mutex         // Mutex for thread-safe operations.
+	sender    common.Address // The address of the sender.
+	ethClient eth.Client     // The Ethereum client.
 
-	pendingNonceTimeout  time.Duration
-	latestConfirmedNonce uint64
-	latestPendingNonce   uint64
+	// mempool state
+	latestPendingNonce uint64
+	queuedNonces       map[uint64]struct{}
+
+	// "in-process" nonces
+	acquired map[uint64]struct{} // The set of acquired nonces.
+	inFlight *skiplist.SkipList  // The list of nonces currently in flight; tx remains in flight
+	// until we know what state the tx is in with 100% certainty.
+
+	mu              sync.Mutex    // Mutex for thread-safe operations.
+	refreshInterval time.Duration // How often to refresh the mempool state.
 }
 
 // NewNoncer creates a new Noncer instance.
 func NewNoncer(sender common.Address, pendingNonceTimeout time.Duration) *Noncer {
 	return &Noncer{
-		sender:              sender,
-		acquired:            skiplist.New(skiplist.Uint64),
-		inFlight:            skiplist.New(skiplist.Uint64),
-		pendingNonceTimeout: pendingNonceTimeout,
+		sender:          sender,
+		queuedNonces:    make(map[uint64]struct{}),
+		acquired:        make(map[uint64]struct{}),
+		inFlight:        skiplist.New(skiplist.Uint64),
+		refreshInterval: pendingNonceTimeout,
 	}
 }
 
@@ -40,7 +46,8 @@ func (n *Noncer) SetClient(ethClient eth.Client) {
 
 func (n *Noncer) RefreshLoop(ctx context.Context) {
 	n.refreshNonces(ctx)
-	ticker := time.NewTicker(n.pendingNonceTimeout)
+
+	ticker := time.NewTicker(n.refreshInterval)
 	for {
 		select {
 		case <-ctx.Done():
@@ -51,53 +58,63 @@ func (n *Noncer) RefreshLoop(ctx context.Context) {
 	}
 }
 
-// refreshNonces refreshes the confirmed and pending nonces.
+// refreshNonces refreshes the pending nonce and queued nonces from the mempool.
 func (n *Noncer) refreshNonces(ctx context.Context) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 
-	confirmedNonce, err := n.ethClient.NonceAt(ctx, n.sender, nil)
-	if err == nil {
-		n.latestConfirmedNonce = confirmedNonce
+	if pendingNonce, err := n.ethClient.PendingNonceAt(ctx, n.sender); err == nil {
+		n.latestPendingNonce = pendingNonce
 	}
 
-	pendingNonce, err := n.ethClient.PendingNonceAt(ctx, n.sender)
-	if err == nil {
-		n.latestPendingNonce = pendingNonce
+	if content, err := n.ethClient.TxPoolContent(ctx); err == nil {
+		for _, tx := range content["queued"][n.sender.Hex()] {
+			n.queuedNonces[tx.Nonce()] = struct{}{}
+		}
 	}
 }
 
-// Acquire gets the next available nonce.
-func (n *Noncer) Acquire(context.Context) (uint64, error) {
+// Acquire gets the next available nonce. Along with the nonce to use, it returns whether this
+// nonce is replacing another tx in the mempool that has the same nonce (in this case, a
+// replacement with bumped gas should be used).
+func (n *Noncer) Acquire(ctx context.Context) (uint64, bool) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 
+	// Get the next available nonce from the inFlight list, if any.
 	var (
-		val       = n.inFlight.Back()
-		nextNonce uint64
-		foundGap  bool
+		nonce uint64
+		front = n.inFlight.Front()
+		back  = n.inFlight.Back()
 	)
-	if val != nil {
+	if front != nil && back != nil {
 		// Iterate through the inFlight objects to ensure there are no gaps
 		// TODO: convert to use a binary tree to go from O(n) to O(log(n))
-		for i := n.latestConfirmedNonce; i <= val.Value.(*InFlightTx).Nonce(); i++ {
-			if n.inFlight.Get(i) == nil {
-				// If a gap is found, use that
-				nextNonce = i
-				foundGap = true
+		for nonce = mustNonce(front); nonce <= mustNonce(back); nonce++ {
+			if n.inFlight.Get(nonce) == nil {
+				// If a gap is found, use that nonce.
 				break
 			}
 		}
-		// If we didn't find a gap, use the next nonce.
-		if !foundGap {
-			nextNonce = val.Value.(*InFlightTx).Nonce() + 1
-		}
 	} else {
-		nextNonce = n.latestPendingNonce
+		nonce = n.latestPendingNonce
 	}
+	n.acquired[nonce] = struct{}{}
 
-	n.acquired.Set(nextNonce, nextNonce)
-	return nextNonce, nil
+	// Set isReplacing to true only if the next nonce is already queued in the mempool.
+	if _, isQueued := n.queuedNonces[nonce]; isQueued {
+		delete(n.queuedNonces, nonce)
+		return nonce, true
+	}
+	return nonce, false
+}
+
+// RemoveAcquired removes a nonce from the acquired list, when a transaction is unable to be sent.
+func (n *Noncer) RemoveAcquired(nonce uint64) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+
+	delete(n.acquired, nonce)
 }
 
 // SetInFlight adds a transaction to the in-flight list.
@@ -106,38 +123,25 @@ func (n *Noncer) SetInFlight(tx *InFlightTx) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 
-	// Remove from the acquired nonces.
-	n.acquired.Remove(tx.Nonce())
-
-	// Add to the in-flight list.
-	n.inFlight.Set(tx.Nonce(), tx)
-}
-
-// GetInFlight retrieves a transaction from the in-flight list by its nonce.
-// It returns nil if no transaction with the given nonce is found.
-func (n *Noncer) GetInFlight(nonce uint64) *InFlightTx {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-	val := n.inFlight.Get(nonce)
-	if val == nil {
-		return nil
-	}
-	return val.Value.(*InFlightTx)
-}
-
-// InFlight checks if a transaction with the given nonce is in-flight.
-// It returns true if the transaction is in-flight, false otherwise.
-func (n *Noncer) InFlight(nonce uint64) bool {
-	return n.GetInFlight(nonce) != nil
+	nonce := tx.Nonce()
+	delete(n.acquired, nonce) // Remove from the acquired nonces.
+	n.inFlight.Set(nonce, tx) // Add to the in-flight list.
 }
 
 // RemoveInFlight removes a transaction from the in-flight list by its nonce.
 func (n *Noncer) RemoveInFlight(tx *InFlightTx) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
+
 	n.inFlight.Remove(tx.Nonce())
 }
 
+// Stats returns the number of acquired nonces and the number of in-flight transactions.
 func (n *Noncer) Stats() (int, int) {
-	return n.acquired.Len(), n.inFlight.Len()
+	return len(n.acquired), n.inFlight.Len()
+}
+
+// mustNonce returns the nonce of an element. Panics if the element is nil or not a *InFlightTx.
+func mustNonce(element *skiplist.Element) uint64 {
+	return element.Value.(*InFlightTx).Nonce()
 }

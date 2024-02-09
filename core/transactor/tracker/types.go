@@ -22,23 +22,23 @@ type InFlightTx struct {
 	isStale bool
 }
 
-func (t *InFlightTx) ID() int {
+func (t *InFlightTx) Status() Status {
 	if t.err != nil {
-		return int(StatusError)
+		return StatusError
 	}
 
 	if t.Receipt == nil {
 		if t.isStale {
-			return int(StatusStale)
+			return StatusStale
 		}
-		return int(StatusPending)
+		return StatusPending
 	}
 
 	if t.Receipt.Status == 1 {
-		return int(StatusSuccess)
+		return StatusSuccess
 	}
 
-	return int(StatusReverted)
+	return StatusReverted
 }
 
 func (t *InFlightTx) Err() error {

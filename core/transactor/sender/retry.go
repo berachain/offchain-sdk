@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	maxRetriesPerTx   = 3               // TODO: read from config.
-	backoffStart      = 5 * time.Second // TODO: read from config.
+	maxRetriesPerTx   = 3                      // TODO: read from config.
+	backoffStart      = 500 * time.Millisecond // TODO: read from config.
 	backoffMultiplier = 2
 	maxBackoff        = 1 * time.Minute
 	jitterRange       = 1000

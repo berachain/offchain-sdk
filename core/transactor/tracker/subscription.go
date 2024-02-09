@@ -39,27 +39,27 @@ func (sub *Subscription) Start(ctx context.Context, ch chan *InFlightTx) error {
 		select {
 		case e := <-ch:
 			// Handle the event based on its ID.
-			switch e.ID() {
-			case int(StatusSuccess):
+			switch e.Status() {
+			case StatusSuccess:
 				// If the transaction was successful, call OnSuccess.
 				if err = sub.OnSuccess(e, e.Receipt); err != nil {
 					sub.logger.Error("failed to handle successful tx", "err", err)
 				}
-			case int(StatusReverted):
+			case StatusReverted:
 				// If the transaction was reverted, call OnRevert.
 				if err = sub.OnRevert(e, e.Receipt); err != nil {
 					sub.logger.Error("failed to handle reverted tx", "err", err)
 				}
-			case int(StatusStale):
+			case StatusStale:
 				// If the transaction is stale, call OnStale.
 				if err = sub.OnStale(ctx, e); err != nil {
 					sub.logger.Error("failed to handle stale tx", "err", err)
 				}
-			case int(StatusError):
+			case StatusError:
 				// If there was an error with the transaction, call OnError.
 				sub.logger.Error("error with transaction", "err", e)
 				sub.OnError(ctx, e, e.Err())
-			case int(StatusPending):
+			case StatusPending:
 				// If the transaction is pending, do nothing.
 				time.Sleep(retryPendingBackoff)
 			}
