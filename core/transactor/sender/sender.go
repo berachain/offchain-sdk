@@ -96,6 +96,7 @@ func (s *Sender) replaceTxWithPolicy(
 			)
 		}
 
+		// Replace the nonce by asking the factory to rebuild this tx.
 		if errors.Is(err, core.ErrNonceTooLow) ||
 			(err != nil && strings.Contains(err.Error(), "nonce too low")) {
 			if tx, err = s.factory.BuildTransactionFromRequests(sCtx, &types.TxRequest{
@@ -119,7 +120,7 @@ func (s *Sender) replaceTxWithPolicy(
 			continue
 		}
 
-		// retry sending the transaction
+		// Retry sending the transaction.
 		if err = s.SendTransactionAndTrack(sCtx, tx, msgIDs, false); err != nil {
 			return
 		}
