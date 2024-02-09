@@ -44,8 +44,6 @@ func (t *Tracker) trackStatus(ctx context.Context, tx *InFlightTx) {
 	var (
 		sCtx      = sdk.UnwrapContext(ctx)
 		ethClient = sCtx.Chain()
-		receipt   *coretypes.Receipt
-		err       error
 		txHash    = tx.Hash()
 		txHashHex = txHash.Hex()
 		timer     = time.NewTimer(t.inMempoolTimeout)
@@ -77,7 +75,7 @@ func (t *Tracker) trackStatus(ctx context.Context, tx *InFlightTx) {
 			}
 
 			// Check for the receipt again.
-			if receipt, err = ethClient.TransactionReceipt(ctx, txHash); err == nil {
+			if receipt, err := ethClient.TransactionReceipt(ctx, txHash); err == nil {
 				t.markConfirmed(tx, receipt)
 				return
 			}

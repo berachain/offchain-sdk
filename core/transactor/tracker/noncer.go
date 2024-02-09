@@ -77,7 +77,7 @@ func (n *Noncer) refreshNonces(ctx context.Context) {
 // Acquire gets the next available nonce. Along with the nonce to use, it returns whether this
 // nonce is replacing another tx in the mempool that has the same nonce (in this case, a
 // replacement with bumped gas should be used).
-func (n *Noncer) Acquire(ctx context.Context) (uint64, bool) {
+func (n *Noncer) Acquire(context.Context) (uint64, bool) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 

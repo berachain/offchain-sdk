@@ -56,7 +56,7 @@ func (q *Queue[T]) ReceiveMany(num int32) ([]string, []T, error) {
 		q.queuedItems.Remove(element)
 		txRequests = append(txRequests, element.Value.(T))
 	}
-	return nil, txRequests, nil
+	return make([]string, len(txRequests)), txRequests, nil
 }
 
 // Delete is no-op for the in-memory queue.

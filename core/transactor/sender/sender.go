@@ -49,7 +49,7 @@ func New(factory Factory, tracker Tracker) *Sender {
 
 // SendTransaction sends a transaction using the Ethereum client. If the transaction fails,
 // it retries based on the retry policy, only once (further retries will not retry again). If
-// sending is sucessful, it uses the tracker to track the transaction.
+// sending is successful, it uses the tracker to track the transaction.
 func (s *Sender) SendTransactionAndTrack(
 	ctx context.Context, tx *coretypes.Transaction, msgIDs []string, shouldRetry bool,
 ) error {
