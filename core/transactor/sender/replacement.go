@@ -11,8 +11,9 @@ import (
 
 // TxReplacementPolicy is a function type that takes a transaction and returns a
 // replacement transaction.
-type TxReplacementPolicy func(ctx context.Context,
-	tx *coretypes.Transaction) *coretypes.Transaction
+type TxReplacementPolicy func(
+	ctx context.Context, tx *coretypes.Transaction,
+) *coretypes.Transaction
 
 // DefaultTxReplacementPolicy is the default transaction replacement policy.
 // It bumps the gas price by 15% (only 10% is required but we add a buffer to be safe)

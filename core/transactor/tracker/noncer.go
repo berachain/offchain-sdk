@@ -30,7 +30,6 @@ func NewNoncer(sender common.Address, pendingNonceTimeout time.Duration) *Noncer
 		sender:              sender,
 		acquired:            skiplist.New(skiplist.Uint64),
 		inFlight:            skiplist.New(skiplist.Uint64),
-		mu:                  sync.Mutex{},
 		pendingNonceTimeout: pendingNonceTimeout,
 	}
 }
@@ -69,7 +68,7 @@ func (n *Noncer) refreshNonces(ctx context.Context) {
 }
 
 // Acquire gets the next available nonce.
-func (n *Noncer) Acquire(ctx context.Context) (uint64, error) {
+func (n *Noncer) Acquire(context.Context) (uint64, error) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 

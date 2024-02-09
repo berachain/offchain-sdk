@@ -43,19 +43,22 @@ func New(factory Factory, noncer Noncer) *Sender {
 }
 
 // SendTransaction sends a transaction using the Ethereum client. If the transaction fails,
-// it retries based on the retry policy.
-func (s *Sender) SendTransaction(ctx context.Context, tx *coretypes.Transaction) error {
-	sCtx := sdk.UnwrapContext(ctx) // unwrap the context to get the SDK context
-	ethClient := sCtx.Chain()      // get the Ethereum client from the SDK context
+// it retries based on the retry policy, only once (further retries will not retry again).
+func (s *Sender) SendTransaction(
+	ctx context.Context, tx *coretypes.Transaction, isRetry bool,
+) error {
+	sCtx := sdk.UnwrapContext(ctx)
 
-	if err := ethClient.SendTransaction(ctx, tx); err != nil {
-		sCtx.Logger().Error("failed to send tx, retrying...", "hash", tx.Hash(), "err", err)
-		// if sending the transaction fails, retry according to the retry policy
-		go s.retryTxWithPolicy(sCtx, tx, err)
+	if err := sCtx.Chain().SendTransaction(ctx, tx); err != nil {
+		// If sending the transaction fails, retry according to the retry policy, but only apply
+		// this policy once.
+		if !isRetry {
+			sCtx.Logger().Error("failed to send tx, retrying...", "hash", tx.Hash(), "err", err)
+			go s.retryTxWithPolicy(sCtx, tx, err)
+		}
 		return err
 	}
 
-	// if the transaction was sent successfully, return nil
 	return nil
 }
 
@@ -126,7 +129,7 @@ func (s *Sender) retryTx(sCtx *sdk.Context, tx *coretypes.Transaction) error {
 	}
 
 	// retry sending the transaction
-	return sCtx.Chain().SendTransaction(sCtx, signedTx)
+	return s.SendTransaction(sCtx, signedTx, true)
 }
 
 // handleNonceTooLow will replace a transaction with a new one if the nonce is too low.

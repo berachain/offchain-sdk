@@ -191,7 +191,7 @@ func (t *TxrV2) sendAndTrack(
 	}
 
 	// Send the transaction to the chain.
-	if err = t.sender.SendTransaction(ctx, tx); err != nil {
+	if err = t.sender.SendTransaction(ctx, tx, false); err != nil {
 		return err
 	}
 

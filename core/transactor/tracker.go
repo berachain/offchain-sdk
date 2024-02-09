@@ -11,7 +11,7 @@ import (
 
 func (t *TxrV2) OnSuccess(tx *tracker.InFlightTx, receipt *coretypes.Receipt) error {
 	t.logger.Info(
-		"⛏️ transaction mined",
+		"⛏️ transaction mined: success",
 		"tx-hash", receipt.TxHash.Hex(),
 		"gas-used", receipt.GasUsed,
 		"status", receipt.Status,
@@ -43,7 +43,7 @@ func (t *TxrV2) OnSuccess(tx *tracker.InFlightTx, receipt *coretypes.Receipt) er
 
 func (t *TxrV2) OnRevert(tx *tracker.InFlightTx, receipt *coretypes.Receipt) error {
 	t.logger.Error(
-		"🔻 transaction reverted",
+		"🔻 transaction mined: reverted",
 		"tx-hash", receipt.TxHash.Hex(),
 		"gas-used", receipt.GasUsed,
 		"status", receipt.Status,

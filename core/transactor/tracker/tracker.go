@@ -15,8 +15,6 @@ import (
 
 const retryPendingBackoff = time.Second
 
-type Logger interface{}
-
 // Tracker.
 type Tracker struct {
 	noncer       *Noncer
@@ -75,11 +73,11 @@ func (t *Tracker) track(ctx context.Context, tx *InFlightTx) {
 // watchTxForReplacement is watching for a transaction to be replaced by another.
 func (t *Tracker) watchTxForReplacement(ctx context.Context, tx *InFlightTx) error {
 	sCtx := sdk.UnwrapContext(ctx)
-	ethClient := sCtx.Chain()
+
 	// Loop until we see the transaction get replaced.
 loop:
 	for {
-		inMempoolTx, isPending, err := ethClient.TransactionByHash(ctx, tx.Hash())
+		inMempoolTx, isPending, err := sCtx.Chain().TransactionByHash(ctx, tx.Hash())
 		switch {
 		case inMempoolTx == nil, errors.Is(err, ethereum.NotFound),
 			err != nil && strings.Contains(err.Error(), "not found"):
@@ -96,6 +94,7 @@ loop:
 			return errors.New("failed to replace transaction, original tx was included in block")
 		}
 	}
+
 	return nil
 }
 
@@ -109,6 +108,8 @@ func (t *Tracker) watchTx(ctx context.Context, tx *InFlightTx) {
 
 	// We want to notify the dispatcher at the end of this function.
 	defer t.dispatcher.Dispatch(tx)
+
+	// TODO: replace below with bind.WaitMined with a new context that cancels after staleTimeout
 
 	// Loop until the context is done, the transaction status is determined,
 	// or the timeout is reached.
