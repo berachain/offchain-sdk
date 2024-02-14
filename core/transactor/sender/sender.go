@@ -43,7 +43,7 @@ func New(factory Factory, tracker Tracker) *Sender {
 		tracker:             tracker,
 		factory:             factory,
 		txReplacementPolicy: DefaultTxReplacementPolicy,
-		retryPolicy:         NewExponentialRetryPolicy(),
+		retryPolicy:         &ExpoRetryPolicy{}, // TODO: choose from config.
 	}
 }
 
@@ -56,14 +56,9 @@ func (s *Sender) SendTransactionAndTrack(
 	sCtx := sdk.UnwrapContext(ctx)
 
 	if err := sCtx.Chain().SendTransaction(ctx, tx); err != nil {
-		// If sending the transaction fails, retry according to the retry policy, but only apply
-		// this policy once.
+		// If sending the transaction fails, retry according to the retry policy.
 		if shouldRetry {
-			sCtx.Logger().Error("failed to send tx, retrying...", "hash", tx.Hash(), "err", err)
-			go s.replaceTxWithPolicy(sCtx, tx, msgIDs, err)
-		} else {
-			// We were unable to send this tx, so let the factory know.
-			s.factory.MarkTransactionNotSent(tx.Nonce())
+			go s.retryTxWithPolicy(sCtx, tx, msgIDs, err)
 		}
 		return err
 	}
@@ -73,32 +68,34 @@ func (s *Sender) SendTransactionAndTrack(
 	return nil
 }
 
-// replaceTxWithPolicy retries sending tx according to the retry policy. Specifically handles two
-// common errors on sending a transaction: NonceTooLow & ReplaceUnderpriced.
-func (s *Sender) replaceTxWithPolicy(
+// retryTxWithPolicy retries sending tx according to the retry policy. Specifically handles two
+// common errors on sending a transaction (NonceTooLow, ReplaceUnderpriced) by replacing the tx
+// appropriately.
+func (s *Sender) retryTxWithPolicy(
 	sCtx *sdk.Context, tx *coretypes.Transaction, msgIDs []string, err error,
 ) {
 	for {
-		retry, backoff := s.retryPolicy(sCtx, tx, err)
-		if !retry {
+		// Check the policy to see if we should retry this transaction.
+		if retry, backoff := s.retryPolicy.get(tx, err); !retry {
 			return
+		} else {
+			time.Sleep(backoff) // Retry after recommended backoff.
 		}
-		time.Sleep(backoff)
+
+		// Log relevant details about retrying the transaction.
+		currTx, currGasPrice, currNonce := tx.Hash(), tx.GasPrice(), tx.Nonce()
+		sCtx.Logger().Error("failed to send tx, retrying...", "hash", currTx, "err", err)
 
 		// Bump the gas according to the replacement policy if a replacement is required.
 		if errors.Is(err, txpool.ErrReplaceUnderpriced) ||
 			(err != nil && strings.Contains(err.Error(), "replacement transaction underpriced")) {
-			oldPrice := tx.GasPrice()
 			tx = s.txReplacementPolicy(sCtx, tx)
-			sCtx.Logger().Debug(
-				"retrying with new gas and nonce",
-				"old", oldPrice, "new", tx.GasPrice(), "nonce", tx.Nonce(),
-			)
 		}
 
-		// Replace the nonce by asking the factory to rebuild this tx.
+		// Replace the nonce by asking the factory to rebuild this transaction.
 		if errors.Is(err, core.ErrNonceTooLow) ||
 			(err != nil && strings.Contains(err.Error(), "nonce too low")) {
+			s.factory.MarkTransactionNotSent(currNonce)
 			if tx, err = s.factory.BuildTransactionFromRequests(sCtx, &types.TxRequest{
 				To:        tx.To(),
 				Value:     tx.Value(),
@@ -108,12 +105,22 @@ func (s *Sender) replaceTxWithPolicy(
 				GasTipCap: tx.GasTipCap(),
 				GasPrice:  tx.GasPrice(),
 			}); err != nil {
-				sCtx.Logger().Error("failed to build tx", "err", err)
+				sCtx.Logger().Error("failed to build tx on replacing 'nonce too low'", "err", err)
 				return
 			}
 		}
 
-		// Sign the retry tx.
+		// Update the retry policy if the transaction has been replaced and log.
+		if newTx := tx.Hash(); newTx != currTx {
+			sCtx.Logger().Debug(
+				"retrying with diff gas and/or nonce",
+				"old-gas", currGasPrice, "new-gas", tx.GasPrice(),
+				"old-nonce", currNonce, "new-nonce", tx.Nonce(),
+			)
+			s.retryPolicy.updateTxReplacement(currTx, newTx)
+		}
+
+		// Sign the retry transaction.
 		tx, err = s.factory.SignTransaction(tx)
 		if err != nil {
 			sCtx.Logger().Error("failed to sign replacement transaction", "err", err)
@@ -121,8 +128,6 @@ func (s *Sender) replaceTxWithPolicy(
 		}
 
 		// Retry sending the transaction.
-		if err = s.SendTransactionAndTrack(sCtx, tx, msgIDs, false); err != nil {
-			return
-		}
+		err = s.SendTransactionAndTrack(sCtx, tx, msgIDs, false)
 	}
 }

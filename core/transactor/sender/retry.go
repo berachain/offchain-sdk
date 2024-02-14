@@ -1,7 +1,6 @@
 package sender
 
 import (
-	"context"
 	"crypto/rand"
 	"math/big"
 	"sync"
@@ -14,50 +13,82 @@ import (
 const (
 	maxRetriesPerTx   = 3                      // TODO: read from config.
 	backoffStart      = 500 * time.Millisecond // TODO: read from config.
-	backoffMultiplier = 2
-	maxBackoff        = 1 * time.Minute
-	jitterRange       = 1000
+	backoffMultiplier = 2                      // TODO: read from config.
+	maxBackoff        = 3 * time.Second        // TODO: read from config.
+	jitterRange       = 1000                   // TODO: read from config.
 )
 
 // A RetryPolicy is used to determine if a transaction should be retried and how long to wait
 // before retrying again.
-type RetryPolicy func(context.Context, *coretypes.Transaction, error) (bool, time.Duration)
-
-// NoRetryPolicy does not retry transactions.
-func NoRetryPolicy(context.Context, *coretypes.Transaction, error) (bool, time.Duration) {
-	return false, backoffStart
+type RetryPolicy interface {
+	get(tx *coretypes.Transaction, err error) (bool, time.Duration)
+	updateTxReplacement(old, new common.Hash)
 }
 
-// NewExponentialRetryPolicy returns a RetryPolicy that does an exponential backoff until
-// maxRetries is reached. This does not assume anything about whether the specifc tx should be
-// retried.
-func NewExponentialRetryPolicy() RetryPolicy {
-	backoff := backoffStart
-	retriesMu := &sync.Mutex{}
-	retries := make(map[common.Hash]int)
+var (
+	_ RetryPolicy = (*NoRetryPolicy)(nil)
+	_ RetryPolicy = (*ExpoRetryPolicy)(nil)
+)
 
-	return func(ctx context.Context, tx *coretypes.Transaction, err error) (bool, time.Duration) {
-		retriesMu.Lock()
-		defer retriesMu.Unlock()
+// NoRetryPolicy does not retry transactions.
+type NoRetryPolicy struct{}
 
-		txHash := tx.Hash()
-		if retries[txHash] >= maxRetriesPerTx {
-			delete(retries, txHash)
-			return NoRetryPolicy(ctx, tx, err)
-		}
-		retries[txHash]++
+func (*NoRetryPolicy) get(*coretypes.Transaction, error) (bool, time.Duration) {
+	return false, 0
+}
 
-		// Exponential backoff with jitter.
-		jitter, _ := rand.Int(rand.Reader, big.NewInt(jitterRange))
-		if jitter == nil {
-			jitter = new(big.Int)
-		}
+func (*NoRetryPolicy) updateTxReplacement(common.Hash, common.Hash) {}
 
-		waitTime := backoff + time.Duration(jitter.Int64())*time.Millisecond
-		if backoff *= backoffMultiplier; backoff > maxBackoff {
-			backoff = maxBackoff
-		}
+// ExpoRetryPolicy is a RetryPolicy that does an exponential backoff until maxRetries is
+// reached. This does not assume anything about whether the specifc tx should be retried.
+type ExpoRetryPolicy struct {
+	retries sync.Map
+}
 
-		return true, waitTime
+func (erp *ExpoRetryPolicy) get(tx *coretypes.Transaction, err error) (bool, time.Duration) {
+	var (
+		txHash = tx.Hash()
+		tri    *txRetryInfo
+		jitter time.Duration
+	)
+
+	// If the retry error is nil, the transaction was retried successfully.
+	if err == nil {
+		erp.retries.Delete(txHash)
+		return false, 0
 	}
+
+	txri, found := erp.retries.Load(txHash)
+	if !found {
+		tri = &txRetryInfo{backoff: backoffStart}
+		erp.retries.Store(txHash, tri)
+	} else if tri = txri.(*txRetryInfo); tri.numRetries >= maxRetriesPerTx {
+		erp.retries.Delete(txHash)
+		return false, 0
+	}
+	tri.numRetries++
+
+	// Exponential backoff with jitter.
+	if random, _ := rand.Int(rand.Reader, big.NewInt(jitterRange)); random != nil {
+		jitter = time.Duration(random.Int64()) * time.Millisecond
+	}
+	waitTime := tri.backoff + jitter
+	if tri.backoff *= backoffMultiplier; tri.backoff > maxBackoff {
+		tri.backoff = maxBackoff
+	}
+
+	return true, waitTime
+}
+
+func (erp *ExpoRetryPolicy) updateTxReplacement(old, new common.Hash) {
+	if txri, found := erp.retries.Load(old); found {
+		erp.retries.Delete(old)
+		erp.retries.Store(new, txri)
+	}
+}
+
+// txRetryInfo contains the necessary information to determine if a transaction should be retried.
+type txRetryInfo struct {
+	numRetries int
+	backoff    time.Duration
 }

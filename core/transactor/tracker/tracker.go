@@ -48,6 +48,7 @@ func (t *Tracker) trackStatus(ctx context.Context, tx *InFlightTx) {
 		txHashHex = txHash.Hex()
 		timer     = time.NewTimer(t.inMempoolTimeout)
 	)
+	defer timer.Stop()
 
 	// Loop until the context is done, the transaction status is determined, or the timeout is
 	// reached.
@@ -95,6 +96,7 @@ func (t *Tracker) waitMined(sCtx *sdk.Context, tx *InFlightTx, isAlreadyPending 
 		err       error
 		timer     = time.NewTimer(t.staleTimeout)
 	)
+	defer timer.Stop()
 
 	// Loop until the context is done, the transaction status is determined,
 	// or the timeout is reached.

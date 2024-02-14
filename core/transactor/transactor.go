@@ -19,9 +19,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-// TODO: find a more appropriate value.
-const inflightChanSize = 1024
-
 // TxrV2 is the main transactor object.
 type TxrV2 struct {
 	cfg        Config
@@ -67,11 +64,12 @@ func (t *TxrV2) RegistryKey() string {
 }
 
 // SubscribeTxResults sends the tx results (inflight) to the given channel.
-func (t *TxrV2) SubscribeTxResults(subscriber tracker.Subscriber) {
-	ch := make(chan *tracker.InFlightTx, inflightChanSize)
+func (t *TxrV2) SubscribeTxResults(ctx context.Context, subscriber tracker.Subscriber) {
+	ch := make(chan *tracker.InFlightTx)
 	go func() {
-		// TODO: handle error
-		_ = tracker.NewSubscription(subscriber, t.logger).Start(context.Background(), ch)
+		subCtx, cancel := context.WithCancel(ctx)
+		_ = tracker.NewSubscription(subscriber, t.logger).Start(subCtx, ch) // TODO: handle error
+		cancel()
 	}()
 	t.dispatcher.Subscribe(ch)
 }
@@ -89,7 +87,7 @@ func (t *TxrV2) Execute(_ context.Context, _ any) (any, error) {
 
 // IntervalTime implements job.Polling.
 func (t *TxrV2) IntervalTime(_ context.Context) time.Duration {
-	return 5 * time.Second //nolint:gomnd // its okay.
+	return 5 * time.Second //nolint:gomnd // TODO: read from config.
 }
 
 // Setup implements job.HasSetup.
@@ -100,10 +98,11 @@ func (t *TxrV2) Setup(ctx context.Context) error {
 	t.logger = sCtx.Logger()
 
 	// Register the transactor as a subscriber to the tracker.
-	ch := make(chan *tracker.InFlightTx, inflightChanSize)
+	ch := make(chan *tracker.InFlightTx)
 	go func() {
-		// TODO: handle error
-		_ = tracker.NewSubscription(t, t.logger).Start(context.Background(), ch)
+		subCtx, cancel := context.WithCancel(ctx)
+		_ = tracker.NewSubscription(t, t.logger).Start(subCtx, ch) // TODO: handle error
+		cancel()
 	}()
 	t.dispatcher.Subscribe(ch)
 

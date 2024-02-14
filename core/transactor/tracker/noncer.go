@@ -48,6 +48,7 @@ func (n *Noncer) RefreshLoop(ctx context.Context) {
 	n.refreshNonces(ctx)
 
 	ticker := time.NewTicker(n.refreshInterval)
+	defer ticker.Stop()
 	for {
 		select {
 		case <-ctx.Done():
