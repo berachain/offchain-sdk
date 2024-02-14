@@ -10,7 +10,7 @@ import (
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
-const retryPendingBackoff = time.Second
+const retryPendingBackoff = 500 * time.Millisecond
 
 // Tracker.
 type Tracker struct {
@@ -72,6 +72,7 @@ func (t *Tracker) trackStatus(ctx context.Context, tx *InFlightTx) {
 				if _, isQueued := content["queued"][txHashHex]; isQueued {
 					// mark the transaction as stale, but it does exist in the mempool.
 					t.markStale(tx, false)
+					return
 				}
 			}
 
@@ -83,7 +84,6 @@ func (t *Tracker) trackStatus(ctx context.Context, tx *InFlightTx) {
 
 			// If not found anywhere, wait for a backoff and try again.
 			time.Sleep(retryPendingBackoff)
-			continue
 		}
 	}
 }
@@ -98,8 +98,8 @@ func (t *Tracker) waitMined(sCtx *sdk.Context, tx *InFlightTx, isAlreadyPending 
 	)
 	defer timer.Stop()
 
-	// Loop until the context is done, the transaction status is determined,
-	// or the timeout is reached.
+	// Loop until the context is done, the transaction status is determined, or the timeout is
+	// reached.
 	for {
 		select {
 		case <-sCtx.Done():
@@ -119,7 +119,6 @@ func (t *Tracker) waitMined(sCtx *sdk.Context, tx *InFlightTx, isAlreadyPending 
 
 			// on any error, search for the receipt after a backoff
 			time.Sleep(retryPendingBackoff)
-			continue
 		}
 	}
 }
@@ -148,10 +147,7 @@ func (t *Tracker) markConfirmed(tx *InFlightTx, receipt *coretypes.Receipt) {
 // markStale marks a stale transaction that needs to be resent if not pending.
 func (t *Tracker) markStale(tx *InFlightTx, isPending bool) {
 	t.noncer.RemoveInFlight(tx)
-
-	if !isPending {
-		tx.isStale = true
-	}
+	tx.isStale = !isPending
 
 	t.dispatcher.Dispatch(tx)
 }

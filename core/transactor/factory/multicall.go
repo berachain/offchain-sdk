@@ -64,11 +64,10 @@ func (mc *Multicall3Batcher) BatchTxRequests(
 			gasPriceSet = true
 		}
 
-		call := bindings.Multicall3Call{
+		calls[i] = bindings.Multicall3Call{
 			Target:   *txReq.To,
 			CallData: txReq.Data,
 		}
-		calls[i] = call
 	}
 
 	txRequest, _ := mc.packer.CreateTxRequest(

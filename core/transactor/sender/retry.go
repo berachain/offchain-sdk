@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	goutils "github.com/berachain/go-utils/utils"
+
 	"github.com/ethereum/go-ethereum/common"
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
@@ -22,7 +24,7 @@ const (
 // before retrying again.
 type RetryPolicy interface {
 	get(tx *coretypes.Transaction, err error) (bool, time.Duration)
-	updateTxReplacement(old, new common.Hash)
+	updateTxReplacement(oldTx, newTx common.Hash)
 }
 
 var (
@@ -62,7 +64,7 @@ func (erp *ExpoRetryPolicy) get(tx *coretypes.Transaction, err error) (bool, tim
 	if !found {
 		tri = &txRetryInfo{backoff: backoffStart}
 		erp.retries.Store(txHash, tri)
-	} else if tri = txri.(*txRetryInfo); tri.numRetries >= maxRetriesPerTx {
+	} else if tri = goutils.MustGetAs[*txRetryInfo](txri); tri.numRetries >= maxRetriesPerTx {
 		erp.retries.Delete(txHash)
 		return false, 0
 	}
@@ -80,10 +82,10 @@ func (erp *ExpoRetryPolicy) get(tx *coretypes.Transaction, err error) (bool, tim
 	return true, waitTime
 }
 
-func (erp *ExpoRetryPolicy) updateTxReplacement(old, new common.Hash) {
-	if txri, found := erp.retries.Load(old); found {
-		erp.retries.Delete(old)
-		erp.retries.Store(new, txri)
+func (erp *ExpoRetryPolicy) updateTxReplacement(oldTx, newTx common.Hash) {
+	if txri, found := erp.retries.Load(oldTx); found {
+		erp.retries.Delete(oldTx)
+		erp.retries.Store(newTx, txri)
 	}
 }
 

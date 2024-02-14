@@ -76,11 +76,11 @@ func (s *Sender) retryTxWithPolicy(
 ) {
 	for {
 		// Check the policy to see if we should retry this transaction.
-		if retry, backoff := s.retryPolicy.get(tx, err); !retry {
+		retry, backoff := s.retryPolicy.get(tx, err)
+		if !retry {
 			return
-		} else {
-			time.Sleep(backoff) // Retry after recommended backoff.
 		}
+		time.Sleep(backoff) // Retry after recommended backoff.
 
 		// Log relevant details about retrying the transaction.
 		currTx, currGasPrice, currNonce := tx.Hash(), tx.GasPrice(), tx.Nonce()
