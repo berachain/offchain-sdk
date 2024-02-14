@@ -22,6 +22,10 @@ type InFlightTx struct {
 	isStale bool
 }
 
+func (t *InFlightTx) String() string {
+	return t.Hash().Hex()
+}
+
 func (t *InFlightTx) Status() Status {
 	if t.err != nil {
 		return StatusError

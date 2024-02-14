@@ -1,34 +1,36 @@
 package event
 
-// Event is an interface that all events should implement.
-// It requires an ID method that should return a unique identifier for the event.
-type Event interface {
-	any
-}
+import (
+	"fmt"
+)
 
-// Dispatcher is a generic event dispatcher.
-// It maintains a list of subscribers which are channels that events are sent to.
-type Dispatcher[E any] struct {
+// Event is an interface that all events should implement. It requires a String() method that
+// should return a unique identifier for the event.
+type Event fmt.Stringer
+
+// Dispatcher is a generic event dispatcher. It maintains a mapping of callers to subscribers,
+// which are channels that events are sent to.
+type Dispatcher[E Event] struct {
 	subscribers []chan E
 }
 
 // NewDispatcher creates a new Dispatcher.
-func NewDispatcher[E any]() *Dispatcher[E] {
+func NewDispatcher[E Event]() *Dispatcher[E] {
 	return &Dispatcher[E]{
 		subscribers: make([]chan E, 0),
 	}
 }
 
-// Subscribe adds a new subscriber to the Dispatcher.
-// The subscriber is a channel that events will be sent to.
+// Subscribe adds a new subscriber to the Dispatcher. The subscriber is a channel on which events
+// will be sent to.
 func (d *Dispatcher[E]) Subscribe(subscriber chan E) {
 	d.subscribers = append(d.subscribers, subscriber)
 }
 
-// Unsubscribe removes a subscriber from the Dispatcher.
-// The subscriber is a channel that events will no longer be sent to.
-// The for loop kinda hood, but in practice he length of `subscribers` is
-// going to be so small it doesn't really matter.
+// Unsubscribe removes a subscriber from the Dispatcher. The subscriber is a channel that events
+// will no longer be sent to.
+// The for loop kinda hood, but in practice he length of `subscribers` is going to be so small it
+// doesn't really matter.
 func (d *Dispatcher[E]) Unsubscribe(subscriber chan E) {
 	for i, s := range d.subscribers {
 		if s == subscriber {
