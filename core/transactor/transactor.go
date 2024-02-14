@@ -106,8 +106,10 @@ func (t *TxrV2) Setup(ctx context.Context) error {
 	}()
 	t.dispatcher.Subscribe(ch)
 
-	// todo: need lock on nonce to support more than one
+	// TODO: need lock on nonce to support more than one
 	t.noncer.SetClient(t.chain)
+	t.factory.SetClient(t.chain)
+	t.sender.Setup(t.chain, t.logger)
 	t.Start(sCtx)
 	return nil
 }
@@ -131,7 +133,7 @@ func (t *TxrV2) mainLoop(ctx context.Context) {
 			return
 		default:
 			// Attempt the retrieve a batch from the queue.
-			msgIDs, batch := t.retrieveBatch(ctx)
+			msgIDs, batch := t.retrieveBatch()
 
 			// We didn't get any transactions, so we wait for more.
 			if len(batch) == 0 {
@@ -155,7 +157,7 @@ func (t *TxrV2) mainLoop(ctx context.Context) {
 
 // retrieveBatch retrieves a batch of transaction requests from the queue.
 // It waits until it hits the max batch size or the timeout.
-func (t *TxrV2) retrieveBatch(_ context.Context) ([]string, []*types.TxRequest) {
+func (t *TxrV2) retrieveBatch() ([]string, []*types.TxRequest) {
 	var batch []*types.TxRequest
 	var retMsgIDs []string
 	startTime := time.Now()
@@ -179,12 +181,12 @@ func (t *TxrV2) retrieveBatch(_ context.Context) ([]string, []*types.TxRequest) 
 func (t *TxrV2) sendAndTrack(
 	ctx context.Context, msgIDs []string, batch ...*types.TxRequest,
 ) error {
-	tx, err := t.factory.BuildTransactionFromRequests(ctx, batch...)
+	tx, err := t.factory.BuildTransactionFromRequests(ctx, 0, batch...)
 	if err != nil {
 		return err
 	}
 
-	// Send the transaction to the chain.
+	// Send the transaction to the chain and track it async.
 	if err = t.sender.SendTransactionAndTrack(ctx, tx, msgIDs, true); err != nil {
 		return err
 	}

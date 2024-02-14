@@ -24,7 +24,7 @@ const (
 // before retrying again.
 type RetryPolicy interface {
 	get(tx *coretypes.Transaction, err error) (bool, time.Duration)
-	updateTxReplacement(oldTx, newTx common.Hash)
+	updateTxModified(oldTx, newTx common.Hash)
 }
 
 var (
@@ -39,7 +39,7 @@ func (*NoRetryPolicy) get(*coretypes.Transaction, error) (bool, time.Duration) {
 	return false, 0
 }
 
-func (*NoRetryPolicy) updateTxReplacement(common.Hash, common.Hash) {}
+func (*NoRetryPolicy) updateTxModified(common.Hash, common.Hash) {}
 
 // ExpoRetryPolicy is a RetryPolicy that does an exponential backoff until maxRetries is
 // reached. This does not assume anything about whether the specifc tx should be retried.
@@ -82,7 +82,7 @@ func (erp *ExpoRetryPolicy) get(tx *coretypes.Transaction, err error) (bool, tim
 	return true, waitTime
 }
 
-func (erp *ExpoRetryPolicy) updateTxReplacement(oldTx, newTx common.Hash) {
+func (erp *ExpoRetryPolicy) updateTxModified(oldTx, newTx common.Hash) {
 	if txri, found := erp.retries.Load(oldTx); found {
 		erp.retries.Delete(oldTx)
 		erp.retries.Store(newTx, txri)

@@ -6,7 +6,6 @@ import (
 
 	"github.com/berachain/offchain-sdk/core/transactor/tracker"
 	"github.com/berachain/offchain-sdk/core/transactor/types"
-	sdk "github.com/berachain/offchain-sdk/types"
 
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
@@ -65,21 +64,15 @@ func (t *TxrV2) OnStale(
 		"nonce", inFlightTx.Nonce(), "gas-price", inFlightTx.GasPrice(),
 	)
 
-	sCtx := sdk.NewContext(ctx, t.chain, t.logger, nil)
-	tx, err := t.factory.BuildTransactionFromRequests(sCtx, &types.TxRequest{
+	return t.sendAndTrack(ctx, inFlightTx.MsgIDs, &types.TxRequest{
 		To:        inFlightTx.To(),
-		Value:     inFlightTx.Value(),
-		Data:      inFlightTx.Data(),
 		Gas:       inFlightTx.Gas(),
+		GasPrice:  inFlightTx.GasPrice(),
 		GasFeeCap: inFlightTx.GasFeeCap(),
 		GasTipCap: inFlightTx.GasTipCap(),
-		GasPrice:  inFlightTx.GasPrice(),
+		Value:     inFlightTx.Value(),
+		Data:      inFlightTx.Data(),
 	})
-	if err != nil {
-		return err
-	}
-
-	return t.sender.SendTransactionAndTrack(sCtx, tx, inFlightTx.MsgIDs, true)
 }
 
 func (t *TxrV2) OnError(_ context.Context, tx *tracker.InFlightTx, _ error) {

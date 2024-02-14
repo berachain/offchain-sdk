@@ -8,10 +8,8 @@ import (
 	"github.com/ethereum/go-ethereum"
 )
 
-type (
-	// TxRequest is a transaction request, using the go-ethereum call msg.
-	TxRequest ethereum.CallMsg
-)
+// TxRequest is a transaction request, using the go-ethereum call msg.
+type TxRequest ethereum.CallMsg
 
 // NewTxRequest returns a new TxRequest with the given type.
 func (TxRequest) New() types.Marshallable {

@@ -1,11 +1,12 @@
 package sender
 
 import (
-	"context"
+	"errors"
 	"math/big"
+	"strings"
 
-	sdk "github.com/berachain/offchain-sdk/types"
-
+	"github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/core/txpool"
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
@@ -14,34 +15,41 @@ var (
 	quotient   = big.NewInt(10000) //nolint:gomnd // its okay.
 )
 
-// TxReplacementPolicy is a function type that takes a transaction and returns a replacement
-// transaction.
-type TxReplacementPolicy func(context.Context, *coretypes.Transaction) *coretypes.Transaction
+type NonceFactory interface {
+	GetNextNonce(oldNonce uint64) (uint64, bool)
+}
+
+// TxReplacementPolicy is a type that takes a transaction and returns a replacement transaction.
+type TxReplacementPolicy interface {
+	getNew(*coretypes.Transaction, error) *coretypes.Transaction
+}
+
+var _ TxReplacementPolicy = (*DefaultTxReplacementPolicy)(nil)
 
 // DefaultTxReplacementPolicy is the default transaction replacement policy. It bumps the gas price
 // by 15% (only 10% is required but we add a buffer to be safe) and generates a replacement 1559
 // dynamic fee transaction.
-func DefaultTxReplacementPolicy(
-	ctx context.Context, tx *coretypes.Transaction,
+type DefaultTxReplacementPolicy struct {
+	nf NonceFactory
+}
+
+func (d *DefaultTxReplacementPolicy) getNew(
+	tx *coretypes.Transaction, err error,
 ) *coretypes.Transaction {
-	sdk.UnwrapContext(ctx).Logger().Warn("processing replacement tx", "tx_hash", tx.Hash())
+	// Replace the nonce if the nonce was too low.
+	var shouldBumpGas bool
+	if errors.Is(err, core.ErrNonceTooLow) ||
+		(err != nil && strings.Contains(err.Error(), "nonce too low")) {
+		var newNonce uint64
+		newNonce, shouldBumpGas = d.nf.GetNextNonce(tx.Nonce())
+		tx = SetNonce(tx, newNonce)
+	}
 
-	// Bump the existing gas tip cap 15% (10% is required but we add a buffer to be safe).
-	bumpedGasTipCap := new(big.Int).Mul(tx.GasTipCap(), multiplier)
-	bumpedGasTipCap = new(big.Int).Quo(bumpedGasTipCap, quotient)
+	// Bump the gas according to the replacement policy if a replacement is required.
+	if shouldBumpGas || errors.Is(err, txpool.ErrReplaceUnderpriced) ||
+		(err != nil && strings.Contains(err.Error(), "replacement transaction underpriced")) {
+		tx = BumpGas(tx)
+	}
 
-	// Bump the existing gas fee cap 15% (only 10% required but we add a buffer to be safe).
-	bumpedGasFeeCap := new(big.Int).Mul(tx.GasFeeCap(), multiplier)
-	bumpedGasFeeCap = new(big.Int).Quo(bumpedGasFeeCap, quotient)
-
-	return coretypes.NewTx(&coretypes.DynamicFeeTx{
-		ChainID:   tx.ChainId(),
-		Nonce:     tx.Nonce(),
-		GasTipCap: bumpedGasTipCap,
-		GasFeeCap: bumpedGasFeeCap,
-		Gas:       tx.Gas(),
-		To:        tx.To(),
-		Value:     tx.Value(),
-		Data:      tx.Data(),
-	})
+	return tx
 }

@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/berachain/offchain-sdk/client/eth"
 	"github.com/berachain/offchain-sdk/core/transactor/event"
-	sdk "github.com/berachain/offchain-sdk/types"
 
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
@@ -18,6 +18,7 @@ type Tracker struct {
 	staleTimeout     time.Duration // for a tx receipt
 	inMempoolTimeout time.Duration // for hitting mempool
 	dispatcher       *event.Dispatcher[*InFlightTx]
+	ethClient        eth.Client
 }
 
 // NewTracker creates a new transaction tracker.
@@ -33,6 +34,10 @@ func New(
 	}
 }
 
+func (t *Tracker) SetClient(chain eth.Client) {
+	t.ethClient = chain
+}
+
 // Track adds a transaction to the in-flight list and waits for a status.
 func (t *Tracker) Track(ctx context.Context, tx *InFlightTx) {
 	t.noncer.SetInFlight(tx)
@@ -42,8 +47,6 @@ func (t *Tracker) Track(ctx context.Context, tx *InFlightTx) {
 // trackStatus polls the for transaction status and updates the in-flight list.
 func (t *Tracker) trackStatus(ctx context.Context, tx *InFlightTx) {
 	var (
-		sCtx      = sdk.UnwrapContext(ctx)
-		ethClient = sCtx.Chain()
 		txHash    = tx.Hash()
 		txHashHex = txHash.Hex()
 		timer     = time.NewTimer(t.inMempoolTimeout)
@@ -59,13 +62,13 @@ func (t *Tracker) trackStatus(ctx context.Context, tx *InFlightTx) {
 			return
 		case <-timer.C:
 			// Not found in mempool, wait for it to be mined or go stale.
-			t.waitMined(sCtx, tx, false)
+			t.waitMined(ctx, tx, false)
 			return
 		default:
-			// Check the mempool again.
-			if content, err := ethClient.TxPoolContent(ctx); err == nil {
+			// Check the mempool again. // TODO: set timeout on context
+			if content, err := t.ethClient.TxPoolContent(ctx); err == nil {
 				if _, isPending := content["pending"][txHashHex]; isPending {
-					t.markPending(sCtx, tx)
+					t.markPending(ctx, tx)
 					return
 				}
 
@@ -76,8 +79,8 @@ func (t *Tracker) trackStatus(ctx context.Context, tx *InFlightTx) {
 				}
 			}
 
-			// Check for the receipt again.
-			if receipt, err := ethClient.TransactionReceipt(ctx, txHash); err == nil {
+			// Check for the receipt again. // TODO: set timeout on context
+			if receipt, err := t.ethClient.TransactionReceipt(ctx, txHash); err == nil {
 				t.markConfirmed(tx, receipt)
 				return
 			}
@@ -89,12 +92,11 @@ func (t *Tracker) trackStatus(ctx context.Context, tx *InFlightTx) {
 }
 
 // waitMined waits for a receipt until the transaction is either confirmed or marked stale.
-func (t *Tracker) waitMined(sCtx *sdk.Context, tx *InFlightTx, isAlreadyPending bool) {
+func (t *Tracker) waitMined(ctx context.Context, tx *InFlightTx, isAlreadyPending bool) {
 	var (
-		ethClient = sCtx.Chain()
-		receipt   *coretypes.Receipt
-		err       error
-		timer     = time.NewTimer(t.staleTimeout)
+		receipt *coretypes.Receipt
+		err     error
+		timer   = time.NewTimer(t.staleTimeout)
 	)
 	defer timer.Stop()
 
@@ -102,7 +104,7 @@ func (t *Tracker) waitMined(sCtx *sdk.Context, tx *InFlightTx, isAlreadyPending 
 	// reached.
 	for {
 		select {
-		case <-sCtx.Done():
+		case <-ctx.Done():
 			// If the context is done, it could be due to cancellation or other reasons.
 			return
 		case <-timer.C:
@@ -111,8 +113,8 @@ func (t *Tracker) waitMined(sCtx *sdk.Context, tx *InFlightTx, isAlreadyPending 
 			t.markStale(tx, isAlreadyPending)
 			return
 		default:
-			// Else check for the receipt again.
-			if receipt, err = ethClient.TransactionReceipt(sCtx, tx.Hash()); err == nil {
+			// Else check for the receipt again. // TODO: set timeout on context
+			if receipt, err = t.ethClient.TransactionReceipt(ctx, tx.Hash()); err == nil {
 				t.markConfirmed(tx, receipt)
 				return
 			}
@@ -125,10 +127,10 @@ func (t *Tracker) waitMined(sCtx *sdk.Context, tx *InFlightTx, isAlreadyPending 
 
 // markPending marks the transaction as pending. The transaction is sitting in the "pending" set of
 // the mempool --> up to the chain to confirm, remove from inflight.
-func (t *Tracker) markPending(sCtx *sdk.Context, tx *InFlightTx) {
+func (t *Tracker) markPending(ctx context.Context, tx *InFlightTx) {
 	t.noncer.RemoveInFlight(tx)
 
-	t.waitMined(sCtx, tx, true)
+	t.waitMined(ctx, tx, true)
 }
 
 // markConfirmed is called once a transaction has been included in the canonical chain.

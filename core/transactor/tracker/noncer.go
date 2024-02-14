@@ -78,13 +78,12 @@ func (n *Noncer) refreshNonces(ctx context.Context) {
 // Acquire gets the next available nonce. Along with the nonce to use, it returns whether this
 // nonce is replacing another tx in the mempool that has the same nonce (in this case, a
 // replacement with bumped gas should be used).
-func (n *Noncer) Acquire(context.Context) (uint64, bool) {
+func (n *Noncer) Acquire() (nonce uint64, isReplacing bool) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 
 	// Get the next available nonce from the inFlight list, if any.
 	var (
-		nonce uint64
 		front = n.inFlight.Front()
 		back  = n.inFlight.Back()
 	)
@@ -105,9 +104,9 @@ func (n *Noncer) Acquire(context.Context) (uint64, bool) {
 	// Set isReplacing to true only if the next nonce is already queued in the mempool.
 	if _, isQueued := n.queuedNonces[nonce]; isQueued {
 		delete(n.queuedNonces, nonce)
-		return nonce, true
+		isReplacing = true
 	}
-	return nonce, false
+	return
 }
 
 // RemoveAcquired removes a nonce from the acquired list, when a transaction is unable to be sent.
