@@ -2,17 +2,11 @@ package sender
 
 import (
 	"errors"
-	"math/big"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/txpool"
 	coretypes "github.com/ethereum/go-ethereum/core/types"
-)
-
-var (
-	multiplier = big.NewInt(11500) //nolint:gomnd // its okay.
-	quotient   = big.NewInt(10000) //nolint:gomnd // its okay.
 )
 
 type NonceFactory interface {

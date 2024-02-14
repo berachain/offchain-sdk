@@ -138,7 +138,7 @@ func (t *TxrV2) mainLoop(ctx context.Context) {
 			// We didn't get any transactions, so we wait for more.
 			if len(batch) == 0 {
 				t.logger.Info("no tx requests to process....")
-				time.Sleep(t.cfg.EmtpyQueueDelay)
+				time.Sleep(t.cfg.EmptyQueueDelay)
 				continue
 			}
 

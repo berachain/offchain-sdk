@@ -6,6 +6,11 @@ import (
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
+var (
+	multiplier = big.NewInt(11500) //nolint:gomnd // its okay.
+	quotient   = big.NewInt(10000) //nolint:gomnd // its okay.
+)
+
 // BumpGas bumps the gas on a tx by 15% increase.
 func BumpGas(tx *coretypes.Transaction) *coretypes.Transaction {
 	// Bump the existing gas tip cap 15% (10% is required but we add a buffer to be safe).
