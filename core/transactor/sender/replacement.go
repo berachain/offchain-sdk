@@ -15,7 +15,7 @@ type NonceFactory interface {
 
 // TxReplacementPolicy is a type that takes a transaction and returns a replacement transaction.
 type TxReplacementPolicy interface {
-	getNew(*coretypes.Transaction, error) *coretypes.Transaction
+	GetNew(*coretypes.Transaction, error) *coretypes.Transaction
 }
 
 var _ TxReplacementPolicy = (*DefaultTxReplacementPolicy)(nil)
@@ -27,7 +27,7 @@ type DefaultTxReplacementPolicy struct {
 	nf NonceFactory
 }
 
-func (d *DefaultTxReplacementPolicy) getNew(
+func (d *DefaultTxReplacementPolicy) GetNew(
 	tx *coretypes.Transaction, err error,
 ) *coretypes.Transaction {
 	// Replace the nonce if the nonce was too low.

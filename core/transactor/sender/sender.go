@@ -79,7 +79,7 @@ func (s *Sender) retryTxWithPolicy(
 ) {
 	for {
 		// Check the policy to see if we should retry this transaction.
-		retry, backoff := s.retryPolicy.get(tx, err)
+		retry, backoff := s.retryPolicy.Get(tx, err)
 		if !retry {
 			return
 		}
@@ -90,7 +90,7 @@ func (s *Sender) retryTxWithPolicy(
 		s.logger.Error("failed to send tx, retrying...", "hash", currTx, "err", err)
 
 		// Get the replacement tx if necessary.
-		tx = s.txReplacementPolicy.getNew(tx, err)
+		tx = s.txReplacementPolicy.GetNew(tx, err)
 
 		// Update the retry policy if the transaction has been changed and log.
 		if newTx := tx.Hash(); newTx != currTx {
@@ -99,13 +99,13 @@ func (s *Sender) retryTxWithPolicy(
 				"old-gas", currGasPrice, "new-gas", tx.GasPrice(),
 				"old-nonce", currNonce, "new-nonce", tx.Nonce(),
 			)
-			s.retryPolicy.updateTxModified(currTx, newTx)
+			s.retryPolicy.UpdateTxModified(currTx, newTx)
 		}
 
-		// Sign the retry transaction.
-		if tx, err = s.factory.BuildTransactionFromRequests(ctx, tx.Nonce(), types.NewTxRequest(
-			*tx.To(), tx.Gas(), tx.GasFeeCap(), tx.GasTipCap(), tx.Value(), tx.Data(),
-		)); err != nil {
+		// Use the factory to build and sign the new transaction.
+		if tx, err = s.factory.BuildTransactionFromRequests(
+			ctx, tx.Nonce(), types.NewTxRequestFromTx(tx),
+		); err != nil {
 			s.logger.Error("failed to sign replacement transaction", "err", err)
 			continue
 		}

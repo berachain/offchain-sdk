@@ -11,6 +11,15 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+type tx interface {
+	To() *common.Address
+	Gas() uint64
+	GasFeeCap() *big.Int
+	GasTipCap() *big.Int
+	Value() *big.Int
+	Data() []byte
+}
+
 // TxRequest is a transaction request, using the go-ethereum call msg.
 type TxRequest struct {
 	*ethereum.CallMsg
@@ -37,6 +46,10 @@ func NewTxRequest(
 		},
 		MsgID: strings.Join(msgID, ""),
 	}
+}
+
+func NewTxRequestFromTx(t tx) *TxRequest {
+	return NewTxRequest(*t.To(), t.Gas(), t.GasFeeCap(), t.GasTipCap(), t.Value(), t.Data())
 }
 
 // New returns a new empty TxRequest.

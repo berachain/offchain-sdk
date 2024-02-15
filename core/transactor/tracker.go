@@ -64,12 +64,7 @@ func (t *TxrV2) OnStale(
 		"nonce", inFlightTx.Nonce(), "gas-price", inFlightTx.GasPrice(),
 	)
 
-	return t.sendAndTrack(
-		ctx, inFlightTx.MsgIDs, types.NewTxRequest(
-			*inFlightTx.To(), inFlightTx.Gas(), inFlightTx.GasFeeCap(), inFlightTx.GasTipCap(),
-			inFlightTx.Value(), inFlightTx.Data(),
-		),
-	)
+	return t.sendAndTrack(ctx, inFlightTx.MsgIDs, types.NewTxRequestFromTx(inFlightTx))
 }
 
 func (t *TxrV2) OnError(_ context.Context, tx *tracker.InFlightTx, _ error) {

@@ -23,8 +23,8 @@ const (
 // A RetryPolicy is used to determine if a transaction should be retried and how long to wait
 // before retrying again.
 type RetryPolicy interface {
-	get(tx *coretypes.Transaction, err error) (bool, time.Duration)
-	updateTxModified(oldTx, newTx common.Hash)
+	Get(tx *coretypes.Transaction, err error) (bool, time.Duration)
+	UpdateTxModified(oldTx, newTx common.Hash)
 }
 
 var (
@@ -35,11 +35,11 @@ var (
 // NoRetryPolicy does not retry transactions.
 type NoRetryPolicy struct{}
 
-func (*NoRetryPolicy) get(*coretypes.Transaction, error) (bool, time.Duration) {
+func (*NoRetryPolicy) Get(*coretypes.Transaction, error) (bool, time.Duration) {
 	return false, 0
 }
 
-func (*NoRetryPolicy) updateTxModified(common.Hash, common.Hash) {}
+func (*NoRetryPolicy) UpdateTxModified(common.Hash, common.Hash) {}
 
 // ExpoRetryPolicy is a RetryPolicy that does an exponential backoff until maxRetries is
 // reached. This does not assume anything about whether the specifc tx should be retried.
@@ -47,7 +47,7 @@ type ExpoRetryPolicy struct {
 	retries sync.Map
 }
 
-func (erp *ExpoRetryPolicy) get(tx *coretypes.Transaction, err error) (bool, time.Duration) {
+func (erp *ExpoRetryPolicy) Get(tx *coretypes.Transaction, err error) (bool, time.Duration) {
 	var (
 		txHash = tx.Hash()
 		tri    *txRetryInfo
@@ -82,7 +82,7 @@ func (erp *ExpoRetryPolicy) get(tx *coretypes.Transaction, err error) (bool, tim
 	return true, waitTime
 }
 
-func (erp *ExpoRetryPolicy) updateTxModified(oldTx, newTx common.Hash) {
+func (erp *ExpoRetryPolicy) UpdateTxModified(oldTx, newTx common.Hash) {
 	if txri, found := erp.retries.Load(oldTx); found {
 		erp.retries.Delete(oldTx)
 		erp.retries.Store(newTx, txri)
