@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	tryAggregate      = `tryAggregate`
+	method            = `tryAggregate`
 	executionReverted = `execution reverted: `
 )
 
@@ -71,7 +71,7 @@ func (mc *Multicall3Batcher) BatchTxRequests(
 	}
 
 	txRequest, _ := mc.packer.CreateTxRequest(
-		mc.contractAddress, totalValue, gasTipCap, gasFeeCap, gasLimit, tryAggregate, false, calls,
+		"", mc.contractAddress, totalValue, gasTipCap, gasFeeCap, gasLimit, method, false, calls,
 	)
 	return txRequest
 }
@@ -101,7 +101,7 @@ func (mc *Multicall3Batcher) BatchCallRequests(
 	}
 
 	// unpack the return data into call responses
-	callResult, err := mc.packer.GetCallResponse(tryAggregate, ret)
+	callResult, err := mc.packer.GetCallResponse(method, ret)
 	if err != nil {
 		sCtx.Logger().Error("failed to unpack call response", "err", err)
 		return nil, err

@@ -19,10 +19,10 @@ import (
 )
 
 var (
-	multicallAddress = common.HexToAddress("0x9d1dB8253105b007DDDE65Ce262f701814B91125")
-	erc20Address     = common.HexToAddress("0x7EeCA4205fF31f947EdBd49195a7A88E6A91161B")
-	from             = common.Address{}
-	ethHTTPURL       = "http://localhost:8545" // configure this
+	multicallAddr = common.HexToAddress("0x9d1dB8253105b007DDDE65Ce262f701814B91125")
+	erc20Addr     = common.HexToAddress("0x7EeCA4205fF31f947EdBd49195a7A88E6A91161B")
+	from          = common.Address{}
+	ethHTTPURL    = "http://localhost:8545" // configure this
 )
 
 // TestMulticall demonstrates how to use the multicall contract to batch multiple calls to other
@@ -43,16 +43,16 @@ func TestMulticall(t *testing.T) {
 	sCtx := sdk.NewContext(
 		ctx, &eth.ExtendedEthClient{Client: chain}, log.NewLogger(os.Stdout, "test-runner"), nil,
 	)
-	multicaller := factory.NewMulticall3Batcher(multicallAddress)
+	multicaller := factory.NewMulticall3Batcher(multicallAddr)
 
 	// set up some test calls to make
 	mcPacker := types.Packer{MetaData: bindings.Multicall3MetaData}
-	call1, err := mcPacker.CreateTxRequest(multicallAddress, nil, nil, nil, 0, "getBlockNumber")
+	call1, err := mcPacker.CreateTxRequest("", multicallAddr, nil, nil, nil, 0, "getBlockNumber")
 	if err != nil {
 		t.Fatal(err)
 	}
 	erc20Packer := types.Packer{MetaData: bindings.IERC20MetaData}
-	call2, err := erc20Packer.CreateTxRequest(erc20Address, nil, nil, nil, 0, "balanceOf", from)
+	call2, err := erc20Packer.CreateTxRequest("", erc20Addr, nil, nil, nil, 0, "balanceOf", from)
 	if err != nil {
 		t.Fatal(err)
 	}

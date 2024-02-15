@@ -11,9 +11,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-// txReqDivider the string divider used in the unique id of a batched tx request.
-const txReqDivider = `---`
-
 // TxResultType represents the type of error that occurred when sending a tx.
 // There are two different classes of errors:
 // Errors where we fail to send it to the chain:
@@ -40,7 +37,7 @@ type (
 	// TxRequest is a transaction request, using the go-ethereum call msg.
 	TxRequest struct {
 		*ethereum.CallMsg
-		ID string // ID is the optional, user-provided string id for this tx request
+		MsgID string // MsgID is the optional, user-provided string id for this tx request
 	}
 
 	// TxResult represents the error that occurred when sending a tx.
@@ -53,11 +50,15 @@ type (
 	}
 )
 
-// NewTxRequest returns a new transaction request with the given input data.
+// NewTxRequest returns a new transaction request with the given input data. The ID is optional,
+// but at most 1 is allowed per tx request.
 func NewTxRequest(
 	to common.Address, gasLimit uint64, gasFeeCap, gasTipCap, value *big.Int, data []byte,
-	id ...string,
+	msgID ...string,
 ) *TxRequest {
+	if len(msgID) > 1 {
+		panic("must only pass in 1 id for a new tx request")
+	}
 	return &TxRequest{
 		CallMsg: &ethereum.CallMsg{
 			To:        &to,
@@ -67,7 +68,7 @@ func NewTxRequest(
 			Value:     value,
 			Data:      data,
 		},
-		ID: strings.Join(id, txReqDivider),
+		MsgID: strings.Join(msgID, ""),
 	}
 }
 
@@ -78,7 +79,7 @@ func (TxRequest) New() types.Marshallable {
 
 // String() implements fmt.Stringer
 func (tx *TxRequest) String() string {
-	return tx.ID
+	return tx.MsgID
 }
 
 // NewTxRequest returns a new TxRequest with the given type and error.
