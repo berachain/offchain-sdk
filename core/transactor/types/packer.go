@@ -14,6 +14,7 @@ type Packer struct {
 
 // CreateTxRequest function for creating transaction request.
 func (p *Packer) CreateTxRequest(
+	msgID string, // optional, user-provided string id for this tx request
 	to common.Address, // address to send transaction to
 	value *big.Int, // value to be sent in the transaction (optional)
 	gasTipCap *big.Int, // gas tip cap for the transaction (optional)
@@ -32,14 +33,7 @@ func (p *Packer) CreateTxRequest(
 		return nil, err
 	}
 
-	return &TxRequest{
-		To:        &to,
-		GasTipCap: gasTipCap,
-		GasFeeCap: gasFeeCap,
-		Gas:       gasLimit,
-		Value:     value,
-		Data:      bz,
-	}, nil // return a new transaction request
+	return NewTxRequest(to, gasLimit, gasFeeCap, gasTipCap, value, bz, msgID), nil
 }
 
 // GetCallResponse function for unpacking the return data from a call response.

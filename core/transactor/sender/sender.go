@@ -137,15 +137,9 @@ func (s *Sender) handleNonceTooLow(
 		return tx
 	}
 
-	ethTx, buildErr := s.factory.BuildTransaction(sCtx, &types.TxRequest{
-		To:        tx.To(),
-		Gas:       tx.Gas(),
-		GasPrice:  tx.GasPrice(),
-		GasFeeCap: tx.GasFeeCap(),
-		GasTipCap: tx.GasTipCap(),
-		Value:     tx.Value(),
-		Data:      tx.Data(),
-	})
+	ethTx, buildErr := s.factory.BuildTransaction(sCtx, types.NewTxRequest(
+		*tx.To(), tx.Gas(), tx.GasFeeCap(), tx.GasTipCap(), tx.Value(), tx.Data(),
+	))
 	if buildErr != nil {
 		sCtx.Logger().Error("failed to build replacement transaction", "err", err)
 		return tx

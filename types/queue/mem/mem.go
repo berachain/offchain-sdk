@@ -4,18 +4,19 @@ import (
 	"container/list"
 	"sync"
 
-	"github.com/google/uuid"
+	"github.com/berachain/go-utils/utils"
+	"github.com/berachain/offchain-sdk/types/queue/types"
 )
 
 // Queue is a thread-safe FIFO queue implementation.
-type Queue[T any] struct {
+type Queue[T types.Marshallable] struct {
 	mu              sync.RWMutex
 	queuedItems     *list.List
 	inProgressItems map[string]*list.Element
 }
 
 // NewQueue creates a new Queue instance.
-func NewQueue[T any]() *Queue[T] {
+func NewQueue[T types.Marshallable]() *Queue[T] {
 	q := &Queue[T]{
 		queuedItems:     list.New(),
 		inProgressItems: make(map[string]*list.Element),
@@ -30,7 +31,7 @@ func (q *Queue[T]) Push(val T) (string, error) {
 
 	q.queuedItems.PushBack(val)
 
-	return "", nil
+	return val.String(), nil
 }
 
 // Pop returns the value at the front of the queue without removing it.
@@ -45,10 +46,11 @@ func (q *Queue[T]) Receive() (string, T, bool) {
 	}
 
 	q.queuedItems.Remove(element)
-	msgID := uuid.New().String()
+	val := utils.MustGetAs[T](element.Value)
+	msgID := val.String()
 	q.inProgressItems[msgID] = element
 
-	return msgID, element.Value.(T), true
+	return msgID, val, true
 }
 
 func (q *Queue[T]) ReceiveMany(num int32) ([]string, []T, error) {
@@ -61,10 +63,11 @@ func (q *Queue[T]) ReceiveMany(num int32) ([]string, []T, error) {
 	for i := int32(0); i < num; i++ {
 		if element := q.queuedItems.Front(); element != nil {
 			q.queuedItems.Remove(element)
-			msgID := uuid.New().String()
+			val := utils.MustGetAs[T](element.Value)
+			msgID := val.String()
 			q.inProgressItems[msgID] = element
 			msgIDs = append(msgIDs, msgID)
-			txRequests = append(txRequests, element.Value.(T))
+			txRequests = append(txRequests, val)
 		}
 	}
 
