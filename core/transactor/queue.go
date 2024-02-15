@@ -1,8 +1,6 @@
 package transactor
 
 import (
-	"math/big"
-
 	"github.com/berachain/offchain-sdk/core/transactor/types"
 	queuetypes "github.com/berachain/offchain-sdk/types/queue/types"
 
@@ -29,9 +27,5 @@ func (wq *WrappedQueue) Push(
 		return "", err
 	}
 
-	return wq.Queue.Push(&types.TxRequest{
-		To:    &to,
-		Value: big.NewInt(0),
-		Data:  bz,
-	})
+	return wq.Queue.Push(types.NewTxRequest(to, 0, nil, nil, nil, bz))
 }

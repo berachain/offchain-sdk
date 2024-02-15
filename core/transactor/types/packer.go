@@ -32,14 +32,7 @@ func (p *Packer) CreateTxRequest(
 		return nil, err
 	}
 
-	return &TxRequest{
-		To:        &to,
-		GasTipCap: gasTipCap,
-		GasFeeCap: gasFeeCap,
-		Gas:       gasLimit,
-		Value:     value,
-		Data:      bz,
-	}, nil // return a new transaction request
+	return NewTxRequest(to, gasLimit, gasFeeCap, gasTipCap, value, bz), nil
 }
 
 // GetCallResponse function for unpacking the return data from a call response.

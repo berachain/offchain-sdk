@@ -11,7 +11,6 @@ import (
 	"github.com/berachain/offchain-sdk/core/transactor/types"
 	sdk "github.com/berachain/offchain-sdk/types"
 
-	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -91,7 +90,7 @@ func (mc *Multicall3Batcher) BatchCallRequests(
 	batchedCall.From = from
 
 	// call the multicall3 contract with the batched call request
-	ret, err := sCtx.Chain().CallContract(ctx, ethereum.CallMsg(*batchedCall), nil)
+	ret, err := sCtx.Chain().CallContract(ctx, *batchedCall.CallMsg, nil)
 	if err != nil {
 		if _, reason, ok := strings.Cut(err.Error(), executionReverted); ok {
 			sCtx.Logger().Warn("execution reverted for multicall3", "reason", reason)
