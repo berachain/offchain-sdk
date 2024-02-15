@@ -11,12 +11,11 @@ import (
 	"github.com/berachain/offchain-sdk/core/transactor/types"
 	sdk "github.com/berachain/offchain-sdk/types"
 
-	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 )
 
 const (
-	tryAggregate      = `tryAggregate`
+	method            = `tryAggregate`
 	executionReverted = `execution reverted: `
 )
 
@@ -69,7 +68,7 @@ func (mc *Multicall3Batcher) BatchTxRequests(txReqs ...*types.TxRequest) *types.
 	}
 
 	txRequest, _ := mc.packer.CreateTxRequest(
-		mc.contractAddress, totalValue, gasTipCap, gasFeeCap, gasLimit, tryAggregate, false, calls,
+		"", mc.contractAddress, totalValue, gasTipCap, gasFeeCap, gasLimit, method, false, calls,
 	)
 	return txRequest
 }
@@ -88,7 +87,7 @@ func (mc *Multicall3Batcher) BatchCallRequests(
 	batchedCall.From = from
 
 	// call the multicall3 contract with the batched call request
-	ret, err := sCtx.Chain().CallContract(ctx, ethereum.CallMsg(*batchedCall), nil)
+	ret, err := sCtx.Chain().CallContract(ctx, *batchedCall.CallMsg, nil)
 	if err != nil {
 		if _, reason, ok := strings.Cut(err.Error(), executionReverted); ok {
 			sCtx.Logger().Warn("execution reverted for multicall3", "reason", reason)
@@ -99,7 +98,7 @@ func (mc *Multicall3Batcher) BatchCallRequests(
 	}
 
 	// unpack the return data into call responses
-	callResult, err := mc.packer.GetCallResponse(tryAggregate, ret)
+	callResult, err := mc.packer.GetCallResponse(method, ret)
 	if err != nil {
 		sCtx.Logger().Error("failed to unpack call response", "err", err)
 		return nil, err

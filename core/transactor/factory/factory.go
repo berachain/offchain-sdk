@@ -10,7 +10,6 @@ import (
 	"github.com/berachain/offchain-sdk/core/transactor/types"
 	kmstypes "github.com/berachain/offchain-sdk/types/kms/types"
 
-	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
@@ -127,9 +126,8 @@ func (f *Factory) buildTransaction(
 	if txReq.Gas > 0 {
 		txData.Gas = txReq.Gas
 	} else {
-		if txData.Gas, err = f.ethClient.EstimateGas( // TODO: set timeout on context
-			ctx, ethereum.CallMsg(*txReq),
-		); err != nil {
+		// TODO: set timeout on context
+		if txData.Gas, err = f.ethClient.EstimateGas(ctx, *txReq.CallMsg); err != nil {
 			return nil, err
 		}
 	}

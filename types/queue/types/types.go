@@ -1,7 +1,10 @@
 package types
 
+import "fmt"
+
 // Marshallable is an interface that defines the Marshal and Unmarshal methods.
 type Marshallable interface {
+	fmt.Stringer
 	New() Marshallable
 	Marshal() ([]byte, error)
 	Unmarshal([]byte) error

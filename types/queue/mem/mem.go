@@ -3,16 +3,19 @@ package mem
 import (
 	"container/list"
 	"sync"
+
+	"github.com/berachain/go-utils/utils"
+	"github.com/berachain/offchain-sdk/types/queue/types"
 )
 
 // Queue is a thread-safe FIFO queue implementation.
-type Queue[T any] struct {
+type Queue[T types.Marshallable] struct {
 	mu          sync.RWMutex
 	queuedItems *list.List
 }
 
 // NewQueue creates a new Queue instance.
-func NewQueue[T any]() *Queue[T] {
+func NewQueue[T types.Marshallable]() *Queue[T] {
 	return &Queue[T]{
 		queuedItems: list.New(),
 	}
@@ -24,7 +27,8 @@ func (q *Queue[T]) Push(val T) (string, error) {
 	defer q.mu.Unlock()
 
 	q.queuedItems.PushBack(val)
-	return "", nil
+
+	return val.String(), nil
 }
 
 // Pop returns the value at the front of the queue without removing it.
@@ -39,24 +43,31 @@ func (q *Queue[T]) Receive() (string, T, bool) {
 	}
 
 	q.queuedItems.Remove(element)
-	return "", element.Value.(T), true
+	val := utils.MustGetAs[T](element.Value)
+	msgID := val.String()
+
+	return msgID, val, true
 }
 
 func (q *Queue[T]) ReceiveMany(num int32) ([]string, []T, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	var txRequests []T
+	var (
+		txRequests []T
+		msgIDs     []string
+	)
 	for i := int32(0); i < num; i++ {
 		element := q.queuedItems.Front()
 		if element == nil {
 			break
 		}
-
 		q.queuedItems.Remove(element)
-		txRequests = append(txRequests, element.Value.(T))
+		val := utils.MustGetAs[T](element.Value)
+		msgIDs = append(msgIDs, val.String())
+		txRequests = append(txRequests, val)
 	}
-	return make([]string, len(txRequests)), txRequests, nil
+	return msgIDs, txRequests, nil
 }
 
 // Delete is no-op for the in-memory queue.

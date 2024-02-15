@@ -103,15 +103,9 @@ func (s *Sender) retryTxWithPolicy(
 		}
 
 		// Sign the retry transaction.
-		if tx, err = s.factory.BuildTransactionFromRequests(ctx, tx.Nonce(), &types.TxRequest{
-			To:        tx.To(),
-			Gas:       tx.Gas(),
-			GasPrice:  tx.GasPrice(),
-			GasFeeCap: tx.GasFeeCap(),
-			GasTipCap: tx.GasTipCap(),
-			Value:     tx.Value(),
-			Data:      tx.Data(),
-		}); err != nil {
+		if tx, err = s.factory.BuildTransactionFromRequests(ctx, tx.Nonce(), types.NewTxRequest(
+			*tx.To(), tx.Gas(), tx.GasFeeCap(), tx.GasTipCap(), tx.Value(), tx.Data(),
+		)); err != nil {
 			s.logger.Error("failed to sign replacement transaction", "err", err)
 			continue
 		}
