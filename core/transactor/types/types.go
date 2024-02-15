@@ -77,7 +77,7 @@ func (TxRequest) New() types.Marshallable {
 	return &TxRequest{}
 }
 
-// String() implements fmt.Stringer
+// String() implements fmt.Stringer.
 func (tx *TxRequest) String() string {
 	return tx.MsgID
 }

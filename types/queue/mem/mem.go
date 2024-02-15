@@ -4,6 +4,7 @@ import (
 	"container/list"
 	"sync"
 
+	"github.com/berachain/go-utils/utils"
 	"github.com/berachain/offchain-sdk/types/queue/types"
 )
 
@@ -45,7 +46,7 @@ func (q *Queue[T]) Receive() (string, T, bool) {
 	}
 
 	q.queuedItems.Remove(element)
-	val := element.Value.(T)
+	val := utils.MustGetAs[T](element.Value)
 	msgID := val.String()
 	q.inProgressItems[msgID] = element
 
@@ -62,7 +63,7 @@ func (q *Queue[T]) ReceiveMany(num int32) ([]string, []T, error) {
 	for i := int32(0); i < num; i++ {
 		if element := q.queuedItems.Front(); element != nil {
 			q.queuedItems.Remove(element)
-			val := element.Value.(T)
+			val := utils.MustGetAs[T](element.Value)
 			msgID := val.String()
 			q.inProgressItems[msgID] = element
 			msgIDs = append(msgIDs, msgID)
