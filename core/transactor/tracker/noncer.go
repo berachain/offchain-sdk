@@ -65,7 +65,9 @@ func (n *Noncer) refreshNonces(ctx context.Context) {
 	defer n.mu.Unlock()
 
 	if pendingNonce, err := n.ethClient.PendingNonceAt(ctx, n.sender); err == nil {
+		// this should already be the latest pending nonce according to the chain
 		n.latestPendingNonce = pendingNonce
+		// TODO: handle case where pendingNonce is not already the stored latest pending nonce?
 	}
 
 	if content, err := n.ethClient.TxPoolContent(ctx); err == nil {
@@ -98,7 +100,8 @@ func (n *Noncer) Acquire() (uint64, bool) {
 				break
 			}
 		}
-	} else {
+	}
+	if nonce < n.latestPendingNonce {
 		nonce = n.latestPendingNonce
 	}
 	n.acquired[nonce] = struct{}{}
@@ -108,6 +111,7 @@ func (n *Noncer) Acquire() (uint64, bool) {
 		delete(n.queuedNonces, nonce)
 		isReplacing = true
 	}
+
 	return nonce, isReplacing
 }
 
@@ -128,6 +132,9 @@ func (n *Noncer) SetInFlight(tx *InFlightTx) {
 	nonce := tx.Nonce()
 	delete(n.acquired, nonce) // Remove from the acquired nonces.
 	n.inFlight.Set(nonce, tx) // Add to the in-flight list.
+
+	// Update the latest pending nonce.
+	n.latestPendingNonce = nonce + 1
 }
 
 // RemoveInFlight removes a transaction from the in-flight list by its nonce.
