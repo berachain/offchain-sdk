@@ -12,20 +12,6 @@ import (
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
-// Tracker is an interface for tracking sent transactions.
-type Tracker interface {
-	SetClient(chain eth.Client)
-	Track(ctx context.Context, tx *tracker.InFlightTx)
-}
-
-// Factory is an interface for signing transactions.
-type Factory interface {
-	BuildTransactionFromRequests(
-		ctx context.Context, forcedNonce uint64, txReqs ...*types.TxRequest,
-	) (*coretypes.Transaction, error)
-	GetNextNonce(oldNonce uint64) (uint64, bool)
-}
-
 // Sender struct holds the transaction replacement and retry policies.
 type Sender struct {
 	factory             Factory             // factory to sign new transactions

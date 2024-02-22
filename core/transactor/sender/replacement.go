@@ -9,22 +9,13 @@ import (
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
-type NonceFactory interface {
-	GetNextNonce(oldNonce uint64) (uint64, bool)
-}
-
-// TxReplacementPolicy is a type that takes a transaction and returns a replacement transaction.
-type TxReplacementPolicy interface {
-	GetNew(*coretypes.Transaction, error) *coretypes.Transaction
-}
-
 var _ TxReplacementPolicy = (*DefaultTxReplacementPolicy)(nil)
 
 // DefaultTxReplacementPolicy is the default transaction replacement policy. It bumps the gas price
 // by 15% (only 10% is required but we add a buffer to be safe) and generates a replacement 1559
 // dynamic fee transaction.
 type DefaultTxReplacementPolicy struct {
-	nf NonceFactory
+	nf Factory
 }
 
 func (d *DefaultTxReplacementPolicy) GetNew(

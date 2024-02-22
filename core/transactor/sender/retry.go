@@ -20,13 +20,6 @@ const (
 	jitterRange       = 1000                   // TODO: read from config.
 )
 
-// A RetryPolicy is used to determine if a transaction should be retried and how long to wait
-// before retrying again.
-type RetryPolicy interface {
-	Get(tx *coretypes.Transaction, err error) (bool, time.Duration)
-	UpdateTxModified(oldTx, newTx common.Hash)
-}
-
 var (
 	_ RetryPolicy = (*NoRetryPolicy)(nil)
 	_ RetryPolicy = (*ExpoRetryPolicy)(nil)

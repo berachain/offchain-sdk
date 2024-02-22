@@ -14,12 +14,6 @@ import (
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
-// Noncer is an interface for acquiring nonces.
-type Noncer interface {
-	Acquire() (nonce uint64, isReplacing bool)
-	RemoveAcquired(uint64)
-}
-
 // Factory is a transaction factory that builds transactions with the configured signer.
 type Factory struct {
 	noncer        Noncer
