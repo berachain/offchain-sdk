@@ -7,6 +7,7 @@ import (
 	"github.com/berachain/offchain-sdk/client/eth"
 	"github.com/berachain/offchain-sdk/core/transactor/tracker"
 	"github.com/berachain/offchain-sdk/core/transactor/types"
+
 	"github.com/ethereum/go-ethereum/common"
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
