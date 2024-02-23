@@ -120,6 +120,7 @@ func (f *Factory) buildTransaction(
 	if txReq.Gas > 0 {
 		txData.Gas = txReq.Gas
 	} else {
+		txReq.CallMsg.From = f.signer.Address() // set the from address for estimate gas
 		// TODO: set timeout on context
 		if txData.Gas, err = f.ethClient.EstimateGas(ctx, *txReq.CallMsg); err != nil {
 			return nil, err

@@ -16,11 +16,11 @@ type Chain interface {
 }
 
 type ChainWriter interface {
-	CallContract(ctx context.Context, call ethereum.CallMsg, blockNumber *big.Int) ([]byte, error)
 	SendTransaction(ctx context.Context, tx *types.Transaction) error
 }
 
 type ChainReader interface {
+	CallContract(ctx context.Context, call ethereum.CallMsg, blockNumber *big.Int) ([]byte, error)
 	CodeAt(ctx context.Context, contract common.Address, blockNumber *big.Int) ([]byte, error)
 	CurrentBlock() (*types.Block, error)
 	GetBlockByNumber(number uint64) (*types.Block, error)
