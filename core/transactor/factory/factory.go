@@ -14,7 +14,7 @@ import (
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
-// Factory is a transaction factory that builds transactions with the configured signer.
+// Factory is a transaction factory that builds 1559 transactions with the configured signer.
 type Factory struct {
 	noncer        Noncer
 	signer        kmstypes.TxSigner
