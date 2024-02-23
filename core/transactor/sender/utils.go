@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"math/big"
 
-	coretypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/holiman/uint256"
+
+	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
 var (
@@ -43,17 +44,17 @@ func BumpGas(tx *coretypes.Transaction) *coretypes.Transaction {
 				BlobHashes: tx.BlobHashes(),
 				Sidecar:    tx.BlobTxSidecar(),
 			}
-		}
-
-		innerTx = &coretypes.DynamicFeeTx{
-			ChainID:   tx.ChainId(),
-			Nonce:     tx.Nonce(),
-			GasTipCap: bumpedGasTipCap,
-			GasFeeCap: bumpedGasFeeCap,
-			Gas:       tx.Gas(),
-			To:        tx.To(),
-			Value:     tx.Value(),
-			Data:      tx.Data(),
+		} else {
+			innerTx = &coretypes.DynamicFeeTx{
+				ChainID:   tx.ChainId(),
+				Nonce:     tx.Nonce(),
+				GasTipCap: bumpedGasTipCap,
+				GasFeeCap: bumpedGasFeeCap,
+				Gas:       tx.Gas(),
+				To:        tx.To(),
+				Value:     tx.Value(),
+				Data:      tx.Data(),
+			}
 		}
 	case coretypes.LegacyTxType, coretypes.AccessListTxType:
 		// Bump the gas price by 15% (10% is required but we add a buffer to be safe).
@@ -71,15 +72,15 @@ func BumpGas(tx *coretypes.Transaction) *coretypes.Transaction {
 				Data:       tx.Data(),
 				AccessList: tx.AccessList(),
 			}
-		}
-
-		innerTx = &coretypes.LegacyTx{
-			Nonce:    tx.Nonce(),
-			To:       tx.To(),
-			Gas:      tx.Gas(),
-			GasPrice: bumpedGasPrice,
-			Value:    tx.Value(),
-			Data:     tx.Data(),
+		} else {
+			innerTx = &coretypes.LegacyTx{
+				Nonce:    tx.Nonce(),
+				To:       tx.To(),
+				Gas:      tx.Gas(),
+				GasPrice: bumpedGasPrice,
+				Value:    tx.Value(),
+				Data:     tx.Data(),
+			}
 		}
 	default:
 		panic(fmt.Sprintf("trying to bump gas on unknown tx type (%d)", tx.Type()))
