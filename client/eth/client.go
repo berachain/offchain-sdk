@@ -12,11 +12,6 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
-const (
-	MaxRetries       = 3
-	defaultRetryTime = 1 * time.Second
-)
-
 type Client interface {
 	DialContext(ctx context.Context, rawurl string) error
 	Close() error
@@ -62,6 +57,14 @@ type Writer interface {
 // client is the indexer eth client.
 type ExtendedEthClient struct {
 	*ethclient.Client
+	rpcTimeout time.Duration
+}
+
+func NewExtendedEthClient(c *ethclient.Client, rpcTimeout time.Duration) *ExtendedEthClient {
+	return &ExtendedEthClient{
+		Client:     c,
+		rpcTimeout: rpcTimeout,
+	}
 }
 
 // ==================================================================
@@ -74,7 +77,9 @@ func (c *ExtendedEthClient) DialContext(ctx context.Context, rawurl string) erro
 	}
 
 	var err error
-	c.Client, err = ethclient.DialContext(ctx, rawurl)
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
+	c.Client, err = ethclient.DialContext(ctxWithTimeout, rawurl)
+	cancel()
 	return err
 }
 
@@ -88,7 +93,9 @@ func (c *ExtendedEthClient) Close() error {
 }
 
 func (c *ExtendedEthClient) Health() bool {
-	_, err := c.ChainID(context.TODO())
+	ctxWithTimeout, cancel := context.WithTimeout(context.Background(), c.rpcTimeout)
+	_, err := c.ChainID(ctxWithTimeout)
+	cancel()
 	return err == nil
 }
 
@@ -101,7 +108,9 @@ func (c *ExtendedEthClient) GetReceipts(
 	ctx context.Context, txs ethcoretypes.Transactions) (ethcoretypes.Receipts, error) {
 	var receipts ethcoretypes.Receipts
 	for _, tx := range txs {
-		receipt, err := c.TransactionReceipt(ctx, tx.Hash())
+		ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
+		receipt, err := c.TransactionReceipt(ctxWithTimeout, tx.Hash())
+		cancel()
 		if err != nil {
 			return nil, err
 		}
@@ -114,22 +123,29 @@ func (c *ExtendedEthClient) GetReceipts(
 func (c *ExtendedEthClient) SubscribeNewHead(
 	ctx context.Context) (chan *ethcoretypes.Header, ethereum.Subscription, error) {
 	ch := make(chan *ethcoretypes.Header)
-	sub, err := c.Client.SubscribeNewHead(ctx, ch)
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
+	sub, err := c.Client.SubscribeNewHead(ctxWithTimeout, ch)
+	cancel()
 	return ch, sub, err
 }
 
 func (c *ExtendedEthClient) SubscribeFilterLogs(
 	ctx context.Context,
 	q ethereum.FilterQuery, ch chan<- ethcoretypes.Log) (ethereum.Subscription, error) {
-	return c.Client.SubscribeFilterLogs(ctx, q, ch)
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
+	defer cancel()
+	return c.Client.SubscribeFilterLogs(ctxWithTimeout, q, ch)
 }
 
 func (c *ExtendedEthClient) TxPoolContent(
 	ctx context.Context,
 ) (map[string]map[string]map[string]*ethcoretypes.Transaction, error) {
-	// var result map[string]map[string]map[string]*ethcoretypes.Transaction
 	var result map[string]map[string]map[string]*ethcoretypes.Transaction
-	if err := c.Client.Client().CallContext(ctx, &result, "txpool_content"); err != nil {
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
+	defer cancel()
+	if err := c.Client.Client().CallContext(
+		ctxWithTimeout, &result, "txpool_content",
+	); err != nil {
 		return nil, err
 	}
 	return result, nil

@@ -1,14 +1,24 @@
 package eth
 
-// Config is the configuration for the eth client.
-type Config struct {
-	EthHTTPURLs string
-	EthWSURLs   string
+import "time"
+
+const (
+	defaultRPCTimeout          = 5 * time.Second
+	defaultHealthCheckInterval = 5 * time.Second
+)
+
+type ConnectionPoolConfig struct {
+	EthHTTPURLs         []string
+	EthWSURLs           []string
+	DefaultTimeout      time.Duration
+	HealthCheckInterval time.Duration
 }
 
-func DefaultConfig() *Config {
-	return &Config{
-		EthHTTPURLs: "http://localhost:8545",
-		EthWSURLs:   "ws://localhost:8546",
+func DefaultConnectPoolConfig() *ConnectionPoolConfig {
+	return &ConnectionPoolConfig{
+		EthHTTPURLs:         []string{"http://localhost:8545"},
+		EthWSURLs:           []string{"ws://localhost:8546"},
+		DefaultTimeout:      defaultRPCTimeout,
+		HealthCheckInterval: defaultHealthCheckInterval,
 	}
 }

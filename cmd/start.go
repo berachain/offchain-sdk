@@ -80,7 +80,7 @@ func StartCmdWithOptions[C any](
 				return err
 			}
 
-			cpi, err := eth.NewChainProviderImpl(cp)
+			cpi, err := eth.NewChainProviderImpl(cp, cfg.ConnectionPool)
 			if err != nil {
 				return err
 			}

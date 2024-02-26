@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/berachain/offchain-sdk/client/eth"
 	"github.com/berachain/offchain-sdk/contracts/bindings"
@@ -18,11 +19,12 @@ import (
 	ethclient "github.com/ethereum/go-ethereum/ethclient"
 )
 
+// TODO: read in from config or input.
 var (
 	multicallAddr = common.HexToAddress("0x9d1dB8253105b007DDDE65Ce262f701814B91125")
 	erc20Addr     = common.HexToAddress("0x7EeCA4205fF31f947EdBd49195a7A88E6A91161B")
 	from          = common.Address{}
-	ethHTTPURL    = "http://localhost:8545" // configure this
+	ethHTTPURL    = "http://localhost:8545"
 )
 
 // TestMulticall demonstrates how to use the multicall contract to batch multiple calls to other
@@ -41,7 +43,8 @@ func TestMulticall(t *testing.T) {
 		t.Fatal(err)
 	}
 	sCtx := sdk.NewContext(
-		ctx, &eth.ExtendedEthClient{Client: chain}, log.NewLogger(os.Stdout, "test-runner"), nil,
+		ctx, eth.NewExtendedEthClient(chain, 5*time.Second), //nolint:gomnd // it's okay for test.
+		log.NewLogger(os.Stdout, "test-runner"), nil,
 	)
 	multicaller := factory.NewMulticall3Batcher(multicallAddr)
 
