@@ -65,7 +65,7 @@ func (t *Tracker) trackStatus(ctx context.Context, tx *InFlightTx) {
 			t.waitMined(ctx, tx, false)
 			return
 		default:
-			// Check the mempool again. // TODO: set timeout on context
+			// Check the mempool again.
 			if content, err := t.ethClient.TxPoolContent(ctx); err == nil {
 				if _, isPending := content["pending"][txHashHex]; isPending {
 					t.markPending(ctx, tx)
@@ -79,7 +79,7 @@ func (t *Tracker) trackStatus(ctx context.Context, tx *InFlightTx) {
 				}
 			}
 
-			// Check for the receipt again. // TODO: set timeout on context
+			// Check for the receipt again.
 			if receipt, err := t.ethClient.TransactionReceipt(ctx, txHash); err == nil {
 				t.markConfirmed(tx, receipt)
 				return
@@ -113,7 +113,7 @@ func (t *Tracker) waitMined(ctx context.Context, tx *InFlightTx, isAlreadyPendin
 			t.markStale(tx, isAlreadyPending)
 			return
 		default:
-			// Else check for the receipt again. // TODO: set timeout on context
+			// Else check for the receipt again.
 			if receipt, err = t.ethClient.TransactionReceipt(ctx, tx.Hash()); err == nil {
 				t.markConfirmed(tx, receipt)
 				return

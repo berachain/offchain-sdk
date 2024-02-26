@@ -44,7 +44,7 @@ func (s *Sender) Setup(chain eth.Client, logger log.Logger) {
 func (s *Sender) SendTransactionAndTrack(
 	ctx context.Context, tx *coretypes.Transaction, msgIDs []string, shouldRetry bool,
 ) error {
-	if err := s.chain.SendTransaction(ctx, tx); err != nil { // TODO: set timeout on context
+	if err := s.chain.SendTransaction(ctx, tx); err != nil {
 		// If sending the transaction fails, retry according to the retry policy.
 		if shouldRetry {
 			go s.retryTxWithPolicy(ctx, tx, msgIDs, err)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"math/big"
+	"time"
 
 	"github.com/berachain/offchain-sdk/client/eth"
 	"github.com/berachain/offchain-sdk/core/transactor/sender"
@@ -12,6 +13,10 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	coretypes "github.com/ethereum/go-ethereum/core/types"
+)
+
+const (
+	signTxTimeout = 2 * time.Second
 )
 
 // Factory is a transaction factory that builds 1559 transactions with the configured signer.
@@ -70,7 +75,7 @@ func (f *Factory) buildTransaction(
 
 	// get the chain ID
 	if f.chainID == nil {
-		f.chainID, err = f.ethClient.ChainID(ctx) // TODO: set timeout on context
+		f.chainID, err = f.ethClient.ChainID(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -100,7 +105,7 @@ func (f *Factory) buildTransaction(
 	if txReq.GasFeeCap != nil {
 		txData.GasFeeCap = txReq.GasFeeCap
 	} else {
-		txData.GasFeeCap, err = f.ethClient.SuggestGasPrice(ctx) // TODO: set timeout on context
+		txData.GasFeeCap, err = f.ethClient.SuggestGasPrice(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -110,7 +115,7 @@ func (f *Factory) buildTransaction(
 	if txReq.GasTipCap != nil {
 		txData.GasTipCap = txReq.GasTipCap
 	} else {
-		txData.GasTipCap, err = f.ethClient.SuggestGasTipCap(ctx) // TODO: set timeout on context
+		txData.GasTipCap, err = f.ethClient.SuggestGasTipCap(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -121,7 +126,6 @@ func (f *Factory) buildTransaction(
 		txData.Gas = txReq.Gas
 	} else {
 		txReq.CallMsg.From = f.signer.Address() // set the from address for estimate gas
-		// TODO: set timeout on context
 		if txData.Gas, err = f.ethClient.EstimateGas(ctx, *txReq.CallMsg); err != nil {
 			return nil, err
 		}
@@ -140,7 +144,9 @@ func (f *Factory) buildTransaction(
 func (f *Factory) SignTransaction(
 	ctx context.Context, tx *coretypes.Transaction,
 ) (*coretypes.Transaction, error) {
-	signer, err := f.signer.SignerFunc(ctx, tx.ChainId()) // TODO: set timeout on context
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, signTxTimeout)
+	signer, err := f.signer.SignerFunc(ctxWithTimeout, tx.ChainId())
+	cancel()
 	if err != nil {
 		return nil, err
 	}
