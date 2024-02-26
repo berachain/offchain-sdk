@@ -43,7 +43,7 @@ func TestMulticall(t *testing.T) {
 		t.Fatal(err)
 	}
 	sCtx := sdk.NewContext(
-		ctx, eth.NewExtendedEthClient(chain, 5*time.Second), //nolint:gomnd // it's okay for test.
+		ctx, eth.NewExtendedEthClient(chain, 5*time.Second),
 		log.NewLogger(os.Stdout, "test-runner"), nil,
 	)
 	multicaller := factory.NewMulticall3Batcher(multicallAddr)
