@@ -28,15 +28,17 @@ func NewHealthCheckedClient(
 	}
 }
 
-func (c *HealthCheckedClient) DialContext(ctx context.Context, rawurl string) error {
-	ethClient, err := ethclient.DialContext(ctx, rawurl)
+func (c *HealthCheckedClient) DialContext(
+	ctx context.Context, rawurl string, rpcTimeout time.Duration,
+) error {
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, c.healthCheckInterval)
+	defer cancel()
+	ethClient, err := ethclient.DialContext(ctxWithTimeout, rawurl)
 	if err != nil {
 		return err
 	}
-	c.ExtendedEthClient = &ExtendedEthClient{
-		Client: ethClient,
-	}
 
+	c.ExtendedEthClient = NewExtendedEthClient(ethClient, rpcTimeout)
 	c.dialurl = rawurl
 
 	go c.StartHealthCheck(ctx)
@@ -62,7 +64,9 @@ func (c *HealthCheckedClient) StartHealthCheck(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		default:
-			_, err := c.ChainID(ctx)
+			ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
+			_, err := c.ChainID(ctxWithTimeout)
+			cancel()
 			if err != nil {
 				c.SetHealthy(false)
 				c.logger.Error("eth client reporting unhealthy", "err", err, "url", c.dialurl)

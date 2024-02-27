@@ -27,23 +27,14 @@ type ConnectionPoolImpl struct {
 	logger  log.Logger
 }
 
-type ConnectionPoolConfig struct {
-	EthHTTPURLs         []string
-	EthWSURLs           []string
-	DefaultTimeout      time.Duration
-	HealthCheckInterval time.Duration
-}
-
-func DefaultConnectPoolConfig() *ConnectionPoolConfig {
-	return &ConnectionPoolConfig{
-		EthHTTPURLs:         []string{"http://localhost:8545"},
-		EthWSURLs:           []string{"ws://localhost:8546"},
-		DefaultTimeout:      5 * time.Second, //nolint:gomnd // fix later.
-		HealthCheckInterval: 5 * time.Second, //nolint:gomnd // fix later.
-	}
-}
-
 func NewConnectionPoolImpl(cfg ConnectionPoolConfig, logger log.Logger) (ConnectionPool, error) {
+	if cfg.DefaultTimeout == 0 {
+		cfg.DefaultTimeout = defaultRPCTimeout
+	}
+	if cfg.HealthCheckInterval == 0 {
+		cfg.HealthCheckInterval = defaultHealthCheckInterval
+	}
+
 	cache, err := lru.NewWithEvict[string, *HealthCheckedClient](
 		len(cfg.EthHTTPURLs), func(_ string, v *HealthCheckedClient) {
 			defer v.Close()
@@ -91,14 +82,14 @@ func (c *ConnectionPoolImpl) Dial(string) error {
 func (c *ConnectionPoolImpl) DialContext(ctx context.Context, _ string) error {
 	for _, url := range c.config.EthHTTPURLs {
 		client := NewHealthCheckedClient(c.config.HealthCheckInterval, c.logger)
-		if err := client.DialContext(ctx, url); err != nil {
+		if err := client.DialContext(ctx, url, c.config.DefaultTimeout); err != nil {
 			return err
 		}
 		c.cache.Add(url, client)
 	}
 	for _, url := range c.config.EthWSURLs {
 		client := NewHealthCheckedClient(c.config.HealthCheckInterval, c.logger)
-		if err := client.DialContext(ctx, url); err != nil {
+		if err := client.DialContext(ctx, url, c.config.DefaultTimeout); err != nil {
 			return err
 		}
 		c.wsCache.Add(url, client)

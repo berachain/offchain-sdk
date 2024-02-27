@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"math/big"
+	"time"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
@@ -19,11 +20,16 @@ var (
 // ChainProviderImpl is an implementation of the ChainProvider interface.
 type ChainProviderImpl struct {
 	ConnectionPool
+	rpcTimeout time.Duration
 }
 
 // NewChainProviderImpl creates a new ChainProviderImpl with the given ConnectionPool.
-func NewChainProviderImpl(pool ConnectionPool) (Client, error) {
-	return &ChainProviderImpl{pool}, nil
+func NewChainProviderImpl(pool ConnectionPool, cfg ConnectionPoolConfig) (Client, error) {
+	c := &ChainProviderImpl{ConnectionPool: pool, rpcTimeout: cfg.DefaultTimeout}
+	if c.rpcTimeout == 0 {
+		c.rpcTimeout = defaultRPCTimeout
+	}
+	return c, nil
 }
 
 // ==================================================================
@@ -34,7 +40,9 @@ func NewChainProviderImpl(pool ConnectionPool) (Client, error) {
 func (c *ChainProviderImpl) BlockByNumber(
 	ctx context.Context, num *big.Int) (*types.Block, error) {
 	if client, ok := c.GetHTTP(); ok {
-		return client.BlockByNumber(ctx, num)
+		ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
+		defer cancel()
+		return client.BlockByNumber(ctxWithTimeout, num)
 	}
 	return nil, ErrClientNotFound
 }
@@ -43,7 +51,9 @@ func (c *ChainProviderImpl) BlockByNumber(
 func (c *ChainProviderImpl) BlockReceipts(
 	ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) ([]*types.Receipt, error) {
 	if client, ok := c.GetHTTP(); ok {
-		return client.BlockReceipts(ctx, blockNrOrHash)
+		ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
+		defer cancel()
+		return client.BlockReceipts(ctxWithTimeout, blockNrOrHash)
 	}
 	return nil, ErrClientNotFound
 }
@@ -52,7 +62,9 @@ func (c *ChainProviderImpl) BlockReceipts(
 func (c *ChainProviderImpl) TransactionReceipt(
 	ctx context.Context, txHash common.Hash) (*types.Receipt, error) {
 	if client, ok := c.GetHTTP(); ok {
-		return client.TransactionReceipt(ctx, txHash)
+		ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
+		defer cancel()
+		return client.TransactionReceipt(ctxWithTimeout, txHash)
 	}
 	return nil, ErrClientNotFound
 }
@@ -61,7 +73,9 @@ func (c *ChainProviderImpl) TransactionReceipt(
 func (c *ChainProviderImpl) SubscribeNewHead(
 	ctx context.Context) (chan *types.Header, ethereum.Subscription, error) {
 	if client, ok := c.GetWS(); ok {
-		return client.SubscribeNewHead(ctx)
+		ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
+		defer cancel()
+		return client.SubscribeNewHead(ctxWithTimeout)
 	}
 	return nil, nil, ErrClientNotFound
 }
@@ -69,7 +83,9 @@ func (c *ChainProviderImpl) SubscribeNewHead(
 // BlockNumber returns the current block number.
 func (c *ChainProviderImpl) BlockNumber(ctx context.Context) (uint64, error) {
 	if client, ok := c.GetHTTP(); ok {
-		return client.BlockNumber(ctx)
+		ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
+		defer cancel()
+		return client.BlockNumber(ctxWithTimeout)
 	}
 	return 0, ErrClientNotFound
 }
@@ -77,7 +93,9 @@ func (c *ChainProviderImpl) BlockNumber(ctx context.Context) (uint64, error) {
 // ChainID returns the current chain ID.
 func (c *ChainProviderImpl) ChainID(ctx context.Context) (*big.Int, error) {
 	if client, ok := c.GetHTTP(); ok {
-		return client.ChainID(ctx)
+		ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
+		defer cancel()
+		return client.ChainID(ctxWithTimeout)
 	}
 	return nil, ErrClientNotFound
 }
@@ -86,7 +104,9 @@ func (c *ChainProviderImpl) ChainID(ctx context.Context) (*big.Int, error) {
 func (c *ChainProviderImpl) BalanceAt(
 	ctx context.Context, address common.Address, blockNumber *big.Int) (*big.Int, error) {
 	if client, ok := c.GetHTTP(); ok {
-		return client.BalanceAt(ctx, address, blockNumber)
+		ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
+		defer cancel()
+		return client.BalanceAt(ctxWithTimeout, address, blockNumber)
 	}
 	return nil, ErrClientNotFound
 }
@@ -95,7 +115,9 @@ func (c *ChainProviderImpl) BalanceAt(
 func (c *ChainProviderImpl) CodeAt(
 	ctx context.Context, account common.Address, blockNumber *big.Int) ([]byte, error) {
 	if client, ok := c.GetHTTP(); ok {
-		return client.CodeAt(ctx, account, blockNumber)
+		ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
+		defer cancel()
+		return client.CodeAt(ctxWithTimeout, account, blockNumber)
 	}
 	return nil, ErrClientNotFound
 }
@@ -104,7 +126,9 @@ func (c *ChainProviderImpl) CodeAt(
 func (c *ChainProviderImpl) EstimateGas(
 	ctx context.Context, msg ethereum.CallMsg) (uint64, error) {
 	if client, ok := c.GetHTTP(); ok {
-		return client.EstimateGas(ctx, msg)
+		ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
+		defer cancel()
+		return client.EstimateGas(ctxWithTimeout, msg)
 	}
 	return 0, ErrClientNotFound
 }
@@ -113,7 +137,9 @@ func (c *ChainProviderImpl) EstimateGas(
 func (c *ChainProviderImpl) FilterLogs(
 	ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error) {
 	if client, ok := c.GetHTTP(); ok {
-		return client.FilterLogs(ctx, q)
+		ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
+		defer cancel()
+		return client.FilterLogs(ctxWithTimeout, q)
 	}
 	return nil, ErrClientNotFound
 }
@@ -122,7 +148,9 @@ func (c *ChainProviderImpl) FilterLogs(
 func (c *ChainProviderImpl) HeaderByNumber(
 	ctx context.Context, number *big.Int) (*types.Header, error) {
 	if client, ok := c.GetHTTP(); ok {
-		return client.HeaderByNumber(ctx, number)
+		ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
+		defer cancel()
+		return client.HeaderByNumber(ctxWithTimeout, number)
 	}
 	return nil, ErrClientNotFound
 }
@@ -131,7 +159,9 @@ func (c *ChainProviderImpl) HeaderByNumber(
 func (c *ChainProviderImpl) PendingCodeAt(
 	ctx context.Context, account common.Address) ([]byte, error) {
 	if client, ok := c.GetHTTP(); ok {
-		return client.PendingCodeAt(ctx, account)
+		ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
+		defer cancel()
+		return client.PendingCodeAt(ctxWithTimeout, account)
 	}
 	return nil, ErrClientNotFound
 }
@@ -140,7 +170,9 @@ func (c *ChainProviderImpl) PendingCodeAt(
 func (c *ChainProviderImpl) PendingNonceAt(
 	ctx context.Context, account common.Address) (uint64, error) {
 	if client, ok := c.GetHTTP(); ok {
-		return client.PendingNonceAt(ctx, account)
+		ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
+		defer cancel()
+		return client.PendingNonceAt(ctxWithTimeout, account)
 	}
 	return 0, ErrClientNotFound
 }
@@ -149,7 +181,9 @@ func (c *ChainProviderImpl) PendingNonceAt(
 func (c *ChainProviderImpl) NonceAt(
 	ctx context.Context, account common.Address, bn *big.Int) (uint64, error) {
 	if client, ok := c.GetHTTP(); ok {
-		return client.NonceAt(ctx, account, bn)
+		ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
+		defer cancel()
+		return client.NonceAt(ctxWithTimeout, account, bn)
 	}
 	return 0, ErrClientNotFound
 }
@@ -158,7 +192,9 @@ func (c *ChainProviderImpl) NonceAt(
 func (c *ChainProviderImpl) SendTransaction(
 	ctx context.Context, tx *types.Transaction) error {
 	if client, ok := c.GetHTTP(); ok {
-		return client.SendTransaction(ctx, tx)
+		ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
+		defer cancel()
+		return client.SendTransaction(ctxWithTimeout, tx)
 	}
 	return ErrClientNotFound
 }
@@ -168,7 +204,9 @@ func (c *ChainProviderImpl) SubscribeFilterLogs(
 	ctx context.Context, q ethereum.FilterQuery, ch chan<- types.Log,
 ) (ethereum.Subscription, error) {
 	if client, ok := c.GetWS(); ok {
-		return client.SubscribeFilterLogs(ctx, q, ch)
+		ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
+		defer cancel()
+		return client.SubscribeFilterLogs(ctxWithTimeout, q, ch)
 	}
 	return nil, ErrClientNotFound
 }
@@ -176,7 +214,9 @@ func (c *ChainProviderImpl) SubscribeFilterLogs(
 // SuggestGasPrice suggests a gas price.
 func (c *ChainProviderImpl) SuggestGasPrice(ctx context.Context) (*big.Int, error) {
 	if client, ok := c.GetHTTP(); ok {
-		return client.SuggestGasPrice(ctx)
+		ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
+		defer cancel()
+		return client.SuggestGasPrice(ctxWithTimeout)
 	}
 	return nil, ErrClientNotFound
 }
@@ -186,7 +226,9 @@ func (c *ChainProviderImpl) CallContract(
 	ctx context.Context, msg ethereum.CallMsg, blockNumber *big.Int,
 ) ([]byte, error) {
 	if client, ok := c.GetHTTP(); ok {
-		return client.CallContract(ctx, msg, blockNumber)
+		ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
+		defer cancel()
+		return client.CallContract(ctxWithTimeout, msg, blockNumber)
 	}
 	return nil, ErrClientNotFound
 }
@@ -194,7 +236,9 @@ func (c *ChainProviderImpl) CallContract(
 // SuggestGasTipCap suggests a gas tip cap.
 func (c *ChainProviderImpl) SuggestGasTipCap(ctx context.Context) (*big.Int, error) {
 	if client, ok := c.GetHTTP(); ok {
-		return client.SuggestGasTipCap(ctx)
+		ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
+		defer cancel()
+		return client.SuggestGasTipCap(ctxWithTimeout)
 	}
 	return nil, ErrClientNotFound
 }
@@ -204,26 +248,20 @@ func (c *ChainProviderImpl) TransactionByHash(
 	ctx context.Context, hash common.Hash,
 ) (*types.Transaction, bool, error) {
 	if client, ok := c.GetHTTP(); ok {
-		return client.TransactionByHash(ctx, hash)
+		ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
+		defer cancel()
+		return client.TransactionByHash(ctxWithTimeout, hash)
 	}
 	return nil, false, ErrClientNotFound
 }
-
-// "id": 1,
-// "result": {
-// 	"pending": {
-// 		"0xe74aA377Dbc22450349774d1C427337995120DCB": {
-// 			"3698316": {
-// 				"blockHash": null,
-// 				"blockNumber": null,
-// 				"from": "0xe74aa377dbc22450349774d1c427337995120dcb",
-// 				"gas": "0x715b",
 
 func (c *ChainProviderImpl) TxPoolContent(ctx context.Context) (
 	map[string]map[string]map[string]*types.Transaction, error,
 ) {
 	if client, ok := c.GetHTTP(); ok {
-		return client.TxPoolContent(ctx)
+		ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
+		defer cancel()
+		return client.TxPoolContent(ctxWithTimeout)
 	}
 	return nil, ErrClientNotFound
 }
