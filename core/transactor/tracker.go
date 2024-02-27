@@ -5,13 +5,14 @@ import (
 	"sync"
 
 	"github.com/berachain/offchain-sdk/core/transactor/tracker"
+	"github.com/berachain/offchain-sdk/core/transactor/types"
 
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
 func (t *TxrV2) OnSuccess(tx *tracker.InFlightTx, receipt *coretypes.Receipt) error {
 	t.logger.Info(
-		"⛏️ transaction mined",
+		"⛏️ transaction mined: success",
 		"tx-hash", receipt.TxHash.Hex(),
 		"gas-used", receipt.GasUsed,
 		"status", receipt.Status,
@@ -43,7 +44,7 @@ func (t *TxrV2) OnSuccess(tx *tracker.InFlightTx, receipt *coretypes.Receipt) er
 
 func (t *TxrV2) OnRevert(tx *tracker.InFlightTx, receipt *coretypes.Receipt) error {
 	t.logger.Error(
-		"🔻 transaction reverted",
+		"🔻 transaction mined: reverted",
 		"tx-hash", receipt.TxHash.Hex(),
 		"gas-used", receipt.GasUsed,
 		"status", receipt.Status,
@@ -55,15 +56,15 @@ func (t *TxrV2) OnRevert(tx *tracker.InFlightTx, receipt *coretypes.Receipt) err
 	return nil
 }
 
-func (t *TxrV2) OnStale(_ context.Context, tx *tracker.InFlightTx) error {
+func (t *TxrV2) OnStale(
+	ctx context.Context, inFlightTx *tracker.InFlightTx,
+) error {
 	t.logger.Warn(
-		"🔄 transaction is stale",
-		"tx-hash", tx.Hash(),
-		"nonce", tx.Nonce(),
-		"gas-price", tx.GasPrice(),
+		"🔄 transaction is stale", "tx-hash", inFlightTx.Hash(),
+		"nonce", inFlightTx.Nonce(), "gas-price", inFlightTx.GasPrice(),
 	)
 
-	return nil
+	return t.sendAndTrack(ctx, inFlightTx.MsgIDs, types.NewTxRequestFromTx(inFlightTx))
 }
 
 func (t *TxrV2) OnError(_ context.Context, tx *tracker.InFlightTx, _ error) {

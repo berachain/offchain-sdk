@@ -29,15 +29,6 @@ func UnwrapContext(ctx context.Context) *Context {
 	panic("context is not sdk context")
 }
 
-// UnwrapCancelContext unwraps the sdk context.
-func UnwrapCancelContext(ctx context.Context) *Context {
-	if sdkCtx, ok := ctx.(*Context); ok {
-		return sdkCtx
-	}
-
-	panic("context is not sdk context")
-}
-
 func NewContext(
 	ctx context.Context, ethClient eth.Client, logger log.Logger, db ethdb.KeyValueStore,
 ) *Context {

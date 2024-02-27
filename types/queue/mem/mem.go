@@ -10,18 +10,15 @@ import (
 
 // Queue is a thread-safe FIFO queue implementation.
 type Queue[T types.Marshallable] struct {
-	mu              sync.RWMutex
-	queuedItems     *list.List
-	inProgressItems map[string]*list.Element
+	mu          sync.RWMutex
+	queuedItems *list.List
 }
 
 // NewQueue creates a new Queue instance.
 func NewQueue[T types.Marshallable]() *Queue[T] {
-	q := &Queue[T]{
-		queuedItems:     list.New(),
-		inProgressItems: make(map[string]*list.Element),
+	return &Queue[T]{
+		queuedItems: list.New(),
 	}
-	return q
 }
 
 // Push adds a value to the back of the queue.
@@ -48,7 +45,6 @@ func (q *Queue[T]) Receive() (string, T, bool) {
 	q.queuedItems.Remove(element)
 	val := utils.MustGetAs[T](element.Value)
 	msgID := val.String()
-	q.inProgressItems[msgID] = element
 
 	return msgID, val, true
 }
@@ -57,32 +53,25 @@ func (q *Queue[T]) ReceiveMany(num int32) ([]string, []T, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	var msgIDs []string
-	var txRequests []T
-
+	var (
+		txRequests []T
+		msgIDs     []string
+	)
 	for i := int32(0); i < num; i++ {
-		if element := q.queuedItems.Front(); element != nil {
-			q.queuedItems.Remove(element)
-			val := utils.MustGetAs[T](element.Value)
-			msgID := val.String()
-			q.inProgressItems[msgID] = element
-			msgIDs = append(msgIDs, msgID)
-			txRequests = append(txRequests, val)
+		element := q.queuedItems.Front()
+		if element == nil {
+			break
 		}
+		q.queuedItems.Remove(element)
+		val := utils.MustGetAs[T](element.Value)
+		msgIDs = append(msgIDs, val.String())
+		txRequests = append(txRequests, val)
 	}
-
 	return msgIDs, txRequests, nil
 }
 
-// MarkComplete removes the value associated with the given MessageID from the inProgress map.
-func (q *Queue[T]) Delete(msgID string) error {
-	q.mu.Lock()
-	defer q.mu.Unlock()
-
-	if element, ok := q.inProgressItems[msgID]; ok {
-		delete(q.inProgressItems, msgID)
-		q.queuedItems.Remove(element)
-	}
+// Delete is no-op for the in-memory queue.
+func (q *Queue[T]) Delete(string) error {
 	return nil
 }
 

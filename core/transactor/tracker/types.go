@@ -1,6 +1,8 @@
 package tracker
 
 import (
+	"context"
+
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
@@ -14,6 +16,18 @@ const (
 	StatusError
 )
 
+// Subscriber is an interface that defines methods for handling transaction events.
+type Subscriber interface {
+	// OnSuccess is called when a transaction has been successfully included in a block.
+	OnSuccess(*InFlightTx, *coretypes.Receipt) error
+	// OnRevert is called when a transaction has been reverted.
+	OnRevert(*InFlightTx, *coretypes.Receipt) error
+	// OnStale is called when a transaction becomes stale.
+	OnStale(context.Context, *InFlightTx) error
+	// OnError is called when there is an error with the transaction.
+	OnError(context.Context, *InFlightTx, error)
+}
+
 type InFlightTx struct {
 	*coretypes.Transaction
 	MsgIDs  []string
@@ -22,23 +36,27 @@ type InFlightTx struct {
 	isStale bool
 }
 
-func (t *InFlightTx) ID() int {
+func (t *InFlightTx) String() string {
+	return t.Hash().Hex()
+}
+
+func (t *InFlightTx) Status() Status {
 	if t.err != nil {
-		return int(StatusError)
+		return StatusError
 	}
 
 	if t.Receipt == nil {
 		if t.isStale {
-			return int(StatusStale)
+			return StatusStale
 		}
-		return int(StatusPending)
+		return StatusPending
 	}
 
 	if t.Receipt.Status == 1 {
-		return int(StatusSuccess)
+		return StatusSuccess
 	}
 
-	return int(StatusReverted)
+	return StatusReverted
 }
 
 func (t *InFlightTx) Err() error {
