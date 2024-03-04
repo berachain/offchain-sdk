@@ -97,26 +97,24 @@ func (c *ConnectionPoolImpl) DialContext(ctx context.Context, _ string) error {
 	return nil
 }
 
-func (c *ConnectionPoolImpl) GetHTTP() (*HealthCheckedClient, bool) {
+func (c *ConnectionPoolImpl) GetHTTP() (client *HealthCheckedClient, found bool) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
-retry:
-	_, client, ok := c.cache.GetOldest()
-	if !client.Healthy() {
-		goto retry
+
+	for _, client, found = c.cache.GetOldest(); !found || !client.Healthy(); {
+		// loop until client is found and healthy
 	}
-	return client, ok
+	return
 }
 
-func (c *ConnectionPoolImpl) GetWS() (*HealthCheckedClient, bool) {
+func (c *ConnectionPoolImpl) GetWS() (client *HealthCheckedClient, found bool) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
-retry:
-	_, client, ok := c.wsCache.GetOldest()
-	if !client.Healthy() {
-		goto retry
+
+	for _, client, found = c.wsCache.GetOldest(); !found || !client.Healthy(); {
+		// loop until client is found and healthy
 	}
-	return client, ok
+	return
 }
 
 func (c *ConnectionPoolImpl) RemoveChainClient(clientAddr string) error {
