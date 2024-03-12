@@ -27,6 +27,8 @@ func StartCmd[C any](app coreapp.App[C], defaultAppHome string) *cobra.Command {
 }
 
 // StartCmdWithOptions runs the service passed in.
+//
+//nolint:gocognit // okay for now.
 func StartCmdWithOptions[C any](
 	app coreapp.App[C], defaultAppHome string, _ StartCmdOptions,
 ) *cobra.Command {
@@ -91,6 +93,7 @@ func StartCmdWithOptions[C any](
 
 			ab.RegisterEthClient(cpi)
 
+			// Register the HTTP server if enabled.
 			if cfg.Server.Enabled {
 				svr := server.New(&cfg.Server, logger)
 				ab.RegisterHTTPServer(svr)

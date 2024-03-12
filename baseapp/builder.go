@@ -65,8 +65,7 @@ func (ab *AppBuilder) RegisterPrometheusTelemetry() error {
 		return errors.New("must enable the HTTP server to register Prometheus")
 	}
 
-	ab.RegisterHTTPHandler(&server.Handler{Path: "/metrics", Handler: promhttp.Handler()})
-	return nil
+	return ab.RegisterHTTPHandler(&server.Handler{Path: "/metrics", Handler: promhttp.Handler()})
 }
 
 // RegisterEthClient registers the eth client.

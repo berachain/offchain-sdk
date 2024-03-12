@@ -6,9 +6,13 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/berachain/offchain-sdk/log"
 )
+
+// 10 seconds is a stable default.
+const defaultReadHeaderTimeout = 10 * time.Second
 
 // Handler is a handler.
 type Handler struct {
@@ -43,8 +47,9 @@ func (s *Server) RegisterHandler(h *Handler) {
 // Start starts the server. It is blocking so must run in a go-routine.
 func (s *Server) Start(ctx context.Context) {
 	s.srv = &http.Server{
-		Addr:    fmt.Sprintf("%s:%d", s.cfg.HTTP.Host, s.cfg.HTTP.Port),
-		Handler: s.mux,
+		Addr:              fmt.Sprintf("%s:%d", s.cfg.HTTP.Host, s.cfg.HTTP.Port),
+		Handler:           s.mux,
+		ReadHeaderTimeout: defaultReadHeaderTimeout,
 	}
 
 	if err := s.srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
