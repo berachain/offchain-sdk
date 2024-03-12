@@ -2,7 +2,6 @@ package app
 
 import (
 	"github.com/berachain/offchain-sdk/baseapp"
-	"github.com/berachain/offchain-sdk/client/eth"
 	"github.com/berachain/offchain-sdk/job"
 	"github.com/berachain/offchain-sdk/log"
 	"github.com/berachain/offchain-sdk/server"
@@ -14,8 +13,8 @@ import (
 type Builder interface {
 	AppName() string
 	BuildApp(log.Logger) *baseapp.BaseApp
-	RegisterEthClient(eth.Client)
 	RegisterJob(job.Basic)
 	RegisterDB(db ethdb.KeyValueStore)
-	RegisterHTTPHandler(handler server.Handler)
+	RegisterHTTPHandler(handler *server.Handler) error
+	RegisterPrometheusTelemetry() error
 }

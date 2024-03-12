@@ -65,7 +65,7 @@ func (b *BaseApp) Start(ctx context.Context) error {
 	b.jobMgr.RunProducers(ctx)
 
 	if b.svr == nil {
-		b.Logger().Info("no server registered, skipping")
+		b.Logger().Info("no HTTP server registered, skipping")
 	} else {
 		go b.svr.Start(ctx)
 	}
@@ -77,6 +77,9 @@ func (b *BaseApp) Start(ctx context.Context) error {
 func (b *BaseApp) Stop() {
 	b.Logger().Info("attempting to stop")
 	defer b.Logger().Info("successfully stopped")
+
 	b.jobMgr.Stop()
-	b.svr.Stop()
+	if b.svr != nil {
+		b.svr.Stop()
+	}
 }

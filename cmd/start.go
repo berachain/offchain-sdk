@@ -91,9 +91,10 @@ func StartCmdWithOptions[C any](
 
 			ab.RegisterEthClient(cpi)
 
-			// Maybe move this to BuildApp?
-			svr := server.New(&cfg.Server)
-			ab.RegisterHTTPServer(svr)
+			if cfg.Server.Enabled {
+				svr := server.New(&cfg.Server, logger)
+				ab.RegisterHTTPServer(svr)
+			}
 
 			// Build the application, then start it.
 			app.Setup(ab, cfg.App, logger)
