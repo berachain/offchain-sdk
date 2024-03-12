@@ -1,6 +1,8 @@
 package baseapp
 
 import (
+	"errors"
+
 	"github.com/berachain/offchain-sdk/client/eth"
 	"github.com/berachain/offchain-sdk/job"
 	"github.com/berachain/offchain-sdk/log"
@@ -45,16 +47,25 @@ func (ab *AppBuilder) RegisterDB(db ethdb.KeyValueStore) {
 // RegisterHTTPServer registers the http server.
 func (ab *AppBuilder) RegisterHTTPServer(svr *server.Server) {
 	ab.svr = svr
-
-	// TODO: probably move
-	ab.svr.RegisterHandler(
-		server.Handler{Path: "/metrics", Handler: promhttp.Handler()},
-	)
 }
 
-// RegisterDB registers the db.
-func (ab *AppBuilder) RegisterHTTPHandler(handler server.Handler) {
+// RegisterHTTPHandler registers a HTTP handler.
+func (ab *AppBuilder) RegisterHTTPHandler(handler *server.Handler) error {
+	if ab.svr == nil {
+		return errors.New("must enable the HTTP server to register a handler")
+	}
+
 	ab.svr.RegisterHandler(handler)
+	return nil
+}
+
+// RegisterPrometheusTelemetry registers a Prometheus metrics HTTP server.
+func (ab *AppBuilder) RegisterPrometheusTelemetry() error {
+	if ab.svr == nil {
+		return errors.New("must enable the HTTP server to register Prometheus")
+	}
+
+	return ab.RegisterHTTPHandler(&server.Handler{Path: "/metrics", Handler: promhttp.Handler()})
 }
 
 // RegisterEthClient registers the eth client.
