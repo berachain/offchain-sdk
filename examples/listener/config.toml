@@ -12,5 +12,4 @@ DefaultTimeout = "5s"
 HealthCheckInterval = "5s"
 
 [Server.HTTP]
-Enabled = true
 Port = 8080
