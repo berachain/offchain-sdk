@@ -20,7 +20,7 @@ type Handler struct {
 	Handler http.Handler
 }
 
-// Server is a server.
+// Server is a server, that currently only supports HTTP.
 type Server struct {
 	cfg    *Config
 	logger log.Logger

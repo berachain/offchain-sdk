@@ -94,7 +94,7 @@ func StartCmdWithOptions[C any](
 			ab.RegisterEthClient(cpi)
 
 			// Register the HTTP server if enabled.
-			if cfg.Server.Enabled {
+			if cfg.Server.HTTP.Enabled() {
 				svr := server.New(&cfg.Server, logger)
 				ab.RegisterHTTPServer(svr)
 			}
