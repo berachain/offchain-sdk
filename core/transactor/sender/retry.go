@@ -35,7 +35,7 @@ func (*NoRetryPolicy) Get(*coretypes.Transaction, error) (bool, time.Duration) {
 func (*NoRetryPolicy) UpdateTxModified(common.Hash, common.Hash) {}
 
 // ExpoRetryPolicy is a RetryPolicy that does an exponential backoff until maxRetries is
-// reached. This does not assume anything about whether the specifc tx should be retried.
+// reached. This does not assume anything about whether the specific tx should be retried.
 type ExpoRetryPolicy struct {
 	retries sync.Map
 }

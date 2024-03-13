@@ -734,7 +734,7 @@ contract StdAssertionsTest is Test {
         t._assertNotEq(a, b, CUSTOM_ERROR, EXPECT_PASS);
     }
 
-    function testFuzz_AsserNottEq_BytesErr_Fail(bytes32 a) external {
+    function testFuzz_AssertNotEq_BytesErr_Fail(bytes32 a) external {
         vm.expectEmit(false, false, false, true);
         emit log_named_string("Error", CUSTOM_ERROR);
         t._assertNotEq(a, a, CUSTOM_ERROR, EXPECT_FAIL);

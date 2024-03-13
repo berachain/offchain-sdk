@@ -170,7 +170,7 @@ contract('SafeERC20', function (accounts) {
     });
   });
 
-  describe('with usdt approval beaviour', function () {
+  describe('with usdt approval behaviour', function () {
     const spender = hasNoCode;
 
     beforeEach(async function () {

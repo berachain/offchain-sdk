@@ -70,7 +70,7 @@ contract('GovernorVotesQuorumFraction', function (accounts) {
         );
       });
 
-      it('quroum reached', async function () {
+      it('quorum reached', async function () {
         await this.helper.propose();
         await this.helper.waitForSnapshot();
         await this.helper.vote({ support: Enums.VoteType.For }, { from: voter1 });
@@ -78,7 +78,7 @@ contract('GovernorVotesQuorumFraction', function (accounts) {
         await this.helper.execute();
       });
 
-      it('quroum not reached', async function () {
+      it('quorum not reached', async function () {
         await this.helper.propose();
         await this.helper.waitForSnapshot();
         await this.helper.vote({ support: Enums.VoteType.For }, { from: voter2 });
