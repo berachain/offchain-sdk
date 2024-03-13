@@ -11,6 +11,7 @@ type HTTP struct {
 	Port uint64
 }
 
+// Enabled returns true if the http server is enabled (i.e. the Port is non-zero).
 func (h HTTP) Enabled() bool {
 	return h.Port > 0
 }
