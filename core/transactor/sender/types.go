@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/berachain/offchain-sdk/client/eth"
 	"github.com/berachain/offchain-sdk/core/transactor/types"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -19,22 +18,21 @@ type (
 
 	// Tracker is an interface for tracking sent transactions.
 	Tracker interface {
-		SetClient(chain eth.Client)
-		Track(ctx context.Context, tx *coretypes.Transaction, msgIDs []string)
+		Track(context.Context, *coretypes.Transaction, []string, []time.Time)
 	}
 
 	// Factory is an interface for signing transactions.
 	Factory interface {
 		BuildTransactionFromRequests(
-			ctx context.Context, forcedNonce uint64, txReqs ...*types.TxRequest,
+			context.Context, uint64, ...*types.TxRequest,
 		) (*coretypes.Transaction, error)
-		GetNextNonce(oldNonce uint64) (uint64, bool)
+		GetNextNonce(uint64) (uint64, bool)
 	}
 
 	// A RetryPolicy is used to determine if a transaction should be retried and how long to wait
 	// before retrying again.
 	RetryPolicy interface {
-		Get(tx *coretypes.Transaction, err error) (bool, time.Duration)
-		UpdateTxModified(oldTx, newTx common.Hash)
+		Get(*coretypes.Transaction, error) (bool, time.Duration)
+		UpdateTxModified(common.Hash, common.Hash)
 	}
 )

@@ -41,11 +41,13 @@ func (t *Tracker) SetClient(chain eth.Client) {
 }
 
 // Track adds a transaction to the in-flight list and waits for a status.
-func (t *Tracker) Track(ctx context.Context, tx *coretypes.Transaction, msgIDs []string) {
+func (t *Tracker) Track(
+	ctx context.Context, tx *coretypes.Transaction, msgIDs []string, timesFired []time.Time,
+) {
 	for _, msgID := range msgIDs {
 		t.inFlightTxs[msgID] = struct{}{}
 	}
-	inFlightTx := &InFlightTx{Transaction: tx, MsgIDs: msgIDs}
+	inFlightTx := &InFlightTx{Transaction: tx, MsgIDs: msgIDs, TimesFired: timesFired}
 	t.noncer.SetInFlight(inFlightTx)
 	go t.trackStatus(ctx, inFlightTx)
 }
@@ -152,7 +154,7 @@ func (t *Tracker) markConfirmed(tx *InFlightTx, receipt *coretypes.Receipt) {
 		receipt.ContractAddress = *contractAddr
 	}
 
-	tx.Receipt = receipt
+	tx.receipt = receipt
 	t.dispatchTx(tx)
 }
 

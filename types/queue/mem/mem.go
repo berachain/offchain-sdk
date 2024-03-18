@@ -3,6 +3,7 @@ package mem
 import (
 	"container/list"
 	"sync"
+	"time"
 
 	"github.com/berachain/go-utils/utils"
 	"github.com/berachain/offchain-sdk/types/queue/types"
@@ -10,21 +11,21 @@ import (
 
 // Queue is a thread-safe FIFO queue implementation.
 type Queue[T types.Marshallable] struct {
-	mu          sync.RWMutex
-	queuedItems *list.List
-	msgs        map[string]struct{}
+	mu            sync.RWMutex
+	queuedItems   *list.List
+	timesInserted map[string]time.Time
 }
 
 // NewQueue creates a new Queue instance.
 func NewQueue[T types.Marshallable]() *Queue[T] {
 	return &Queue[T]{
-		queuedItems: list.New(),
-		msgs:        make(map[string]struct{}),
+		queuedItems:   list.New(),
+		timesInserted: make(map[string]time.Time),
 	}
 }
 
 func (q *Queue[T]) InQueue(messageID string) bool {
-	_, ok := q.msgs[messageID]
+	_, ok := q.timesInserted[messageID]
 	return ok
 }
 
@@ -34,37 +35,39 @@ func (q *Queue[T]) Push(val T) (string, error) {
 	defer q.mu.Unlock()
 
 	q.queuedItems.PushBack(val)
-	q.msgs[val.String()] = struct{}{}
+	q.timesInserted[val.String()] = time.Now()
 
 	return val.String(), nil
 }
 
 // Pop returns the value at the front of the queue without removing it.
 // The second return value indicates if the operation succeeded.
-func (q *Queue[T]) Receive() (string, T, bool) {
+func (q *Queue[T]) Receive() (string, T, time.Time, bool) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
 	element := q.queuedItems.Front()
 	if element == nil {
-		return "", zeroValueOf[T](), false
+		return "", zeroValueOf[T](), time.Time{}, false
 	}
 
 	q.queuedItems.Remove(element)
 	val := utils.MustGetAs[T](element.Value)
 	msgID := val.String()
-	delete(q.msgs, msgID)
+	timeInserted := q.timesInserted[msgID]
+	delete(q.timesInserted, msgID)
 
-	return msgID, val, true
+	return msgID, val, timeInserted, true
 }
 
-func (q *Queue[T]) ReceiveMany(num int32) ([]string, []T, error) {
+func (q *Queue[T]) ReceiveMany(num int32) ([]string, []T, []time.Time, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
 	var (
-		txRequests []T
-		msgIDs     []string
+		msgIDs        []string
+		txRequests    []T
+		timesInserted []time.Time
 	)
 	for i := int32(0); i < num; i++ {
 		element := q.queuedItems.Front()
@@ -74,11 +77,13 @@ func (q *Queue[T]) ReceiveMany(num int32) ([]string, []T, error) {
 		q.queuedItems.Remove(element)
 		val := utils.MustGetAs[T](element.Value)
 		msgID := val.String()
-		delete(q.msgs, msgID)
+		timeInserted := q.timesInserted[msgID]
+		delete(q.timesInserted, msgID)
 		msgIDs = append(msgIDs, msgID)
 		txRequests = append(txRequests, val)
+		timesInserted = append(timesInserted, timeInserted)
 	}
-	return msgIDs, txRequests, nil
+	return msgIDs, txRequests, timesInserted, nil
 }
 
 // Delete is no-op for the in-memory queue (already deleted by receiving).

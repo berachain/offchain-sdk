@@ -3,6 +3,7 @@ package tracker
 import (
 	"context"
 	"strings"
+	"time"
 
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
@@ -41,8 +42,11 @@ type Subscriber interface {
 // InFlightTx represents a transaction that is currently being tracked by the transactor.
 type InFlightTx struct {
 	*coretypes.Transaction
-	MsgIDs  []string
-	Receipt *coretypes.Receipt
+
+	MsgIDs     []string    // Message IDs that were included in the transaction.
+	TimesFired []time.Time // Times each message was initially fired.
+
+	receipt *coretypes.Receipt
 	isStale bool
 }
 
@@ -53,14 +57,14 @@ func (t *InFlightTx) ID() string {
 
 // Status returns the current status of a transaction owned by the transactor.
 func (t *InFlightTx) Status() Status {
-	if t.Receipt == nil {
+	if t.receipt == nil {
 		if t.isStale {
 			return StatusStale
 		}
 		return StatusPending
 	}
 
-	if t.Receipt.Status == 1 {
+	if t.receipt.Status == 1 {
 		return StatusSuccess
 	}
 
