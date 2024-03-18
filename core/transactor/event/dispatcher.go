@@ -1,12 +1,9 @@
 package event
 
-import (
-	"fmt"
-)
-
-// Event is an interface that all events should implement. It requires a String() method that
-// should return a unique identifier for the event.
-type Event fmt.Stringer
+// Event is an interface that all events should implement.
+type Event interface {
+	ID() string // returns a unique identifier for the event
+}
 
 // Dispatcher is a generic event dispatcher. It maintains a mapping of callers to subscribers,
 // which are channels that events are sent to.

@@ -1,6 +1,8 @@
 package types
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // Marshallable is an interface that defines the Marshal and Unmarshal methods.
 type Marshallable interface {
@@ -11,6 +13,7 @@ type Marshallable interface {
 }
 
 type Queue[T Marshallable] interface {
+	InQueue(messageID string) bool
 	Push(T) (string, error)
 	Receive() (string, T, bool)
 	ReceiveMany(num int32) ([]string, []T, error)

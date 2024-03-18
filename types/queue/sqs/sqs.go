@@ -32,8 +32,10 @@ type Client interface {
 
 // Queue is a wrapper struct around the SQS API.
 type Queue[T types.Marshallable] struct {
-	svc         Client
-	queueURL    string
+	svc      Client
+	queueURL string
+
+	msgs        sync.Map
 	inProcessMu *sync.RWMutex
 	inProcess   map[string]string
 }
@@ -66,6 +68,11 @@ func NewQueue[T types.Marshallable](
 	return NewQueueFromConfig[T](awsCfg, queueURL)
 }
 
+func (q *Queue[T]) InQueue(messageID string) bool {
+	_, ok := q.msgs.Load(messageID)
+	return ok
+}
+
 // Push adds an item to the SQS queue.
 func (q *Queue[T]) Push(item T) (string, error) {
 	// Marshal the item
@@ -80,14 +87,12 @@ func (q *Queue[T]) Push(item T) (string, error) {
 		QueueUrl:    &q.queueURL,
 		MessageBody: &str,
 	})
-
-	if err != nil {
+	if err != nil || output == nil || output.MessageId == nil {
 		return "", err
 	}
 
-	if output == nil || output.MessageId == nil {
-		return "", err
-	}
+	// Add the message to the active set.
+	q.msgs.Store(*output.MessageId, struct{}{})
 
 	return *output.MessageId, nil
 }
@@ -117,6 +122,9 @@ func (q *Queue[T]) Receive() (string, T, bool) {
 	if err = t.Unmarshal([]byte(*resp.Messages[0].Body)); err != nil {
 		return "", t, false
 	}
+
+	// Delete the message from the active set.
+	q.msgs.Delete(*resp.Messages[0].MessageId)
 
 	// Add to the inProcess MessageID queue, mark the Message as in Process.
 	// TODO memory growth atm.
@@ -157,6 +165,9 @@ func (q *Queue[T]) ReceiveMany(num int32) ([]string, []T, error) {
 		if err = t.Unmarshal([]byte(*m.Body)); err != nil {
 			return nil, nil, err
 		}
+
+		// Delete the message from the active set.
+		q.msgs.Delete(*m.MessageId)
 
 		// Add to the inProcess MessageID queue, mark the Message as in Process.
 		// TODO memory growth atm.
