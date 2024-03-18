@@ -24,6 +24,7 @@ type TxrV2 struct {
 	cfg        Config
 	requests   queuetypes.Queue[*types.TxRequest]
 	sender     *sender.Sender
+	tracker    *tracker.Tracker
 	factory    *factory.Factory
 	noncer     *tracker.Noncer
 	dispatcher *event.Dispatcher[*tracker.InFlightTx]
@@ -42,52 +43,23 @@ func NewTransactor(
 		noncer, signer,
 		factory.NewMulticall3Batcher(common.HexToAddress(cfg.Multicall3Address)),
 	)
-
 	dispatcher := event.NewDispatcher[*tracker.InFlightTx]()
+	tracker := tracker.New(noncer, dispatcher, cfg.TxReceiptTimeout, cfg.InMempoolTimeout)
 
 	return &TxrV2{
 		dispatcher: dispatcher,
 		cfg:        cfg,
 		factory:    factory,
-		sender: sender.New(
-			factory, tracker.New(noncer, dispatcher, cfg.TxReceiptTimeout, cfg.InMempoolTimeout),
-		),
-		noncer:   noncer,
-		requests: queue,
-		mu:       sync.Mutex{},
+		sender:     sender.New(factory, tracker),
+		tracker:    tracker,
+		noncer:     noncer,
+		requests:   queue,
 	}
 }
 
 // RegistryKey implements job.Basic.
 func (t *TxrV2) RegistryKey() string {
 	return "transactor"
-}
-
-// SubscribeTxResults sends the tx results (inflight) to the given channel.
-func (t *TxrV2) SubscribeTxResults(ctx context.Context, subscriber tracker.Subscriber) {
-	ch := make(chan *tracker.InFlightTx)
-	go func() {
-		subCtx, cancel := context.WithCancel(ctx)
-		_ = tracker.NewSubscription(subscriber, t.logger).Start(subCtx, ch) // TODO: handle error
-		cancel()
-	}()
-	t.dispatcher.Subscribe(ch)
-}
-
-// Execute implements job.Basic.
-// TODO: deprecate off being a job.
-func (t *TxrV2) Execute(_ context.Context, _ any) (any, error) {
-	acquired, inFlight := t.noncer.Stats()
-	t.logger.Info(
-		"🧠 system status", "waiting-tx", acquired, "in-flight-tx",
-		inFlight, "pending-requests", t.requests.Len(),
-	)
-	return nil, nil //nolint:nilnil // its okay.
-}
-
-// IntervalTime implements job.Polling.
-func (t *TxrV2) IntervalTime(_ context.Context) time.Duration {
-	return 5 * time.Second //nolint:gomnd // TODO: read from config.
 }
 
 // Setup implements job.HasSetup.
@@ -114,9 +86,49 @@ func (t *TxrV2) Setup(ctx context.Context) error {
 	return nil
 }
 
+// Execute implements job.Basic.
+// TODO: deprecate off being a job.
+func (t *TxrV2) Execute(_ context.Context, _ any) (any, error) {
+	acquired, inFlight := t.noncer.Stats()
+	t.logger.Info(
+		"🧠 system status", "waiting-tx", acquired, "in-flight-tx",
+		inFlight, "pending-requests", t.requests.Len(),
+	)
+	return nil, nil //nolint:nilnil // its okay.
+}
+
+// IntervalTime implements job.Polling.
+func (t *TxrV2) IntervalTime(_ context.Context) time.Duration {
+	return 5 * time.Second //nolint:gomnd // TODO: read from config.
+}
+
+// SubscribeTxResults sends the tx results (inflight) to the given channel.
+func (t *TxrV2) SubscribeTxResults(ctx context.Context, subscriber tracker.Subscriber) {
+	ch := make(chan *tracker.InFlightTx)
+	go func() {
+		subCtx, cancel := context.WithCancel(ctx)
+		_ = tracker.NewSubscription(subscriber, t.logger).Start(subCtx, ch) // TODO: handle error
+		cancel()
+	}()
+	t.dispatcher.Subscribe(ch)
+}
+
 // SendTxRequest adds the given tx request to the tx queue.
 func (t *TxrV2) SendTxRequest(txReq *types.TxRequest) (string, error) {
 	return t.requests.Push(txReq)
+}
+
+func (t *TxrV2) GetStatus(msgID string) tracker.Status {
+	switch {
+	case t.tracker.IsInFlight(msgID):
+		return tracker.StatusInFlight
+	case t.sender.IsSending(msgID):
+		return tracker.StatusSending
+	case t.requests.InQueue(msgID):
+		fallthrough
+	default:
+		return tracker.StatusQueued
+	}
 }
 
 // Start starts the transactor.

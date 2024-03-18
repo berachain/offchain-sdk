@@ -18,6 +18,7 @@ type Tracker struct {
 	staleTimeout     time.Duration // for a tx receipt
 	inMempoolTimeout time.Duration // for hitting mempool
 	dispatcher       *event.Dispatcher[*InFlightTx]
+	inFlightTxs      map[string]struct{} // msgs that have been sent, but not confirmed
 	ethClient        eth.Client
 }
 
@@ -31,6 +32,7 @@ func New(
 		staleTimeout:     staleTimeout,
 		inMempoolTimeout: inMempoolTimeout,
 		dispatcher:       dispatcher,
+		inFlightTxs:      make(map[string]struct{}),
 	}
 }
 
@@ -39,9 +41,19 @@ func (t *Tracker) SetClient(chain eth.Client) {
 }
 
 // Track adds a transaction to the in-flight list and waits for a status.
-func (t *Tracker) Track(ctx context.Context, tx *InFlightTx) {
-	t.noncer.SetInFlight(tx)
-	go t.trackStatus(ctx, tx)
+func (t *Tracker) Track(ctx context.Context, tx *coretypes.Transaction, msgIDs []string) {
+	for _, msgID := range msgIDs {
+		t.inFlightTxs[msgID] = struct{}{}
+	}
+	inFlightTx := &InFlightTx{Transaction: tx, MsgIDs: msgIDs}
+	t.noncer.SetInFlight(inFlightTx)
+	go t.trackStatus(ctx, inFlightTx)
+}
+
+// If a msgID IsInFlight (true is returned), the status is "StatusInFlight".
+func (t *Tracker) IsInFlight(msgID string) bool {
+	_, ok := t.inFlightTxs[msgID]
+	return ok
 }
 
 // trackStatus polls the for transaction status and updates the in-flight list.
@@ -135,21 +147,26 @@ func (t *Tracker) markPending(ctx context.Context, tx *InFlightTx) {
 
 // markConfirmed is called once a transaction has been included in the canonical chain.
 func (t *Tracker) markConfirmed(tx *InFlightTx, receipt *coretypes.Receipt) {
-	t.noncer.RemoveInFlight(tx)
-	tx.Receipt = receipt
-
 	// Set the contract address field on the receipt since geth doesn't do this.
-	if contractAddr := tx.To(); contractAddr != nil && tx.Receipt != nil {
-		tx.Receipt.ContractAddress = *contractAddr
+	if contractAddr := tx.To(); contractAddr != nil && receipt != nil {
+		receipt.ContractAddress = *contractAddr
 	}
 
-	t.dispatcher.Dispatch(tx)
+	tx.Receipt = receipt
+	t.dispatchTx(tx)
 }
 
 // markStale marks a stale transaction that needs to be resent if not pending.
 func (t *Tracker) markStale(tx *InFlightTx, isPending bool) {
-	t.noncer.RemoveInFlight(tx)
 	tx.isStale = !isPending
+	t.dispatchTx(tx)
+}
 
+// dispatchTx is called once the tx status is confirmed.
+func (t *Tracker) dispatchTx(tx *InFlightTx) {
+	t.noncer.RemoveInFlight(tx)
+	for _, msgID := range tx.MsgIDs {
+		delete(t.inFlightTxs, msgID)
+	}
 	t.dispatcher.Dispatch(tx)
 }

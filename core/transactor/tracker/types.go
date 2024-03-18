@@ -2,18 +2,25 @@ package tracker
 
 import (
 	"context"
+	"strings"
 
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
+// Status represents the current status of a tx owned by the transactor.
 type Status int
 
 const (
-	StatusPending Status = iota
+	// These statuses are used while the tx status is still unknown with 100% accuracy.
+	StatusQueued   Status = iota - 2
+	StatusSending         // The tx is sending (or retrying), equivalent to noncer "acquired".
+	StatusInFlight        // The tx has been sent, equivalent to noncer "inFlight".
+
+	// These statuses are used after the transaction status has been confirmed with 100% accuracy.
+	StatusPending
 	StatusSuccess
 	StatusReverted
 	StatusStale
-	StatusError
 )
 
 // Subscriber is an interface that defines methods for handling transaction events.
@@ -24,27 +31,23 @@ type Subscriber interface {
 	OnRevert(*InFlightTx, *coretypes.Receipt) error
 	// OnStale is called when a transaction becomes stale.
 	OnStale(context.Context, *InFlightTx) error
-	// OnError is called when there is an error with the transaction.
-	OnError(context.Context, *InFlightTx, error)
 }
 
+// InFlightTx represents a transaction that is currently being tracked by the transactor.
 type InFlightTx struct {
 	*coretypes.Transaction
 	MsgIDs  []string
 	Receipt *coretypes.Receipt
-	err     error
 	isStale bool
 }
 
-func (t *InFlightTx) String() string {
-	return t.Hash().Hex()
+// ID returns a unique identifier for the event
+func (tx *InFlightTx) ID() string {
+	return strings.Join(tx.MsgIDs, " | ")
 }
 
+// Status returns the current status of a transaction owned by the transactor.
 func (t *InFlightTx) Status() Status {
-	if t.err != nil {
-		return StatusError
-	}
-
 	if t.Receipt == nil {
 		if t.isStale {
 			return StatusStale
@@ -57,8 +60,4 @@ func (t *InFlightTx) Status() Status {
 	}
 
 	return StatusReverted
-}
-
-func (t *InFlightTx) Err() error {
-	return t.err
 }

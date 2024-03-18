@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/berachain/offchain-sdk/client/eth"
-	"github.com/berachain/offchain-sdk/core/transactor/tracker"
 	"github.com/berachain/offchain-sdk/core/transactor/types"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -21,7 +20,7 @@ type (
 	// Tracker is an interface for tracking sent transactions.
 	Tracker interface {
 		SetClient(chain eth.Client)
-		Track(ctx context.Context, tx *tracker.InFlightTx)
+		Track(ctx context.Context, tx *coretypes.Transaction, msgIDs []string)
 	}
 
 	// Factory is an interface for signing transactions.

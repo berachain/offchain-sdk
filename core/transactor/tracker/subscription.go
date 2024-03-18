@@ -41,10 +41,6 @@ func (sub *Subscription) Start(ctx context.Context, ch chan *InFlightTx) error {
 				if err = sub.OnStale(ctx, e); err != nil {
 					sub.logger.Error("failed to handle stale tx", "err", err)
 				}
-			case StatusError:
-				// If there was an error with the transaction, call OnError.
-				sub.logger.Error("error with transaction", "err", e)
-				sub.OnError(ctx, e, e.Err())
 			case StatusPending:
 				// If the transaction is pending, do nothing.
 				time.Sleep(retryPendingBackoff)

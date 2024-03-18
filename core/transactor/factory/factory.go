@@ -45,7 +45,8 @@ func (f *Factory) SetClient(ethClient eth.Client) {
 	f.ethClient = ethClient
 }
 
-// BuildTransactionFromRequests builds a transaction from a list of requests.
+// BuildTransactionFromRequests builds a transaction from a list of requests. A non-zero nonce
+// should only be provided if this is a retry with a specific nonce necessary.
 func (f *Factory) BuildTransactionFromRequests(
 	ctx context.Context, forcedNonce uint64, txReqs ...*types.TxRequest,
 ) (*coretypes.Transaction, error) {
@@ -67,7 +68,8 @@ func (f *Factory) BuildTransactionFromRequests(
 	}
 }
 
-// buildTransaction builds a transaction with the configured signer.
+// buildTransaction builds a transaction with the configured signer. If nonce of 0 is provided,
+// a fresh nonce is acquired from the noncer.
 func (f *Factory) buildTransaction(
 	ctx context.Context, nonce uint64, txReq *types.TxRequest,
 ) (*coretypes.Transaction, error) {

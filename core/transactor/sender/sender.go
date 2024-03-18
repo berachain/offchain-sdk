@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/berachain/offchain-sdk/client/eth"
-	"github.com/berachain/offchain-sdk/core/transactor/tracker"
 	"github.com/berachain/offchain-sdk/core/transactor/types"
 	"github.com/berachain/offchain-sdk/log"
 
@@ -18,8 +17,11 @@ type Sender struct {
 	tracker             Tracker             // tracker to track sent transactions
 	txReplacementPolicy TxReplacementPolicy // policy to replace transactions
 	retryPolicy         RetryPolicy         // policy to retry transactions
-	chain               eth.Client
-	logger              log.Logger
+
+	sendingTxs map[string]struct{} // msgs that are currently sending, corresponds to StatusSending
+
+	chain  eth.Client
+	logger log.Logger
 }
 
 // New creates a new Sender with default replacement and exponential retry policies.
@@ -29,6 +31,7 @@ func New(factory Factory, tracker Tracker) *Sender {
 		factory:             factory,
 		txReplacementPolicy: &DefaultTxReplacementPolicy{nf: factory},
 		retryPolicy:         &ExpoRetryPolicy{}, // TODO: choose from config.
+		sendingTxs:          make(map[string]struct{}),
 	}
 }
 
@@ -38,22 +41,34 @@ func (s *Sender) Setup(chain eth.Client, logger log.Logger) {
 	s.tracker.SetClient(chain)
 }
 
+// If a msgID IsSending (true is returned), the status is "StatusSending".
+func (s *Sender) IsSending(msgID string) bool {
+	_, ok := s.sendingTxs[msgID]
+	return ok
+}
+
 // SendTransaction sends a transaction using the Ethereum client. If the transaction fails,
 // it retries based on the retry policy, only once (further retries will not retry again). If
 // sending is successful, it uses the tracker to track the transaction.
 func (s *Sender) SendTransactionAndTrack(
 	ctx context.Context, tx *coretypes.Transaction, msgIDs []string, shouldRetry bool,
 ) error {
+	// Try sending the transaction.
+	for _, msgID := range msgIDs {
+		s.sendingTxs[msgID] = struct{}{}
+	}
 	if err := s.chain.SendTransaction(ctx, tx); err != nil {
-		// If sending the transaction fails, retry according to the retry policy.
-		if shouldRetry {
+		if shouldRetry { // If sending the transaction fails, retry according to the retry policy.
 			go s.retryTxWithPolicy(ctx, tx, msgIDs, err)
 		}
 		return err
 	}
 
-	// If no error on sending, start tracking the inFlight transaction.
-	s.tracker.Track(ctx, &tracker.InFlightTx{Transaction: tx, MsgIDs: msgIDs})
+	// If no error on sending, start tracking the transaction.
+	for _, msgID := range msgIDs {
+		delete(s.sendingTxs, msgID)
+	}
+	s.tracker.Track(ctx, tx, msgIDs)
 	return nil
 }
 
