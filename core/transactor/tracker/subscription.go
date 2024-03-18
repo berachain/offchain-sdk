@@ -28,12 +28,12 @@ func (sub *Subscription) Start(ctx context.Context, ch chan *InFlightTx) error {
 			switch e.Status() {
 			case StatusSuccess:
 				// If the transaction was successful, call OnSuccess.
-				if err = sub.OnSuccess(e, e.Receipt); err != nil {
+				if err = sub.OnSuccess(e, e.receipt); err != nil {
 					sub.logger.Error("failed to handle successful tx", "err", err)
 				}
 			case StatusReverted:
 				// If the transaction was reverted, call OnRevert.
-				if err = sub.OnRevert(e, e.Receipt); err != nil {
+				if err = sub.OnRevert(e, e.receipt); err != nil {
 					sub.logger.Error("failed to handle reverted tx", "err", err)
 				}
 			case StatusStale:

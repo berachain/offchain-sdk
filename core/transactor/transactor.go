@@ -82,6 +82,7 @@ func (t *TxrV2) Setup(ctx context.Context) error {
 	t.noncer.SetClient(t.chain)
 	t.factory.SetClient(t.chain)
 	t.sender.Setup(t.chain, t.logger)
+	t.tracker.SetClient(t.chain)
 	t.Start(sCtx)
 	return nil
 }
@@ -147,7 +148,7 @@ func (t *TxrV2) mainLoop(ctx context.Context) {
 			return
 		default:
 			// Attempt the retrieve a batch from the queue.
-			msgIDs, batch := t.retrieveBatch()
+			msgIDs, timesFired, batch := t.retrieveBatch()
 
 			// We didn't get any transactions, so we wait for more.
 			if len(batch) == 0 {
@@ -161,7 +162,7 @@ func (t *TxrV2) mainLoop(ctx context.Context) {
 			t.mu.Lock()
 			go func() {
 				defer t.mu.Unlock()
-				if err := t.sendAndTrack(ctx, msgIDs, batch...); err != nil {
+				if err := t.sendAndTrack(ctx, msgIDs, timesFired, batch...); err != nil {
 					t.logger.Error("failed to process batch", "msgs", msgIDs, "err", err)
 				}
 			}()
@@ -171,29 +172,31 @@ func (t *TxrV2) mainLoop(ctx context.Context) {
 
 // retrieveBatch retrieves a batch of transaction requests from the queue.
 // It waits until it hits the max batch size or the timeout.
-func (t *TxrV2) retrieveBatch() ([]string, []*types.TxRequest) {
-	var batch []*types.TxRequest
+func (t *TxrV2) retrieveBatch() ([]string, []time.Time, []*types.TxRequest) {
 	var retMsgIDs []string
+	var timesFired []time.Time
+	var batch []*types.TxRequest
 	startTime := time.Now()
 
 	// Retrieve the delta between the max total batch size.
 	for len(batch) < t.cfg.TxBatchSize && time.Since(startTime) < t.cfg.TxBatchTimeout {
-		msgIDs, txReq, err := t.requests.ReceiveMany(int32(t.cfg.TxBatchSize - len(batch)))
+		msgIDs, txReq, times, err := t.requests.ReceiveMany(int32(t.cfg.TxBatchSize - len(batch)))
 		if err != nil {
 			t.logger.Error("failed to receive tx request", "err", err)
 			continue
 		}
-		batch = append(batch, txReq...)
 		retMsgIDs = append(retMsgIDs, msgIDs...)
+		timesFired = append(timesFired, times...)
+		batch = append(batch, txReq...)
 	}
-	return retMsgIDs, batch
+	return retMsgIDs, timesFired, batch
 }
 
 // sendAndTrack processes a batch of transaction requests.
 // It builds a transaction from the batch and sends it.
 // It also tracks the transaction for future reference.
 func (t *TxrV2) sendAndTrack(
-	ctx context.Context, msgIDs []string, batch ...*types.TxRequest,
+	ctx context.Context, msgIDs []string, timesFired []time.Time, batch ...*types.TxRequest,
 ) error {
 	tx, err := t.factory.BuildTransactionFromRequests(ctx, 0, batch...)
 	if err != nil {
@@ -201,7 +204,7 @@ func (t *TxrV2) sendAndTrack(
 	}
 
 	// Send the transaction to the chain and track it async.
-	if err = t.sender.SendTransactionAndTrack(ctx, tx, msgIDs, true); err != nil {
+	if err = t.sender.SendTransactionAndTrack(ctx, tx, msgIDs, timesFired, true); err != nil {
 		return err
 	}
 

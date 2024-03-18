@@ -38,7 +38,6 @@ func New(factory Factory, tracker Tracker) *Sender {
 func (s *Sender) Setup(chain eth.Client, logger log.Logger) {
 	s.chain = chain
 	s.logger = logger
-	s.tracker.SetClient(chain)
 }
 
 // If a msgID IsSending (true is returned), the preconfirmed state is "StateSending".
@@ -51,7 +50,8 @@ func (s *Sender) IsSending(msgID string) bool {
 // it retries based on the retry policy, only once (further retries will not retry again). If
 // sending is successful, it uses the tracker to track the transaction.
 func (s *Sender) SendTransactionAndTrack(
-	ctx context.Context, tx *coretypes.Transaction, msgIDs []string, shouldRetry bool,
+	ctx context.Context, tx *coretypes.Transaction,
+	msgIDs []string, timesFired []time.Time, shouldRetry bool,
 ) error {
 	// Try sending the transaction.
 	for _, msgID := range msgIDs {
@@ -59,7 +59,7 @@ func (s *Sender) SendTransactionAndTrack(
 	}
 	if err := s.chain.SendTransaction(ctx, tx); err != nil {
 		if shouldRetry { // If sending the transaction fails, retry according to the retry policy.
-			go s.retryTxWithPolicy(ctx, tx, msgIDs, err)
+			go s.retryTxWithPolicy(ctx, tx, msgIDs, timesFired, err)
 		}
 		return err
 	}
@@ -68,7 +68,7 @@ func (s *Sender) SendTransactionAndTrack(
 	for _, msgID := range msgIDs {
 		delete(s.sendingTxs, msgID)
 	}
-	s.tracker.Track(ctx, tx, msgIDs)
+	s.tracker.Track(ctx, tx, msgIDs, timesFired)
 	return nil
 }
 
@@ -76,7 +76,8 @@ func (s *Sender) SendTransactionAndTrack(
 // common errors on sending a transaction (NonceTooLow, ReplaceUnderpriced) by replacing the tx
 // appropriately.
 func (s *Sender) retryTxWithPolicy(
-	ctx context.Context, tx *coretypes.Transaction, msgIDs []string, err error,
+	ctx context.Context, tx *coretypes.Transaction,
+	msgIDs []string, timesFired []time.Time, err error,
 ) {
 	for {
 		// Check the policy to see if we should retry this transaction.
@@ -112,6 +113,6 @@ func (s *Sender) retryTxWithPolicy(
 		}
 
 		// Retry sending the transaction.
-		err = s.SendTransactionAndTrack(ctx, tx, msgIDs, false)
+		err = s.SendTransactionAndTrack(ctx, tx, msgIDs, timesFired, false)
 	}
 }
