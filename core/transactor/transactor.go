@@ -118,16 +118,18 @@ func (t *TxrV2) SendTxRequest(txReq *types.TxRequest) (string, error) {
 	return t.requests.Push(txReq)
 }
 
-func (t *TxrV2) GetStatus(msgID string) tracker.Status {
+// GetPreconfirmedState returns the status of the given message ID before it has been confirmed by
+// the chain.
+func (t *TxrV2) GetPreconfirmedState(msgID string) tracker.PreconfirmState {
 	switch {
 	case t.tracker.IsInFlight(msgID):
-		return tracker.StatusInFlight
+		return tracker.StateInFlight
 	case t.sender.IsSending(msgID):
-		return tracker.StatusSending
+		return tracker.StateSending
 	case t.requests.InQueue(msgID):
-		fallthrough
+		return tracker.StateQueued
 	default:
-		return tracker.StatusQueued
+		return tracker.StateUnknown
 	}
 }
 

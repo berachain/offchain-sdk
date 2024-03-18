@@ -7,17 +7,22 @@ import (
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
-// Status represents the current status of a tx owned by the transactor.
-type Status int
+// PreconfirmStates are used before the tx status is confirmed by the chain.
+type PreconfirmState uint8
 
 const (
-	// These statuses are used while the tx status is still unknown with 100% accuracy.
-	StatusQueued   Status = iota - 2
-	StatusSending         // The tx is sending (or retrying), equivalent to noncer "acquired".
-	StatusInFlight        // The tx has been sent, equivalent to noncer "inFlight".
+	StateUnknown PreconfirmState = iota
+	StateQueued
+	StateSending  // The tx is sending (or retrying), equivalent to noncer "acquired".
+	StateInFlight // The tx has been sent, equivalent to noncer "inFlight".
+)
 
-	// These statuses are used after the transaction status has been confirmed with 100% accuracy.
-	StatusPending
+// Status represents the current status of a tx owned by the transactor. // These are used only
+// after the tx status has been confirmed by the chain.
+type Status uint8
+
+const (
+	StatusPending Status = iota
 	StatusSuccess
 	StatusReverted
 	StatusStale
@@ -41,9 +46,9 @@ type InFlightTx struct {
 	isStale bool
 }
 
-// ID returns a unique identifier for the event
-func (tx *InFlightTx) ID() string {
-	return strings.Join(tx.MsgIDs, " | ")
+// ID returns a unique identifier for the event.
+func (t *InFlightTx) ID() string {
+	return strings.Join(t.MsgIDs, " | ")
 }
 
 // Status returns the current status of a transaction owned by the transactor.
