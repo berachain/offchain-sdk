@@ -156,7 +156,7 @@ func (q *Queue[T]) ReceiveMany(num int32) ([]string, []T, []time.Time, error) {
 	ts := make([]T, len(resp.Messages))
 	timesInserted := make([]time.Time, len(resp.Messages))
 
-	for _, m := range resp.Messages {
+	for i, m := range resp.Messages {
 		var t2 T
 		t1 := reflect.TypeOf(t2).Elem()
 		newInstance := reflect.New(t1).Interface()
@@ -169,7 +169,6 @@ func (q *Queue[T]) ReceiveMany(num int32) ([]string, []T, []time.Time, error) {
 
 		// Delete the message from the active set.
 		timeInserted, _ := q.msgs.LoadAndDelete(*m.MessageId)
-		timesInserted = append(timesInserted, timeInserted.(time.Time))
 
 		// Add to the inProcess MessageID queue, mark the Message as in Process.
 		// TODO memory growth atm.
@@ -177,8 +176,9 @@ func (q *Queue[T]) ReceiveMany(num int32) ([]string, []T, []time.Time, error) {
 		q.inProcess[*m.MessageId] = *m.ReceiptHandle
 		q.inProcessMu.Unlock()
 
-		ts = append(ts, t)
-		msgIDs = append(msgIDs, *m.MessageId)
+		msgIDs[i] = *m.MessageId
+		ts[i] = t
+		timesInserted[i] = timeInserted.(time.Time) //nolint:errcheck // always time.Time type.
 	}
 
 	return msgIDs, ts, timesInserted, nil
