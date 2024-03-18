@@ -50,7 +50,7 @@ func (t *Tracker) Track(ctx context.Context, tx *coretypes.Transaction, msgIDs [
 	go t.trackStatus(ctx, inFlightTx)
 }
 
-// If a msgID IsInFlight (true is returned), the status is "StatusInFlight".
+// If a msgID IsInFlight (true is returned), the preconfirmed state is "StateInFlight".
 func (t *Tracker) IsInFlight(msgID string) bool {
 	_, ok := t.inFlightTxs[msgID]
 	return ok

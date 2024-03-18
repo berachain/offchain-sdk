@@ -18,7 +18,7 @@ type Sender struct {
 	txReplacementPolicy TxReplacementPolicy // policy to replace transactions
 	retryPolicy         RetryPolicy         // policy to retry transactions
 
-	sendingTxs map[string]struct{} // msgs that are currently sending, corresponds to StatusSending
+	sendingTxs map[string]struct{} // msgs that are currently sending (or retrying)
 
 	chain  eth.Client
 	logger log.Logger
@@ -41,7 +41,7 @@ func (s *Sender) Setup(chain eth.Client, logger log.Logger) {
 	s.tracker.SetClient(chain)
 }
 
-// If a msgID IsSending (true is returned), the status is "StatusSending".
+// If a msgID IsSending (true is returned), the preconfirmed state is "StateSending".
 func (s *Sender) IsSending(msgID string) bool {
 	_, ok := s.sendingTxs[msgID]
 	return ok
