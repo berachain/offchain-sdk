@@ -172,22 +172,21 @@ func (t *TxrV2) mainLoop(ctx context.Context) {
 // hits the batch timeout or 2) tx batch size is reached only if waitFullBatchTimeout is false.
 func (t *TxrV2) retrieveBatch() ([]string, []time.Time, []*types.TxRequest) {
 	var (
-		retMsgIDs     []string
-		timesFired    []time.Time
-		batch         []*types.TxRequest
-		startTime     = time.Now()
-		timeRemaining = t.cfg.TxBatchTimeout - time.Since(startTime)
+		retMsgIDs  []string
+		timesFired []time.Time
+		batch      []*types.TxRequest
+		startTime  = time.Now()
 	)
 
 	// Loop until the batch tx timeout expires.
-	for ; timeRemaining > 0; timeRemaining = t.cfg.TxBatchTimeout - time.Since(startTime) {
+	for time.Since(startTime) < t.cfg.TxBatchTimeout {
 		txsRemaining := t.cfg.TxBatchSize - len(batch)
 
 		// If we reached max batch size, we can break out of the loop.
 		if txsRemaining == 0 {
-			// Sleep for the time remaining if we want to wait for the full batch timeout.
+			// Sleep for the remaining time if we want to wait for the full batch timeout.
 			if t.cfg.WaitFullBatchTimeout {
-				time.Sleep(timeRemaining)
+				time.Sleep(t.cfg.TxBatchTimeout - time.Since(startTime))
 			}
 			break
 		}

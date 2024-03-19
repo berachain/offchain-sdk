@@ -5,17 +5,18 @@ import (
 )
 
 type Config struct {
+	// Hex string address of the multicall contract to be used for batched txs.
 	Multicall3Address string
 
-	// How large an individual batched tx will be (uses multicall if > 1).
+	// How large an individual batched tx will be (uses multicall contract if > 1).
 	TxBatchSize int
 	// How long to wait for a batch to be flushed (ideally 1 block time).
 	TxBatchTimeout time.Duration
-	// How long to wait if the queue is empty (ideally quick <= 1s).
-	EmptyQueueDelay time.Duration
 	// Whether we wait the full batch timeout before firing txs. False means we will fire as soon
 	// as we reach the desired batch size.
 	WaitFullBatchTimeout bool
+	// How long to wait to retrieve txs from the queue if it is empty (ideally quick <= 1s).
+	EmptyQueueDelay time.Duration
 
 	// How long to wait for the pending nonce (ideally 1 block time).
 	PendingNonceInterval time.Duration
