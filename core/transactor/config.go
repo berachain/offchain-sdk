@@ -15,7 +15,7 @@ type Config struct {
 	EmptyQueueDelay time.Duration
 	// Whether we wait the full batch timeout before firing txs. False means we will fire as soon
 	// as we reach the desired batch size.
-	WaitBatchTimeout bool
+	WaitFullBatchTimeout bool
 
 	// How long to wait for the pending nonce (ideally 1 block time).
 	PendingNonceInterval time.Duration
@@ -23,4 +23,7 @@ type Config struct {
 	InMempoolTimeout time.Duration
 	// How long to wait for a tx to be mined/confirmed by the chain.
 	TxReceiptTimeout time.Duration
+
+	// How often to post a snapshot of the transactor system status (ideally 1 block time).
+	StatusUpdateInterval time.Duration
 }

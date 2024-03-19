@@ -2,6 +2,7 @@ package sender
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/berachain/offchain-sdk/client/eth"
@@ -14,24 +15,21 @@ import (
 // Sender struct holds the transaction replacement and retry policies.
 type Sender struct {
 	factory             Factory             // factory to sign new transactions
-	tracker             Tracker             // tracker to track sent transactions
 	txReplacementPolicy TxReplacementPolicy // policy to replace transactions
 	retryPolicy         RetryPolicy         // policy to retry transactions
 
-	sendingTxs map[string]struct{} // msgs that are currently sending (or retrying)
+	sendingTxs sync.Map // msgs that are currently sending (or retrying)
 
 	chain  eth.Client
 	logger log.Logger
 }
 
 // New creates a new Sender with default replacement and exponential retry policies.
-func New(factory Factory, tracker Tracker) *Sender {
+func New(factory Factory) *Sender {
 	return &Sender{
-		tracker:             tracker,
 		factory:             factory,
 		txReplacementPolicy: &DefaultTxReplacementPolicy{nf: factory},
 		retryPolicy:         &ExpoRetryPolicy{}, // TODO: choose from config.
-		sendingTxs:          make(map[string]struct{}),
 	}
 }
 
@@ -42,48 +40,41 @@ func (s *Sender) Setup(chain eth.Client, logger log.Logger) {
 
 // If a msgID IsSending (true is returned), the preconfirmed state is "StateSending".
 func (s *Sender) IsSending(msgID string) bool {
-	_, ok := s.sendingTxs[msgID]
+	_, ok := s.sendingTxs.Load(msgID)
 	return ok
 }
 
-// SendTransaction sends a transaction using the Ethereum client. If the transaction fails,
-// it retries based on the retry policy, only once (further retries will not retry again). If
-// sending is successful, it uses the tracker to track the transaction.
-func (s *Sender) SendTransactionAndTrack(
-	ctx context.Context, tx *coretypes.Transaction,
-	msgIDs []string, timesFired []time.Time, shouldRetry bool,
+// SendTransaction sends a transaction using the Ethereum client. If the transaction fails to send,
+// it retries based on the confi retry policy.
+func (s *Sender) SendTransaction(
+	ctx context.Context, tx *coretypes.Transaction, msgIDs []string,
 ) error {
-	// Try sending the transaction.
 	for _, msgID := range msgIDs {
-		s.sendingTxs[msgID] = struct{}{}
-	}
-	if err := s.chain.SendTransaction(ctx, tx); err != nil {
-		if shouldRetry { // If sending the transaction fails, retry according to the retry policy.
-			go s.retryTxWithPolicy(ctx, tx, msgIDs, timesFired, err)
-		}
-		return err
+		s.sendingTxs.Store(msgID, struct{}{})
 	}
 
-	// If no error on sending, start tracking the transaction.
+	// Try sending the transaction (with retry if applicable).
+	err := s.retryTxWithPolicy(ctx, tx)
+
 	for _, msgID := range msgIDs {
-		delete(s.sendingTxs, msgID)
+		s.sendingTxs.Delete(msgID)
 	}
-	s.tracker.Track(ctx, tx, msgIDs, timesFired)
-	return nil
+
+	return err
 }
 
-// retryTxWithPolicy retries sending tx according to the retry policy. Specifically handles two
+// retryTxWithPolicy (re)tries sending tx according to the retry policy. Specifically handles two
 // common errors on sending a transaction (NonceTooLow, ReplaceUnderpriced) by replacing the tx
 // appropriately.
-func (s *Sender) retryTxWithPolicy(
-	ctx context.Context, tx *coretypes.Transaction,
-	msgIDs []string, timesFired []time.Time, err error,
-) {
+func (s *Sender) retryTxWithPolicy(ctx context.Context, tx *coretypes.Transaction) error {
 	for {
+		// (Re)try sending the transaction.
+		err := s.chain.SendTransaction(ctx, tx)
+
 		// Check the policy to see if we should retry this transaction.
 		retry, backoff := s.retryPolicy.Get(tx, err)
 		if !retry {
-			return
+			return err
 		}
 		time.Sleep(backoff) // Retry after recommended backoff.
 
@@ -109,10 +100,6 @@ func (s *Sender) retryTxWithPolicy(
 			ctx, tx.Nonce(), types.NewTxRequestFromTx(tx),
 		); err != nil {
 			s.logger.Error("failed to sign replacement transaction", "err", err)
-			continue
 		}
-
-		// Retry sending the transaction.
-		err = s.SendTransactionAndTrack(ctx, tx, msgIDs, timesFired, false)
 	}
 }
