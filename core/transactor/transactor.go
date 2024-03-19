@@ -18,7 +18,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-// TxrV2 is the main transactor object.
+// TxrV2 is the main transactor object. TODO: deprecate off being a job.
 type TxrV2 struct {
 	cfg        Config
 	requests   queuetypes.Queue[*types.TxRequest]
@@ -31,8 +31,7 @@ type TxrV2 struct {
 	mu         sync.Mutex
 }
 
-// NewTransactor creates a new transactor with the given config, request queue
-// and signer.
+// NewTransactor creates a new transactor with the given config, request queue, and signer.
 func NewTransactor(
 	cfg Config, queue queuetypes.Queue[*types.TxRequest], signer kmstypes.TxSigner,
 ) *TxrV2 {
@@ -61,7 +60,6 @@ func (t *TxrV2) RegistryKey() string {
 }
 
 // Setup implements job.HasSetup.
-// TODO: deprecate off being a job.
 func (t *TxrV2) Setup(ctx context.Context) error {
 	sCtx := sdk.UnwrapContext(ctx)
 	chain := sCtx.Chain()
@@ -87,7 +85,6 @@ func (t *TxrV2) Setup(ctx context.Context) error {
 }
 
 // Execute implements job.Basic.
-// TODO: deprecate off being a job.
 func (t *TxrV2) Execute(_ context.Context, _ any) (any, error) {
 	acquired, inFlight := t.noncer.Stats()
 	t.logger.Info(
@@ -113,23 +110,26 @@ func (t *TxrV2) SubscribeTxResults(ctx context.Context, subscriber tracker.Subsc
 	t.dispatcher.Subscribe(ch)
 }
 
-// SendTxRequest adds the given tx request to the tx queue.
+// SendTxRequest adds the given tx request to the tx queue, after validating it.
 func (t *TxrV2) SendTxRequest(txReq *types.TxRequest) (string, error) {
+	if err := txReq.Validate(); err != nil {
+		return "", err
+	}
 	return t.requests.Push(txReq)
 }
 
 // GetPreconfirmedState returns the status of the given message ID before it has been confirmed by
-// the chain.
-func (t *TxrV2) GetPreconfirmedState(msgID string) tracker.PreconfirmState {
+// the chain. TODO: fix.
+func (t *TxrV2) GetPreconfirmedState(msgID string) types.PreconfirmState {
 	switch {
-	case t.tracker.IsInFlight(msgID):
-		return tracker.StateInFlight
-	case t.sender.IsSending(msgID):
-		return tracker.StateSending
-	case t.requests.InQueue(msgID):
-		return tracker.StateQueued
+	// case t.tracker.IsInFlight(msgID):
+	// 	return types.StateInFlight
+	// case t.sender.IsSending(msgID):
+	// 	return types.StateSending
+	// case t.requests.InQueue(msgID):
+	// 	return types.StateQueued
 	default:
-		return tracker.StateUnknown
+		return types.StateUnknown
 	}
 }
 
@@ -146,10 +146,9 @@ func (t *TxrV2) mainLoop(ctx context.Context) {
 			return
 		default:
 			// Attempt the retrieve a batch from the queue.
-			msgIDs, timesFired, batch := t.retrieveBatch()
-
-			// We didn't get any transactions, so we wait for more.
+			batch := t.retrieveBatch()
 			if len(batch) == 0 {
+				// We didn't get any transactions, so we wait for more.
 				t.logger.Info("no tx requests to process....")
 				time.Sleep(t.cfg.EmptyQueueDelay)
 				continue
@@ -159,10 +158,19 @@ func (t *TxrV2) mainLoop(ctx context.Context) {
 			// to finish.
 			t.mu.Lock()
 			go func() {
-				if err := t.sendAndTrack(ctx, msgIDs, timesFired, batch...); err != nil {
-					t.logger.Error("failed to process batch", "msgs", msgIDs, "err", err)
+				defer t.mu.Unlock()
+
+				// Build the batch request from the factory.
+				batchReq, err := t.factory.BuildTransactionFromRequests(ctx, batch...)
+				if err != nil {
+					t.logger.Error("failed to build batch", "msgs", batch, "err", err)
+					return
 				}
-				t.mu.Unlock()
+
+				// Send and track the batch request.
+				if err := t.sendAndTrack(ctx, batchReq); err != nil {
+					t.logger.Error("failed to send batch", "msgs", batch, "err", err)
+				}
 			}()
 		}
 	}
@@ -170,12 +178,10 @@ func (t *TxrV2) mainLoop(ctx context.Context) {
 
 // retrieveBatch retrieves a batch of transaction requests from the queue. It waits until 1) it
 // hits the batch timeout or 2) tx batch size is reached only if waitFullBatchTimeout is false.
-func (t *TxrV2) retrieveBatch() ([]string, []time.Time, []*types.TxRequest) {
+func (t *TxrV2) retrieveBatch() []*types.TxRequest {
 	var (
-		retMsgIDs  []string
-		timesFired []time.Time
-		batch      []*types.TxRequest
-		startTime  = time.Now()
+		batch     []*types.TxRequest
+		startTime = time.Now()
 	)
 
 	// Loop until the batch tx timeout expires.
@@ -191,39 +197,34 @@ func (t *TxrV2) retrieveBatch() ([]string, []time.Time, []*types.TxRequest) {
 			break
 		}
 
-		msgIDs, txReq, times, err := t.requests.ReceiveMany(int32(txsRemaining))
+		// Get at most txsRemaining tx requests from the queue.
+		msgIDs, txReqs, err := t.requests.ReceiveMany(int32(txsRemaining))
 		if err != nil {
 			t.logger.Error("failed to receive tx request", "err", err)
 			continue
 		}
 
-		retMsgIDs = append(retMsgIDs, msgIDs...)
-		timesFired = append(timesFired, times...)
-		batch = append(batch, txReq...)
+		// Update the batched tx requests.
+		for i, txReq := range txReqs {
+			txReq.MsgID = msgIDs[i]
+			batch = append(batch, txReq)
+		}
 	}
 
-	return retMsgIDs, timesFired, batch
+	return batch
 }
 
-// sendAndTrack processes a batch of transaction requests.
-// It builds a transaction from the batch and sends it.
-// It also tracks the transaction for future reference.
-func (t *TxrV2) sendAndTrack(
-	ctx context.Context, msgIDs []string, timesFired []time.Time, batch ...*types.TxRequest,
-) error {
-	tx, err := t.factory.BuildTransactionFromRequests(ctx, 0, batch...)
-	if err != nil {
-		return err
-	}
-
+// sendAndTrack processes a batch of transaction requests. It sends the batch as one transction
+// and also tracks the transaction for its status.
+func (t *TxrV2) sendAndTrack(ctx context.Context, batch *types.BatchRequest) error {
 	// Send the transaction to the chain.
-	if err = t.sender.SendTransaction(ctx, tx, msgIDs); err != nil {
+	if err := t.sender.SendTransaction(ctx, batch); err != nil {
 		return err
 	}
 
 	// Track the transaction status async.
-	t.tracker.Track(ctx, tx, msgIDs, timesFired)
+	t.tracker.Track(ctx, batch)
 
-	t.logger.Debug("📡 sent transaction", "tx-hash", tx.Hash().Hex(), "tx-reqs", len(batch))
+	t.logger.Debug("📡 sent transaction", "hash", batch.Hash().Hex(), "reqs", batch.Len())
 	return nil
 }

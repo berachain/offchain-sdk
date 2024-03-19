@@ -64,9 +64,12 @@ func (t *TxrV2) OnStale(
 		"nonce", inFlightTx.Nonce(), "gas-price", inFlightTx.GasPrice(),
 	)
 
-	return t.sendAndTrack(
-		ctx, inFlightTx.MsgIDs, inFlightTx.TimesFired, types.NewTxRequestFromTx(inFlightTx),
-	)
+	// Try resending the tx to the chain. TODO: gate the resending behind a config flag?
+	return t.sendAndTrack(ctx, &types.BatchRequest{ // TODO: make the same type.
+		Transaction: inFlightTx.Transaction,
+		MsgIDs:      inFlightTx.MsgIDs,
+		TimesFired:  inFlightTx.TimesFired,
+	})
 }
 
 func (t *TxrV2) OnError(_ context.Context, tx *tracker.InFlightTx, _ error) {

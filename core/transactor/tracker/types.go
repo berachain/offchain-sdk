@@ -8,18 +8,8 @@ import (
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
-// PreconfirmStates are used before the tx status is confirmed by the chain.
-type PreconfirmState uint8
-
-const (
-	StateUnknown PreconfirmState = iota
-	StateQueued
-	StateSending  // The tx is sending (or retrying), equivalent to noncer "acquired".
-	StateInFlight // The tx has been sent, equivalent to noncer "inFlight".
-)
-
-// Status represents the current status of a tx owned by the transactor. // These are used only
-// after the tx status has been confirmed by the chain.
+// Status represents the current status of a tx owned by the transactor. These are used only after
+// the tx status has been confirmed by the chain.
 type Status uint8
 
 const (

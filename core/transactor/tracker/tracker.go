@@ -2,24 +2,24 @@ package tracker
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	"github.com/berachain/offchain-sdk/client/eth"
 	"github.com/berachain/offchain-sdk/core/transactor/event"
+	"github.com/berachain/offchain-sdk/core/transactor/types"
 
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
 const retryPendingBackoff = 500 * time.Millisecond
 
-// Tracker.
+// Tracker is a component that keeps track of the transactions that are already sent to the chain.
 type Tracker struct {
-	noncer           *Noncer
+	noncer     *Noncer
+	dispatcher *event.Dispatcher[*InFlightTx]
+
 	staleTimeout     time.Duration // for a tx receipt
 	inMempoolTimeout time.Duration // for hitting mempool
-	dispatcher       *event.Dispatcher[*InFlightTx]
-	inFlightTxs      sync.Map // msgs that have been sent, but not confirmed
 	ethClient        eth.Client
 }
 
@@ -40,20 +40,11 @@ func (t *Tracker) SetClient(chain eth.Client) {
 	t.ethClient = chain
 }
 
-// If a msgID IsInFlight (true is returned), the preconfirmed state is "StateInFlight".
-func (t *Tracker) IsInFlight(msgID string) bool {
-	_, ok := t.inFlightTxs.Load(msgID)
-	return ok
-}
-
 // Track adds a transaction to the in-flight list and waits for a status.
-func (t *Tracker) Track(
-	ctx context.Context, tx *coretypes.Transaction, msgIDs []string, timesFired []time.Time,
-) {
-	for _, msgID := range msgIDs {
-		t.inFlightTxs.Store(msgID, struct{}{})
+func (t *Tracker) Track(ctx context.Context, batch *types.BatchRequest) {
+	inFlightTx := &InFlightTx{ // TODO: make the same type.
+		Transaction: batch.Transaction, MsgIDs: batch.MsgIDs, TimesFired: batch.TimesFired,
 	}
-	inFlightTx := &InFlightTx{Transaction: tx, MsgIDs: msgIDs, TimesFired: timesFired}
 	t.noncer.SetInFlight(inFlightTx)
 	go t.trackStatus(ctx, inFlightTx)
 }
@@ -142,6 +133,8 @@ func (t *Tracker) waitMined(ctx context.Context, tx *InFlightTx, isAlreadyPendin
 // markPending marks the transaction as pending. The transaction is sitting in the "pending" set of
 // the mempool --> up to the chain to confirm, remove from inflight.
 func (t *Tracker) markPending(ctx context.Context, tx *InFlightTx) {
+	// Remove from the noncer inFlight set since we know the tx has reached the mempool as
+	// executable/pending.
 	t.noncer.RemoveInFlight(tx)
 
 	t.waitMined(ctx, tx, true)
@@ -167,8 +160,5 @@ func (t *Tracker) markStale(tx *InFlightTx, isPending bool) {
 // dispatchTx is called once the tx status is confirmed.
 func (t *Tracker) dispatchTx(tx *InFlightTx) {
 	t.noncer.RemoveInFlight(tx)
-	for _, msgID := range tx.MsgIDs {
-		t.inFlightTxs.Delete(msgID)
-	}
 	t.dispatcher.Dispatch(tx)
 }

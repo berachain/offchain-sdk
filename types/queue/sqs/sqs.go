@@ -5,13 +5,11 @@ import (
 	"reflect"
 	"strconv"
 	"sync"
-	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	sqstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
-	goutils "github.com/berachain/go-utils/utils"
 	awsutils "github.com/berachain/offchain-sdk/types/aws"
 	"github.com/berachain/offchain-sdk/types/queue/types"
 )
@@ -94,13 +92,13 @@ func (q *Queue[T]) Push(item T) (string, error) {
 	}
 
 	// Add the message to the active set.
-	q.msgs.Store(*output.MessageId, time.Now())
+	q.msgs.Store(*output.MessageId, struct{}{})
 
 	return *output.MessageId, nil
 }
 
 // Pop retrieves an item from the SQS queue.
-func (q *Queue[T]) Receive() (string, T, time.Time, bool) {
+func (q *Queue[T]) Receive() (string, T, bool) {
 	var t2 T
 	t1 := reflect.TypeOf(t2).Elem()
 	newInstance := reflect.New(t1).Interface()
@@ -112,30 +110,30 @@ func (q *Queue[T]) Receive() (string, T, time.Time, bool) {
 		MaxNumberOfMessages: 1,
 	})
 	if err != nil {
-		return "", t, time.Time{}, false
+		return "", t, false
 	}
 
 	// Check if a message was received
 	if len(resp.Messages) == 0 {
-		return "", t, time.Time{}, false
+		return "", t, false
 	}
 
 	// Unmarshal the message into a new instance of type T
 	if err = t.Unmarshal([]byte(*resp.Messages[0].Body)); err != nil {
-		return "", t, time.Time{}, false
+		return "", t, false
 	}
 
 	// Delete the message from the active set.
-	timeInserted, _ := q.msgs.LoadAndDelete(*resp.Messages[0].MessageId)
+	q.msgs.Delete(*resp.Messages[0].MessageId)
 
 	// Add to the inProcess MessageID queue, mark the Message as in Process.
 	// TODO memory growth atm.
 	q.inProcess[*resp.Messages[0].MessageId] = *resp.Messages[0].ReceiptHandle
 
-	return *resp.Messages[0].MessageId, t, goutils.MustGetAs[time.Time](timeInserted), true
+	return *resp.Messages[0].MessageId, t, true
 }
 
-func (q *Queue[T]) ReceiveMany(num int32) ([]string, []T, []time.Time, error) {
+func (q *Queue[T]) ReceiveMany(num int32) ([]string, []T, error) {
 	if num > awsMaxBatchSize {
 		num = awsMaxBatchSize
 	}
@@ -146,16 +144,15 @@ func (q *Queue[T]) ReceiveMany(num int32) ([]string, []T, []time.Time, error) {
 		MaxNumberOfMessages: num,
 	})
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 	// Check if a message was received
 	if len(resp.Messages) == 0 {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 
 	msgIDs := make([]string, len(resp.Messages))
 	ts := make([]T, len(resp.Messages))
-	timesInserted := make([]time.Time, len(resp.Messages))
 
 	for i, m := range resp.Messages {
 		var t2 T
@@ -165,11 +162,11 @@ func (q *Queue[T]) ReceiveMany(num int32) ([]string, []T, []time.Time, error) {
 
 		// Unmarshal the message into a new instance of type T
 		if err = t.Unmarshal([]byte(*m.Body)); err != nil {
-			return nil, nil, nil, err
+			return nil, nil, err
 		}
 
 		// Delete the message from the active set.
-		timeInserted, _ := q.msgs.LoadAndDelete(*m.MessageId)
+		q.msgs.Delete(*m.MessageId)
 
 		// Add to the inProcess MessageID queue, mark the Message as in Process.
 		// TODO memory growth atm.
@@ -179,10 +176,9 @@ func (q *Queue[T]) ReceiveMany(num int32) ([]string, []T, []time.Time, error) {
 
 		msgIDs[i] = *m.MessageId
 		ts[i] = t
-		timesInserted[i] = goutils.MustGetAs[time.Time](timeInserted)
 	}
 
-	return msgIDs, ts, timesInserted, nil
+	return msgIDs, ts, nil
 }
 
 func (q *Queue[T]) Len() int {

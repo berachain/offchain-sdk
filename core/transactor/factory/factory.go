@@ -11,13 +11,12 @@ import (
 	"github.com/berachain/offchain-sdk/core/transactor/types"
 	kmstypes "github.com/berachain/offchain-sdk/types/kms/types"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
-const (
-	signTxTimeout = 2 * time.Second
-)
+const signTxTimeout = 2 * time.Second // TODO: read from config.
 
 // Factory is a transaction factory that builds 1559 transactions with the configured signer.
 type Factory struct {
@@ -48,14 +47,23 @@ func (f *Factory) SetClient(ethClient eth.Client) {
 // BuildTransactionFromRequests builds a transaction from a list of requests. A non-zero nonce
 // should only be provided if this is a retry with a specific nonce necessary.
 func (f *Factory) BuildTransactionFromRequests(
-	ctx context.Context, forcedNonce uint64, txReqs ...*types.TxRequest,
-) (*coretypes.Transaction, error) {
+	ctx context.Context, txReqs ...*types.TxRequest,
+) (*types.BatchRequest, error) {
 	switch len(txReqs) {
 	case 0:
 		return nil, errors.New("no transaction requests provided")
 	case 1:
 		// if len(txReqs) == 1 then build a single transaction.
-		return f.buildTransaction(ctx, forcedNonce, txReqs[0])
+		tx, err := f.buildTransaction(ctx, txReqs[0].CallMsg, 0)
+		if err != nil {
+			return nil, err
+		}
+
+		return &types.BatchRequest{
+			Transaction: tx,
+			MsgIDs:      []string{txReqs[0].MsgID},
+			TimesFired:  []time.Time{txReqs[0].Time()},
+		}, nil
 	default:
 		// len(txReqs) > 1 then build a multicall transaction.
 		ar := f.mc3Batcher.BatchTxRequests(txReqs...)
@@ -64,14 +72,37 @@ func (f *Factory) BuildTransactionFromRequests(
 		// ar.To should be the Multicall3 contract address
 		// ar.Data should be the calldata with the batched transactions.
 		// ar.Value is the sum of the values of the batched transactions.
-		return f.buildTransaction(ctx, forcedNonce, ar)
+		tx, err := f.buildTransaction(ctx, ar.CallMsg, 0)
+		if err != nil {
+			return nil, err
+		}
+
+		batch := &types.BatchRequest{
+			Transaction: tx,
+			MsgIDs:      make([]string, len(txReqs)),
+			TimesFired:  make([]time.Time, len(txReqs)),
+		}
+		for i, txReq := range txReqs {
+			batch.MsgIDs[i] = txReq.MsgID
+			batch.TimesFired[i] = txReq.Time()
+		}
+		return batch, nil
 	}
+}
+
+// RebuildBatch rebuilds an already batched transaction with the forced nonce.
+func (f *Factory) RebuildBatch(
+	ctx context.Context, batch *types.BatchRequest, forcedNonce uint64,
+) (*types.BatchRequest, error) {
+	var err error
+	batch.Transaction, err = f.buildTransaction(ctx, types.NewCallMsgFromTx(batch), forcedNonce)
+	return batch, err
 }
 
 // buildTransaction builds a transaction with the configured signer. If nonce of 0 is provided,
 // a fresh nonce is acquired from the noncer.
 func (f *Factory) buildTransaction(
-	ctx context.Context, nonce uint64, txReq *types.TxRequest,
+	ctx context.Context, callMsg *ethereum.CallMsg, nonce uint64,
 ) (*coretypes.Transaction, error) {
 	var err error
 
@@ -97,25 +128,15 @@ func (f *Factory) buildTransaction(
 	// start building the 1559 transaction
 	txData := &coretypes.DynamicFeeTx{
 		ChainID: f.chainID,
-		To:      txReq.To,
-		Value:   txReq.Value,
-		Data:    txReq.Data,
+		To:      callMsg.To,
+		Value:   callMsg.Value,
+		Data:    callMsg.Data,
 		Nonce:   nonce,
 	}
 
-	// set gas fee cap from eth client if not already provided
-	if txReq.GasFeeCap != nil {
-		txData.GasFeeCap = txReq.GasFeeCap
-	} else {
-		txData.GasFeeCap, err = f.ethClient.SuggestGasPrice(ctx)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	// set gas tip cap from eth client if not already provided
-	if txReq.GasTipCap != nil {
-		txData.GasTipCap = txReq.GasTipCap
+	if callMsg.GasTipCap != nil {
+		txData.GasTipCap = callMsg.GasTipCap
 	} else {
 		txData.GasTipCap, err = f.ethClient.SuggestGasTipCap(ctx)
 		if err != nil {
@@ -123,12 +144,27 @@ func (f *Factory) buildTransaction(
 		}
 	}
 
-	// set gas limit from eth client if not already provided
-	if txReq.Gas > 0 {
-		txData.Gas = txReq.Gas
+	// set gas fee cap as (gasTipCap + 2 * basefee) if not already provided
+	if callMsg.GasFeeCap != nil {
+		txData.GasFeeCap = callMsg.GasFeeCap
 	} else {
-		txReq.CallMsg.From = f.signer.Address() // set the from address for estimate gas
-		if txData.Gas, err = f.ethClient.EstimateGas(ctx, *txReq.CallMsg); err != nil {
+		head, err := f.ethClient.HeaderByNumber(ctx, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		// use base fee wiggle multiplier of 2
+		txData.GasFeeCap = new(big.Int).Add(
+			txData.GasTipCap, new(big.Int).Mul(head.BaseFee, common.Big2),
+		)
+	}
+
+	// set gas limit from eth client if not already provided
+	if callMsg.Gas > 0 {
+		txData.Gas = callMsg.Gas
+	} else {
+		callMsg.From = f.signer.Address() // set the from address for estimate gas
+		if txData.Gas, err = f.ethClient.EstimateGas(ctx, *callMsg); err != nil {
 			return nil, err
 		}
 	}

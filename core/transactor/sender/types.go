@@ -23,9 +23,7 @@ type (
 
 	// Factory is an interface for signing transactions.
 	Factory interface {
-		BuildTransactionFromRequests(
-			context.Context, uint64, ...*types.TxRequest,
-		) (*coretypes.Transaction, error)
+		RebuildBatch(context.Context, *types.BatchRequest, uint64) (*types.BatchRequest, error)
 		GetNextNonce(uint64) (uint64, bool)
 	}
 
