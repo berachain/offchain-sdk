@@ -146,7 +146,7 @@ func (t *TxrV2) mainLoop(ctx context.Context) {
 			return
 		default:
 			// Attempt the retrieve a batch from the queue.
-			batch := t.retrieveBatch()
+			batch := t.retrieveBatch(ctx)
 			if len(batch) == 0 {
 				// We didn't get any transactions, so we wait for more.
 				t.logger.Info("no tx requests to process....")
@@ -178,40 +178,45 @@ func (t *TxrV2) mainLoop(ctx context.Context) {
 
 // retrieveBatch retrieves a batch of transaction requests from the queue. It waits until 1) it
 // hits the batch timeout or 2) tx batch size is reached only if waitFullBatchTimeout is false.
-func (t *TxrV2) retrieveBatch() []*types.TxRequest {
+func (t *TxrV2) retrieveBatch(ctx context.Context) []*types.TxRequest {
 	var (
-		batch     []*types.TxRequest
-		startTime = time.Now()
+		batch []*types.TxRequest
+		timer = time.NewTimer(t.cfg.TxBatchTimeout)
 	)
 
 	// Loop until the batch tx timeout expires.
-	for time.Since(startTime) < t.cfg.TxBatchTimeout {
-		txsRemaining := t.cfg.TxBatchSize - len(batch)
+	for {
+		select {
+		case <-ctx.Done():
+			return batch
+		case <-timer.C:
+			return batch
+		default:
+			txsRemaining := t.cfg.TxBatchSize - len(batch)
 
-		// If we reached max batch size, we can break out of the loop.
-		if txsRemaining == 0 {
-			// Sleep for the remaining time if we want to wait for the full batch timeout.
-			if t.cfg.WaitFullBatchTimeout {
-				time.Sleep(t.cfg.TxBatchTimeout - time.Since(startTime))
+			// If we reached max batch size, we can break out of the loop.
+			if txsRemaining == 0 {
+				// Sleep for the remaining time if we want to wait for the full batch timeout.
+				if t.cfg.WaitFullBatchTimeout {
+					<-timer.C
+				}
+				return batch
 			}
-			break
-		}
 
-		// Get at most txsRemaining tx requests from the queue.
-		msgIDs, txReqs, err := t.requests.ReceiveMany(int32(txsRemaining))
-		if err != nil {
-			t.logger.Error("failed to receive tx request", "err", err)
-			continue
-		}
+			// Get at most txsRemaining tx requests from the queue.
+			msgIDs, txReqs, err := t.requests.ReceiveMany(int32(txsRemaining))
+			if err != nil {
+				t.logger.Error("failed to receive tx request", "err", err)
+				continue
+			}
 
-		// Update the batched tx requests.
-		for i, txReq := range txReqs {
-			txReq.MsgID = msgIDs[i]
-			batch = append(batch, txReq)
+			// Update the batched tx requests.
+			for i, txReq := range txReqs {
+				txReq.MsgID = msgIDs[i]
+				batch = append(batch, txReq)
+			}
 		}
 	}
-
-	return batch
 }
 
 // sendAndTrack processes a batch of transaction requests. It sends the batch as one transction
