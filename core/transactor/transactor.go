@@ -38,7 +38,7 @@ type TxrV2 struct {
 func NewTransactor(
 	cfg Config, queue queuetypes.Queue[*types.TxRequest], signer kmstypes.TxSigner,
 ) *TxrV2 {
-	noncer := tracker.NewNoncer(signer.Address(), cfg.PendingNonceTimeout)
+	noncer := tracker.NewNoncer(signer.Address(), cfg.PendingNonceInterval)
 	factory := factory.New(
 		noncer, signer,
 		factory.NewMulticall3Batcher(common.HexToAddress(cfg.Multicall3Address)),
@@ -170,25 +170,38 @@ func (t *TxrV2) mainLoop(ctx context.Context) {
 	}
 }
 
-// retrieveBatch retrieves a batch of transaction requests from the queue.
-// It waits until it hits the max batch size or the timeout.
+// retrieveBatch retrieves a batch of transaction requests from the queue. It waits until 1) it
+// hits the batch timeout or 2) max batch size only if waitBatchTimeout is false.
 func (t *TxrV2) retrieveBatch() ([]string, []time.Time, []*types.TxRequest) {
-	var retMsgIDs []string
-	var timesFired []time.Time
-	var batch []*types.TxRequest
-	startTime := time.Now()
+	var (
+		retMsgIDs     []string
+		timesFired    []time.Time
+		batch         []*types.TxRequest
+		startTime     = time.Now()
+		timeRemaining = t.cfg.TxBatchTimeout - time.Since(startTime)
+	)
 
-	// Retrieve the delta between the max total batch size.
-	for len(batch) < t.cfg.TxBatchSize && time.Since(startTime) < t.cfg.TxBatchTimeout {
-		msgIDs, txReq, times, err := t.requests.ReceiveMany(int32(t.cfg.TxBatchSize - len(batch)))
+	// Loop until the batch tx timeout expires.
+	for ; timeRemaining > 0; timeRemaining = t.cfg.TxBatchTimeout - time.Since(startTime) {
+		txsRemaining := int32(t.cfg.TxBatchSize - len(batch))
+		if txsRemaining == 0 { // if we reached max batch size, we can break out of the loop.
+			if t.cfg.WaitBatchTimeout {
+				time.Sleep(timeRemaining)
+			}
+			break
+		}
+
+		msgIDs, txReq, times, err := t.requests.ReceiveMany(txsRemaining)
 		if err != nil {
 			t.logger.Error("failed to receive tx request", "err", err)
 			continue
 		}
+
 		retMsgIDs = append(retMsgIDs, msgIDs...)
 		timesFired = append(timesFired, times...)
 		batch = append(batch, txReq...)
 	}
+
 	return retMsgIDs, timesFired, batch
 }
 
