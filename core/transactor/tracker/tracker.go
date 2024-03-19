@@ -2,6 +2,7 @@ package tracker
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/berachain/offchain-sdk/client/eth"
@@ -18,7 +19,7 @@ type Tracker struct {
 	staleTimeout     time.Duration // for a tx receipt
 	inMempoolTimeout time.Duration // for hitting mempool
 	dispatcher       *event.Dispatcher[*InFlightTx]
-	inFlightTxs      map[string]struct{} // msgs that have been sent, but not confirmed
+	inFlightTxs      sync.Map // msgs that have been sent, but not confirmed
 	ethClient        eth.Client
 }
 
@@ -32,7 +33,6 @@ func New(
 		staleTimeout:     staleTimeout,
 		inMempoolTimeout: inMempoolTimeout,
 		dispatcher:       dispatcher,
-		inFlightTxs:      make(map[string]struct{}),
 	}
 }
 
@@ -40,22 +40,22 @@ func (t *Tracker) SetClient(chain eth.Client) {
 	t.ethClient = chain
 }
 
+// If a msgID IsInFlight (true is returned), the preconfirmed state is "StateInFlight".
+func (t *Tracker) IsInFlight(msgID string) bool {
+	_, ok := t.inFlightTxs.Load(msgID)
+	return ok
+}
+
 // Track adds a transaction to the in-flight list and waits for a status.
 func (t *Tracker) Track(
 	ctx context.Context, tx *coretypes.Transaction, msgIDs []string, timesFired []time.Time,
 ) {
 	for _, msgID := range msgIDs {
-		t.inFlightTxs[msgID] = struct{}{}
+		t.inFlightTxs.Store(msgID, struct{}{})
 	}
 	inFlightTx := &InFlightTx{Transaction: tx, MsgIDs: msgIDs, TimesFired: timesFired}
 	t.noncer.SetInFlight(inFlightTx)
 	go t.trackStatus(ctx, inFlightTx)
-}
-
-// If a msgID IsInFlight (true is returned), the preconfirmed state is "StateInFlight".
-func (t *Tracker) IsInFlight(msgID string) bool {
-	_, ok := t.inFlightTxs[msgID]
-	return ok
 }
 
 // trackStatus polls the for transaction status and updates the in-flight list.
@@ -168,7 +168,7 @@ func (t *Tracker) markStale(tx *InFlightTx, isPending bool) {
 func (t *Tracker) dispatchTx(tx *InFlightTx) {
 	t.noncer.RemoveInFlight(tx)
 	for _, msgID := range tx.MsgIDs {
-		delete(t.inFlightTxs, msgID)
+		t.inFlightTxs.Delete(msgID)
 	}
 	t.dispatcher.Dispatch(tx)
 }

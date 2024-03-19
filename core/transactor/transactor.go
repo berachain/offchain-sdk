@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/berachain/offchain-sdk/client/eth"
 	"github.com/berachain/offchain-sdk/core/transactor/event"
 	"github.com/berachain/offchain-sdk/core/transactor/factory"
 	"github.com/berachain/offchain-sdk/core/transactor/sender"
@@ -28,7 +27,6 @@ type TxrV2 struct {
 	factory    *factory.Factory
 	noncer     *tracker.Noncer
 	dispatcher *event.Dispatcher[*tracker.InFlightTx]
-	chain      eth.Client
 	logger     log.Logger
 	mu         sync.Mutex
 }
@@ -38,7 +36,7 @@ type TxrV2 struct {
 func NewTransactor(
 	cfg Config, queue queuetypes.Queue[*types.TxRequest], signer kmstypes.TxSigner,
 ) *TxrV2 {
-	noncer := tracker.NewNoncer(signer.Address(), cfg.PendingNonceTimeout)
+	noncer := tracker.NewNoncer(signer.Address(), cfg.PendingNonceInterval)
 	factory := factory.New(
 		noncer, signer,
 		factory.NewMulticall3Batcher(common.HexToAddress(cfg.Multicall3Address)),
@@ -50,7 +48,7 @@ func NewTransactor(
 		dispatcher: dispatcher,
 		cfg:        cfg,
 		factory:    factory,
-		sender:     sender.New(factory, tracker),
+		sender:     sender.New(factory),
 		tracker:    tracker,
 		noncer:     noncer,
 		requests:   queue,
@@ -66,7 +64,7 @@ func (t *TxrV2) RegistryKey() string {
 // TODO: deprecate off being a job.
 func (t *TxrV2) Setup(ctx context.Context) error {
 	sCtx := sdk.UnwrapContext(ctx)
-	t.chain = sCtx.Chain()
+	chain := sCtx.Chain()
 	t.logger = sCtx.Logger()
 
 	// Register the transactor as a subscriber to the tracker.
@@ -78,12 +76,13 @@ func (t *TxrV2) Setup(ctx context.Context) error {
 	}()
 	t.dispatcher.Subscribe(ch)
 
-	// TODO: need lock on nonce to support more than one
-	t.noncer.SetClient(t.chain)
-	t.factory.SetClient(t.chain)
-	t.sender.Setup(t.chain, t.logger)
-	t.tracker.SetClient(t.chain)
-	t.Start(sCtx)
+	// Setup and start all the transactor components.
+	t.factory.SetClient(chain)
+	t.sender.Setup(chain, t.logger)
+	t.tracker.SetClient(chain)
+	t.noncer.Start(ctx, chain)
+	go t.mainLoop(ctx)
+
 	return nil
 }
 
@@ -92,18 +91,18 @@ func (t *TxrV2) Setup(ctx context.Context) error {
 func (t *TxrV2) Execute(_ context.Context, _ any) (any, error) {
 	acquired, inFlight := t.noncer.Stats()
 	t.logger.Info(
-		"🧠 system status", "waiting-tx", acquired, "in-flight-tx",
-		inFlight, "pending-requests", t.requests.Len(),
+		"🧠 system status",
+		"waiting-tx", acquired, "in-flight-tx", inFlight, "pending-requests", t.requests.Len(),
 	)
 	return nil, nil //nolint:nilnil // its okay.
 }
 
 // IntervalTime implements job.Polling.
-func (t *TxrV2) IntervalTime(_ context.Context) time.Duration {
-	return 5 * time.Second //nolint:gomnd // TODO: read from config.
+func (t *TxrV2) IntervalTime(context.Context) time.Duration {
+	return t.cfg.StatusUpdateInterval
 }
 
-// SubscribeTxResults sends the tx results (inflight) to the given channel.
+// SubscribeTxResults sends the tx results, once confirmed, to the given subscriber.
 func (t *TxrV2) SubscribeTxResults(ctx context.Context, subscriber tracker.Subscriber) {
 	ch := make(chan *tracker.InFlightTx)
 	go func() {
@@ -136,7 +135,6 @@ func (t *TxrV2) GetPreconfirmedState(msgID string) tracker.PreconfirmState {
 
 // Start starts the transactor.
 func (t *TxrV2) Start(ctx context.Context) {
-	go t.noncer.RefreshLoop(ctx)
 	go t.mainLoop(ctx)
 }
 
@@ -157,38 +155,53 @@ func (t *TxrV2) mainLoop(ctx context.Context) {
 				continue
 			}
 
-			// We got a batch, so we send it and track it.
-			// We must first wait for the previous sending to finish.
+			// We got a batch, so we send it and track it. But first wait for the previous sending
+			// to finish.
 			t.mu.Lock()
 			go func() {
-				defer t.mu.Unlock()
 				if err := t.sendAndTrack(ctx, msgIDs, timesFired, batch...); err != nil {
 					t.logger.Error("failed to process batch", "msgs", msgIDs, "err", err)
 				}
+				t.mu.Unlock()
 			}()
 		}
 	}
 }
 
-// retrieveBatch retrieves a batch of transaction requests from the queue.
-// It waits until it hits the max batch size or the timeout.
+// retrieveBatch retrieves a batch of transaction requests from the queue. It waits until 1) it
+// hits the batch timeout or 2) tx batch size is reached only if waitFullBatchTimeout is false.
 func (t *TxrV2) retrieveBatch() ([]string, []time.Time, []*types.TxRequest) {
-	var retMsgIDs []string
-	var timesFired []time.Time
-	var batch []*types.TxRequest
-	startTime := time.Now()
+	var (
+		retMsgIDs  []string
+		timesFired []time.Time
+		batch      []*types.TxRequest
+		startTime  = time.Now()
+	)
 
-	// Retrieve the delta between the max total batch size.
-	for len(batch) < t.cfg.TxBatchSize && time.Since(startTime) < t.cfg.TxBatchTimeout {
-		msgIDs, txReq, times, err := t.requests.ReceiveMany(int32(t.cfg.TxBatchSize - len(batch)))
+	// Loop until the batch tx timeout expires.
+	for time.Since(startTime) < t.cfg.TxBatchTimeout {
+		txsRemaining := t.cfg.TxBatchSize - len(batch)
+
+		// If we reached max batch size, we can break out of the loop.
+		if txsRemaining == 0 {
+			// Sleep for the remaining time if we want to wait for the full batch timeout.
+			if t.cfg.WaitFullBatchTimeout {
+				time.Sleep(t.cfg.TxBatchTimeout - time.Since(startTime))
+			}
+			break
+		}
+
+		msgIDs, txReq, times, err := t.requests.ReceiveMany(int32(txsRemaining))
 		if err != nil {
 			t.logger.Error("failed to receive tx request", "err", err)
 			continue
 		}
+
 		retMsgIDs = append(retMsgIDs, msgIDs...)
 		timesFired = append(timesFired, times...)
 		batch = append(batch, txReq...)
 	}
+
 	return retMsgIDs, timesFired, batch
 }
 
@@ -203,10 +216,13 @@ func (t *TxrV2) sendAndTrack(
 		return err
 	}
 
-	// Send the transaction to the chain and track it async.
-	if err = t.sender.SendTransactionAndTrack(ctx, tx, msgIDs, timesFired, true); err != nil {
+	// Send the transaction to the chain.
+	if err = t.sender.SendTransaction(ctx, tx, msgIDs); err != nil {
 		return err
 	}
+
+	// Track the transaction status async.
+	t.tracker.Track(ctx, tx, msgIDs, timesFired)
 
 	t.logger.Debug("📡 sent transaction", "tx-hash", tx.Hash().Hex(), "tx-reqs", len(batch))
 	return nil

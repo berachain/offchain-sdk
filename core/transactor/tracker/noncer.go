@@ -40,11 +40,12 @@ func NewNoncer(sender common.Address, pendingNonceTimeout time.Duration) *Noncer
 	}
 }
 
-func (n *Noncer) SetClient(ethClient eth.Client) {
+func (n *Noncer) Start(ctx context.Context, ethClient eth.Client) {
 	n.ethClient = ethClient
+	go n.refreshLoop(ctx)
 }
 
-func (n *Noncer) RefreshLoop(ctx context.Context) {
+func (n *Noncer) refreshLoop(ctx context.Context) {
 	n.refreshNonces(ctx)
 
 	ticker := time.NewTicker(n.refreshInterval)

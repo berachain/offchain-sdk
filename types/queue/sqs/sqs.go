@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	sqstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
+	goutils "github.com/berachain/go-utils/utils"
 	awsutils "github.com/berachain/offchain-sdk/types/aws"
 	"github.com/berachain/offchain-sdk/types/queue/types"
 )
@@ -131,7 +132,7 @@ func (q *Queue[T]) Receive() (string, T, time.Time, bool) {
 	// TODO memory growth atm.
 	q.inProcess[*resp.Messages[0].MessageId] = *resp.Messages[0].ReceiptHandle
 
-	return *resp.Messages[0].MessageId, t, timeInserted.(time.Time), true
+	return *resp.Messages[0].MessageId, t, goutils.MustGetAs[time.Time](timeInserted), true
 }
 
 func (q *Queue[T]) ReceiveMany(num int32) ([]string, []T, []time.Time, error) {
@@ -178,7 +179,7 @@ func (q *Queue[T]) ReceiveMany(num int32) ([]string, []T, []time.Time, error) {
 
 		msgIDs[i] = *m.MessageId
 		ts[i] = t
-		timesInserted[i] = timeInserted.(time.Time) //nolint:errcheck // always time.Time type.
+		timesInserted[i] = goutils.MustGetAs[time.Time](timeInserted)
 	}
 
 	return msgIDs, ts, timesInserted, nil
