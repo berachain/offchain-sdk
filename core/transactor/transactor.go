@@ -183,6 +183,7 @@ func (t *TxrV2) retrieveBatch(ctx context.Context) []*types.TxRequest {
 		batch []*types.TxRequest
 		timer = time.NewTimer(t.cfg.TxBatchTimeout)
 	)
+	defer timer.Stop()
 
 	// Loop until the batch tx timeout expires.
 	for {
