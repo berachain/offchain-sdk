@@ -7,12 +7,11 @@ import (
 	"sync"
 	"time"
 
-	goutils "github.com/berachain/go-utils/utils"
-
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	sqstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
+	goutils "github.com/berachain/go-utils/utils"
 	awsutils "github.com/berachain/offchain-sdk/types/aws"
 	"github.com/berachain/offchain-sdk/types/queue/types"
 )
