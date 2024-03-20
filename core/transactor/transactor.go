@@ -13,46 +13,61 @@ import (
 	"github.com/berachain/offchain-sdk/log"
 	sdk "github.com/berachain/offchain-sdk/types"
 	kmstypes "github.com/berachain/offchain-sdk/types/kms/types"
+	"github.com/berachain/offchain-sdk/types/queue/mem"
+	"github.com/berachain/offchain-sdk/types/queue/sqs"
 	queuetypes "github.com/berachain/offchain-sdk/types/queue/types"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 )
 
-// TxrV2 is the main transactor object.
+// TxrV2 is the main transactor object. TODO: deprecate off being a job.
 type TxrV2 struct {
-	cfg        Config
-	requests   queuetypes.Queue[*types.TxRequest]
-	sender     *sender.Sender
-	tracker    *tracker.Tracker
+	cfg    Config
+	logger log.Logger
+
+	requests   queuetypes.Queue[*types.Request]
 	factory    *factory.Factory
 	noncer     *tracker.Noncer
-	dispatcher *event.Dispatcher[*tracker.InFlightTx]
-	logger     log.Logger
-	mu         sync.Mutex
+	sender     *sender.Sender
+	senderMu   sync.Mutex
+	dispatcher *event.Dispatcher[*tracker.Response]
+	tracker    *tracker.Tracker
+
+	preconfirmedStates map[string]types.PreconfirmedState
+	preconfirmedMu     sync.RWMutex
 }
 
-// NewTransactor creates a new transactor with the given config, request queue
-// and signer.
-func NewTransactor(
-	cfg Config, queue queuetypes.Queue[*types.TxRequest], signer kmstypes.TxSigner,
-) *TxrV2 {
+// NewTransactor creates a new transactor with the given config and signer.
+func NewTransactor(cfg Config, signer kmstypes.TxSigner) (*TxrV2, error) {
+	var queue queuetypes.Queue[*types.Request]
+	if cfg.SQS.QueueURL != "" {
+		var err error
+		if queue, err = sqs.NewQueueFromConfig[*types.Request](cfg.SQS); err != nil {
+			return nil, err
+		}
+	} else {
+		queue = mem.NewQueue[*types.Request]()
+	}
+
 	noncer := tracker.NewNoncer(signer.Address(), cfg.PendingNonceInterval)
 	factory := factory.New(
 		noncer, signer,
 		factory.NewMulticall3Batcher(common.HexToAddress(cfg.Multicall3Address)),
 	)
-	dispatcher := event.NewDispatcher[*tracker.InFlightTx]()
-	tracker := tracker.New(noncer, dispatcher, cfg.TxReceiptTimeout, cfg.InMempoolTimeout)
+	dispatcher := event.NewDispatcher[*tracker.Response]()
+	tracker := tracker.New(noncer, dispatcher, cfg.InMempoolTimeout, cfg.TxReceiptTimeout)
 
 	return &TxrV2{
-		dispatcher: dispatcher,
-		cfg:        cfg,
-		factory:    factory,
-		sender:     sender.New(factory),
-		tracker:    tracker,
-		noncer:     noncer,
-		requests:   queue,
-	}
+		cfg:                cfg,
+		requests:           queue,
+		factory:            factory,
+		noncer:             noncer,
+		sender:             sender.New(factory),
+		dispatcher:         dispatcher,
+		tracker:            tracker,
+		preconfirmedStates: make(map[string]types.PreconfirmedState),
+	}, nil
 }
 
 // RegistryKey implements job.Basic.
@@ -61,14 +76,13 @@ func (t *TxrV2) RegistryKey() string {
 }
 
 // Setup implements job.HasSetup.
-// TODO: deprecate off being a job.
 func (t *TxrV2) Setup(ctx context.Context) error {
 	sCtx := sdk.UnwrapContext(ctx)
 	chain := sCtx.Chain()
 	t.logger = sCtx.Logger()
 
 	// Register the transactor as a subscriber to the tracker.
-	ch := make(chan *tracker.InFlightTx)
+	ch := make(chan *tracker.Response)
 	go func() {
 		subCtx, cancel := context.WithCancel(ctx)
 		_ = tracker.NewSubscription(t, t.logger).Start(subCtx, ch) // TODO: handle error
@@ -87,7 +101,6 @@ func (t *TxrV2) Setup(ctx context.Context) error {
 }
 
 // Execute implements job.Basic.
-// TODO: deprecate off being a job.
 func (t *TxrV2) Execute(_ context.Context, _ any) (any, error) {
 	acquired, inFlight := t.noncer.Stats()
 	t.logger.Info(
@@ -104,7 +117,7 @@ func (t *TxrV2) IntervalTime(context.Context) time.Duration {
 
 // SubscribeTxResults sends the tx results, once confirmed, to the given subscriber.
 func (t *TxrV2) SubscribeTxResults(ctx context.Context, subscriber tracker.Subscriber) {
-	ch := make(chan *tracker.InFlightTx)
+	ch := make(chan *tracker.Response)
 	go func() {
 		subCtx, cancel := context.WithCancel(ctx)
 		_ = tracker.NewSubscription(subscriber, t.logger).Start(subCtx, ch) // TODO: handle error
@@ -113,29 +126,32 @@ func (t *TxrV2) SubscribeTxResults(ctx context.Context, subscriber tracker.Subsc
 	t.dispatcher.Subscribe(ch)
 }
 
-// SendTxRequest adds the given tx request to the tx queue.
-func (t *TxrV2) SendTxRequest(txReq *types.TxRequest) (string, error) {
-	return t.requests.Push(txReq)
+// SendTxRequest adds the given tx request to the tx queue, after validating it.
+func (t *TxrV2) SendTxRequest(txReq *types.Request) (string, error) {
+	if err := txReq.Validate(); err != nil {
+		return "", err
+	}
+
+	msgID := txReq.MsgID
+	queueID, err := t.requests.Push(txReq)
+	if err != nil {
+		return "", err
+	}
+	if t.cfg.UseQueueMessageID {
+		msgID = queueID
+	}
+
+	t.markState(types.StateQueued, msgID)
+	return msgID, nil
 }
 
 // GetPreconfirmedState returns the status of the given message ID before it has been confirmed by
 // the chain.
-func (t *TxrV2) GetPreconfirmedState(msgID string) tracker.PreconfirmState {
-	switch {
-	case t.tracker.IsInFlight(msgID):
-		return tracker.StateInFlight
-	case t.sender.IsSending(msgID):
-		return tracker.StateSending
-	case t.requests.InQueue(msgID):
-		return tracker.StateQueued
-	default:
-		return tracker.StateUnknown
-	}
-}
+func (t *TxrV2) GetPreconfirmedState(msgID string) types.PreconfirmedState {
+	t.preconfirmedMu.RLock()
+	defer t.preconfirmedMu.RUnlock()
 
-// Start starts the transactor.
-func (t *TxrV2) Start(ctx context.Context) {
-	go t.mainLoop(ctx)
+	return t.preconfirmedStates[msgID]
 }
 
 // mainLoop is the main transaction sending / batching loop.
@@ -146,23 +162,24 @@ func (t *TxrV2) mainLoop(ctx context.Context) {
 			return
 		default:
 			// Attempt the retrieve a batch from the queue.
-			msgIDs, timesFired, batch := t.retrieveBatch()
-
-			// We didn't get any transactions, so we wait for more.
-			if len(batch) == 0 {
+			requests := t.retrieveBatch(ctx)
+			if len(requests) == 0 {
+				// We didn't get any transactions, so we wait for more.
 				t.logger.Info("no tx requests to process....")
 				time.Sleep(t.cfg.EmptyQueueDelay)
 				continue
 			}
 
-			// We got a batch, so we send it and track it. But first wait for the previous sending
-			// to finish.
-			t.mu.Lock()
+			// We got a batch, so we can build and fire, after the previous fire has finished.
+			t.senderMu.Lock()
 			go func() {
-				if err := t.sendAndTrack(ctx, msgIDs, timesFired, batch...); err != nil {
-					t.logger.Error("failed to process batch", "msgs", msgIDs, "err", err)
-				}
-				t.mu.Unlock()
+				defer t.senderMu.Unlock()
+
+				t.fire(
+					ctx,
+					&tracker.Response{MsgIDs: requests.MsgIDs(), InitialTimes: requests.Times()},
+					true, requests.Messages()...,
+				)
 			}()
 		}
 	}
@@ -170,60 +187,101 @@ func (t *TxrV2) mainLoop(ctx context.Context) {
 
 // retrieveBatch retrieves a batch of transaction requests from the queue. It waits until 1) it
 // hits the batch timeout or 2) tx batch size is reached only if waitFullBatchTimeout is false.
-func (t *TxrV2) retrieveBatch() ([]string, []time.Time, []*types.TxRequest) {
+func (t *TxrV2) retrieveBatch(ctx context.Context) types.Requests {
 	var (
-		retMsgIDs  []string
-		timesFired []time.Time
-		batch      []*types.TxRequest
-		startTime  = time.Now()
+		requests types.Requests
+		timer    = time.NewTimer(t.cfg.TxBatchTimeout)
 	)
+	defer timer.Stop()
 
 	// Loop until the batch tx timeout expires.
-	for time.Since(startTime) < t.cfg.TxBatchTimeout {
-		txsRemaining := t.cfg.TxBatchSize - len(batch)
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-timer.C:
+			return requests
+		default:
+			txsRemaining := t.cfg.TxBatchSize - len(requests)
 
-		// If we reached max batch size, we can break out of the loop.
-		if txsRemaining == 0 {
-			// Sleep for the remaining time if we want to wait for the full batch timeout.
-			if t.cfg.WaitFullBatchTimeout {
-				time.Sleep(t.cfg.TxBatchTimeout - time.Since(startTime))
+			// If we reached max batch size, we can break out of the loop.
+			if txsRemaining == 0 {
+				// Wait until the timer hits if we want to wait for the full batch timeout.
+				if t.cfg.WaitFullBatchTimeout {
+					<-timer.C
+				}
+				return requests
 			}
-			break
-		}
 
-		msgIDs, txReq, times, err := t.requests.ReceiveMany(int32(txsRemaining))
-		if err != nil {
-			t.logger.Error("failed to receive tx request", "err", err)
-			continue
-		}
+			// Get at most txsRemaining tx requests from the queue.
+			msgIDs, txReqs, err := t.requests.ReceiveMany(int32(txsRemaining))
+			if err != nil {
+				t.logger.Error("failed to receive tx request", "err", err)
+				continue
+			}
 
-		retMsgIDs = append(retMsgIDs, msgIDs...)
-		timesFired = append(timesFired, times...)
-		batch = append(batch, txReq...)
+			// Update the batched tx requests.
+			for i, txReq := range txReqs {
+				if t.cfg.UseQueueMessageID {
+					txReq.MsgID = msgIDs[i]
+				}
+				requests = append(requests, txReq)
+			}
+		}
 	}
-
-	return retMsgIDs, timesFired, batch
 }
 
-// sendAndTrack processes a batch of transaction requests.
-// It builds a transaction from the batch and sends it.
-// It also tracks the transaction for future reference.
-func (t *TxrV2) sendAndTrack(
-	ctx context.Context, msgIDs []string, timesFired []time.Time, batch ...*types.TxRequest,
-) error {
-	tx, err := t.factory.BuildTransactionFromRequests(ctx, 0, batch...)
-	if err != nil {
-		return err
+// fire processes the tracked tx response. If requested to build, it will first batch the messages.
+// Then it sends the batch as one tx and asynchronously tracks the tx for its status.
+// NOTE: if toBuild is false, resp.Transaction must be a valid, non-nil tx.
+func (t *TxrV2) fire(
+	ctx context.Context, resp *tracker.Response, toBuild bool, msgs ...*ethereum.CallMsg,
+) {
+	defer func() {
+		// If there was an error in building or sending the tx, let the subscribers know.
+		if resp.Status() == tracker.StatusError {
+			t.dispatcher.Dispatch(resp)
+		}
+	}()
+
+	if toBuild {
+		// Call the factory to build the (batched) transaction.
+		t.markState(types.StateBuilding, resp.MsgIDs...)
+		resp.Transaction, resp.Error = t.factory.BuildTransactionFromRequests(ctx, msgs...)
+		if resp.Error != nil {
+			return
+		}
 	}
 
-	// Send the transaction to the chain.
-	if err = t.sender.SendTransaction(ctx, tx, msgIDs); err != nil {
-		return err
+	// Call the sender to send the transaction to the chain.
+	t.markState(types.StateSending, resp.MsgIDs...)
+	if resp.Error = t.sender.SendTransaction(ctx, resp.Transaction); resp.Error != nil {
+		return
 	}
+	t.logger.Debug("📡 sent transaction", "hash", resp.Hash().Hex(), "reqs", len(resp.MsgIDs))
 
-	// Track the transaction status async.
-	t.tracker.Track(ctx, tx, msgIDs, timesFired)
+	// Call the tracker to track the transaction async.
+	t.markState(types.StateInFlight, resp.MsgIDs...)
+	t.tracker.Track(ctx, resp)
+}
 
-	t.logger.Debug("📡 sent transaction", "tx-hash", tx.Hash().Hex(), "tx-reqs", len(batch))
-	return nil
+// markState marks the given preconfirmed state for the given message IDs.
+func (t *TxrV2) markState(state types.PreconfirmedState, msgIDs ...string) {
+	t.preconfirmedMu.Lock()
+	defer t.preconfirmedMu.Unlock()
+
+	for _, msgID := range msgIDs {
+		t.preconfirmedStates[msgID] = state
+	}
+}
+
+// removeStateTracking removes preconfirmed state tracking of the given message IDs, equivalent to
+// marking the state as StateUnknown.
+func (t *TxrV2) removeStateTracking(msgIDs ...string) {
+	t.preconfirmedMu.Lock()
+	defer t.preconfirmedMu.Unlock()
+
+	for _, msgID := range msgIDs {
+		delete(t.preconfirmedStates, msgID)
+	}
 }

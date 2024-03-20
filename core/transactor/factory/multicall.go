@@ -11,6 +11,7 @@ import (
 	"github.com/berachain/offchain-sdk/core/transactor/types"
 	sdk "github.com/berachain/offchain-sdk/types"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -34,10 +35,10 @@ func NewMulticall3Batcher(address common.Address) *Multicall3Batcher {
 	}
 }
 
-// BatchTxRequests creates a batched transaction request for the given transaction requests.
-func (mc *Multicall3Batcher) BatchTxRequests(txReqs ...*types.TxRequest) *types.TxRequest {
+// BatchRequests creates a batched transaction request for the given call requests.
+func (mc *Multicall3Batcher) BatchRequests(callReqs ...*ethereum.CallMsg) *types.Request {
 	var (
-		calls       = make([]bindings.Multicall3Call, len(txReqs))
+		calls       = make([]bindings.Multicall3Call, len(callReqs))
 		totalValue  = big.NewInt(0)
 		gasLimit    = uint64(0)
 		gasTipCap   *big.Int
@@ -45,45 +46,45 @@ func (mc *Multicall3Batcher) BatchTxRequests(txReqs ...*types.TxRequest) *types.
 		gasPriceSet = false
 	)
 
-	for i, txReq := range txReqs {
+	for i, callReq := range callReqs {
 		// use the summed value for the batched transaction.
-		if txReq.Value != nil {
-			totalValue = totalValue.Add(totalValue, txReq.Value)
+		if callReq.Value != nil {
+			totalValue = totalValue.Add(totalValue, callReq.Value)
 		}
 
 		// use the summed gas limit for the batched transaction.
-		gasLimit += txReq.Gas
+		gasLimit += callReq.Gas
 
 		// set the gas prices to the first non-nil gas prices in the batch.
 		if !gasPriceSet {
-			gasTipCap = txReq.GasTipCap
-			gasFeeCap = txReq.GasFeeCap
+			gasTipCap = callReq.GasTipCap
+			gasFeeCap = callReq.GasFeeCap
 			gasPriceSet = true
 		}
 
 		calls[i] = bindings.Multicall3Call{
-			Target:   *txReq.To,
-			CallData: txReq.Data,
+			Target:   *callReq.To,
+			CallData: callReq.Data,
 		}
 	}
 
-	txRequest, _ := mc.packer.CreateTxRequest(
+	txRequest, _ := mc.packer.CreateRequest(
 		"", mc.contractAddress, totalValue, gasTipCap, gasFeeCap, gasLimit, method, false, calls,
 	)
 	return txRequest
 }
 
 // BatchCallRequests uses the Multicall3 contract to create a batched call request for the given
-// tx requests and return the batched call response data for each call.
+// call messages and return the batched call result data for each call.
 func (mc *Multicall3Batcher) BatchCallRequests(
 	ctx context.Context,
 	from common.Address,
-	txReqs ...*types.TxRequest,
+	callReqs ...*ethereum.CallMsg,
 ) ([]bindings.Multicall3Result, error) {
 	sCtx := sdk.UnwrapContext(ctx)
 
 	// get the batched tx (call) requests
-	batchedCall := mc.BatchTxRequests(txReqs...)
+	batchedCall := mc.BatchRequests(callReqs...)
 	batchedCall.From = from
 
 	// call the multicall3 contract with the batched call request
@@ -97,8 +98,8 @@ func (mc *Multicall3Batcher) BatchCallRequests(
 		return nil, err
 	}
 
-	// unpack the return data into call responses
-	callResult, err := mc.packer.GetCallResponse(method, ret)
+	// unpack the return data into call results
+	callResult, err := mc.packer.GetCallResult(method, ret)
 	if err != nil {
 		sCtx.Logger().Error("failed to unpack call response", "err", err)
 		return nil, err

@@ -2,6 +2,8 @@ package transactor
 
 import (
 	"time"
+
+	"github.com/berachain/offchain-sdk/types/queue/sqs"
 )
 
 type Config struct {
@@ -24,7 +26,15 @@ type Config struct {
 	InMempoolTimeout time.Duration
 	// How long to wait for a tx to be mined/confirmed by the chain.
 	TxReceiptTimeout time.Duration
+	// Whether we should resend txs that are stale (not confirmed after the receipt timeout).
+	ResendStaleTxs bool
 
 	// How often to post a snapshot of the transactor system status (ideally 1 block time).
 	StatusUpdateInterval time.Duration
+
+	// (Optional) SQS queue config. If left empty, an in-memory queue is used.
+	SQS sqs.Config
+	// If true, the queue (SQS generates its own) message ID will be used for tracking messages,
+	// rather than the optional, user-provided message ID.
+	UseQueueMessageID bool
 }

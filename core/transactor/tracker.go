@@ -4,26 +4,32 @@ import (
 	"context"
 	"sync"
 
+	"github.com/berachain/offchain-sdk/core/transactor/sender"
 	"github.com/berachain/offchain-sdk/core/transactor/tracker"
 	"github.com/berachain/offchain-sdk/core/transactor/types"
 
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
-func (t *TxrV2) OnSuccess(tx *tracker.InFlightTx, receipt *coretypes.Receipt) error {
+func (t *TxrV2) OnError(_ context.Context, resp *tracker.Response) error {
+	t.removeStateTracking(resp.MsgIDs...)
+	t.logger.Error("❌ error sending transaction", "err", resp.Error, "msgs", resp.MsgIDs)
+
+	// TODO: move ontop dead queue.
+	return nil
+}
+
+func (t *TxrV2) OnSuccess(resp *tracker.Response, receipt *coretypes.Receipt) error {
+	t.removeStateTracking(resp.MsgIDs...)
 	t.logger.Info(
-		"⛏️ transaction mined: success",
-		"tx-hash", receipt.TxHash.Hex(),
-		"gas-used", receipt.GasUsed,
-		"status", receipt.Status,
-		"block-number", receipt.BlockNumber,
-		"nonce", tx.Nonce(),
+		"⛏️ transaction mined: success", "tx-hash", receipt.TxHash.Hex(),
+		"gas-used", receipt.GasUsed, "status", receipt.Status, "nonce", resp.Nonce(),
 	)
 
 	// Mark the msgs as processed on the queue in parallel.
 	var errs sync.Map
 	var wg sync.WaitGroup
-	for _, id := range tx.MsgIDs {
+	for _, id := range resp.MsgIDs {
 		wg.Add(1)
 		go func(_id string) {
 			defer wg.Done()
@@ -42,39 +48,34 @@ func (t *TxrV2) OnSuccess(tx *tracker.InFlightTx, receipt *coretypes.Receipt) er
 	return nil
 }
 
-func (t *TxrV2) OnRevert(tx *tracker.InFlightTx, receipt *coretypes.Receipt) error {
+func (t *TxrV2) OnRevert(resp *tracker.Response, receipt *coretypes.Receipt) error {
+	t.removeStateTracking(resp.MsgIDs...)
 	t.logger.Error(
-		"🔻 transaction mined: reverted",
-		"tx-hash", receipt.TxHash.Hex(),
-		"gas-used", receipt.GasUsed,
-		"status", receipt.Status,
-		"block-number", receipt.BlockNumber,
-		"nonce", tx.Nonce(),
+		"🔻 transaction mined: reverted", "tx-hash", receipt.TxHash.Hex(),
+		"gas-used", receipt.GasUsed, "status", receipt.Status, "nonce", resp.Nonce(),
 	)
 
-	// The aws queue will move onto the dead queue automatically.
+	// TODO: delete from sqs queue / move onto the dead queue?
 	return nil
 }
 
-func (t *TxrV2) OnStale(
-	ctx context.Context, inFlightTx *tracker.InFlightTx,
-) error {
+func (t *TxrV2) OnStale(ctx context.Context, resp *tracker.Response, isPending bool) error {
+	t.removeStateTracking(resp.MsgIDs...)
 	t.logger.Warn(
-		"🔄 transaction is stale", "tx-hash", inFlightTx.Hash(),
-		"nonce", inFlightTx.Nonce(), "gas-price", inFlightTx.GasPrice(),
+		"🔄 transaction is stale", "tx-hash", resp.Hash(),
+		"nonce", resp.Nonce(), "gas-price", resp.GasPrice(),
 	)
 
-	return t.sendAndTrack(
-		ctx, inFlightTx.MsgIDs, inFlightTx.TimesFired, types.NewTxRequestFromTx(inFlightTx),
-	)
-}
-
-func (t *TxrV2) OnError(_ context.Context, tx *tracker.InFlightTx, _ error) {
-	t.logger.Error(
-		"❌ error sending transaction",
-		"tx-hash", tx.Hash(),
-		"nonce", tx.Nonce(),
-		"gas-price", tx.GasPrice(),
-	)
-	// TODO: move ontop dead queue.
+	// Try resending the tx to the chain if configured to do so.
+	if t.cfg.ResendStaleTxs {
+		if isPending {
+			// resend (same tx data, same nonce) with a bumped gas.
+			resp.Transaction = sender.BumpGas(resp.Transaction)
+			t.fire(ctx, resp, false, types.CallMsgFromTx(resp.Transaction))
+		} else {
+			// rebuild (same tx data, new nonce) and resend.
+			t.fire(ctx, resp, true, types.CallMsgFromTx(resp.Transaction))
+		}
+	}
+	return nil
 }

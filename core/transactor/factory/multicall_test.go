@@ -28,7 +28,7 @@ var (
 )
 
 // TestMulticall demonstrates how to use the multicall contract to batch multiple calls to other
-// contracts on the Ethereum blockchain.
+// contracts on a Ethereum blockchain.
 func TestMulticall(t *testing.T) {
 	// setup eth client and multicaller
 	ctx := context.Background()
@@ -50,18 +50,18 @@ func TestMulticall(t *testing.T) {
 
 	// set up some test calls to make
 	mcPacker := types.Packer{MetaData: bindings.Multicall3MetaData}
-	call1, err := mcPacker.CreateTxRequest("", multicallAddr, nil, nil, nil, 0, "getBlockNumber")
+	call1, err := mcPacker.CreateRequest("", multicallAddr, nil, nil, nil, 0, "getBlockNumber")
 	if err != nil {
 		t.Fatal(err)
 	}
 	erc20Packer := types.Packer{MetaData: bindings.IERC20MetaData}
-	call2, err := erc20Packer.CreateTxRequest("", erc20Addr, nil, nil, nil, 0, "balanceOf", from)
+	call2, err := erc20Packer.CreateRequest("", erc20Addr, nil, nil, nil, 0, "balanceOf", from)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// batch and send the calls to the chain
-	responses, err := multicaller.BatchCallRequests(sCtx, from, call1, call2)
+	responses, err := multicaller.BatchCallRequests(sCtx, from, call1.CallMsg, call2.CallMsg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +72,7 @@ func TestMulticall(t *testing.T) {
 	assert.True(t, responses[1].Success)
 
 	// unpack the first response
-	ret1, err := mcPacker.GetCallResponse("getBlockNumber", responses[0].ReturnData)
+	ret1, err := mcPacker.GetCallResult("getBlockNumber", responses[0].ReturnData)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +80,7 @@ func TestMulticall(t *testing.T) {
 	assert.Less(t, uint64(0), ret1[0].(*big.Int).Uint64())
 
 	// unpack the second response
-	ret2, err := erc20Packer.GetCallResponse("balanceOf", responses[1].ReturnData)
+	ret2, err := erc20Packer.GetCallResult("balanceOf", responses[1].ReturnData)
 	if err != nil {
 		t.Fatal(err)
 	}
