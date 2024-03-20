@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/berachain/offchain-sdk/core/transactor/tracker"
+	"github.com/berachain/offchain-sdk/core/transactor/types"
 
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
@@ -66,7 +67,7 @@ func (t *TxrV2) OnStale(ctx context.Context, resp *tracker.Response) error {
 
 	// Try resending the tx to the chain if configured to do so.
 	if t.cfg.ResendStaleTxs {
-		return t.sendAndTrack(ctx, resp)
+		t.fire(ctx, resp, types.CallMsgFromTx(resp.Transaction))
 	}
 	return nil
 }

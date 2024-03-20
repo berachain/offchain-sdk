@@ -17,6 +17,7 @@ import (
 	"github.com/berachain/offchain-sdk/types/queue/sqs"
 	queuetypes "github.com/berachain/offchain-sdk/types/queue/types"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -169,31 +170,16 @@ func (t *TxrV2) mainLoop(ctx context.Context) {
 				continue
 			}
 
-			// We got a batch, so we send it and track it. But first wait for the previous sending
-			// to finish.
+			// We got a batch, so we can fire. But first wait for the previous sending to finish.
 			t.senderMu.Lock()
 			go func() {
 				defer t.senderMu.Unlock()
 
-				response := &tracker.Response{
-					MsgIDs:       requests.MsgIDs(),
-					InitialTimes: requests.Times(),
-				}
-
-				// Build the batch tx from the factory.
-				tx, err := t.factory.BuildTransactionFromRequests(ctx, requests.Messages()...)
-				if err != nil {
-					response.Error = err
-					t.dispatcher.Dispatch(response)
-					return
-				}
-
-				// Send and track the batch request.
-				response.Transaction = tx
-				if err = t.sendAndTrack(ctx, response); err != nil {
-					response.Error = err
-					t.dispatcher.Dispatch(response)
-				}
+				t.fire(
+					ctx,
+					&tracker.Response{MsgIDs: requests.MsgIDs(), InitialTimes: requests.Times()},
+					requests.Messages()...,
+				)
 			}()
 		}
 	}
@@ -239,27 +225,38 @@ func (t *TxrV2) retrieveBatch(ctx context.Context) types.BatchRequests {
 				if t.cfg.UseQueueMessageID {
 					txReq.MsgID = msgIDs[i]
 				}
-				t.markState(types.StateBuilding, txReq.MsgID)
 				batch = append(batch, txReq)
 			}
 		}
 	}
 }
 
-// sendAndTrack processes a tracked tx response. It sends the batch as one transction and also
-// asynchronously tracks the transaction for its status.
-func (t *TxrV2) sendAndTrack(ctx context.Context, response *tracker.Response) error {
-	t.markState(types.StateSending, response.MsgIDs...)
-	if err := t.sender.SendTransaction(ctx, response.Transaction); err != nil {
-		return err
+// fire builds a tx and processes the tracked tx response. It will batch the messages, sends the
+// batch as one transction, and asynchronously tracks the transaction for its status.
+func (t *TxrV2) fire(ctx context.Context, resp *tracker.Response, msgs ...*ethereum.CallMsg) {
+	var err error
+	defer func() {
+		// If there was an error in building or sending the tx, let the subscribers know.
+		if resp.Error = err; resp.Error != nil {
+			t.dispatcher.Dispatch(resp)
+		}
+	}()
+
+	t.markState(types.StateBuilding, resp.MsgIDs...)
+	resp.Transaction, err = t.factory.BuildTransactionFromRequests(ctx, msgs...)
+	if err != nil {
+		return
 	}
 
-	t.logger.Debug("📡 sent tx", "hash", response.Hash().Hex(), "reqs", len(response.MsgIDs))
+	t.markState(types.StateSending, resp.MsgIDs...)
+	if err = t.sender.SendTransaction(ctx, resp.Transaction); err != nil {
+		return
+	}
 
-	t.markState(types.StateInFlight, response.MsgIDs...)
-	t.tracker.Track(ctx, response)
+	t.logger.Debug("📡 sent transaction", "hash", resp.Hash().Hex(), "reqs", len(resp.MsgIDs))
 
-	return nil
+	t.markState(types.StateInFlight, resp.MsgIDs...)
+	t.tracker.Track(ctx, resp)
 }
 
 // markState marks the given preconfirmed state for the given message IDs.
