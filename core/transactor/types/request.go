@@ -83,28 +83,28 @@ func (r *Request) Unmarshal(data []byte) error {
 	return json.Unmarshal(data, r)
 }
 
-// BatchRequests is a batch of requests.
-type BatchRequests []*Request
+// Requests is a list of requests.
+type Requests []*Request
 
-func (br BatchRequests) Messages() []*ethereum.CallMsg {
-	msgs := make([]*ethereum.CallMsg, len(br))
-	for i, req := range br {
+func (rs Requests) Messages() []*ethereum.CallMsg {
+	msgs := make([]*ethereum.CallMsg, len(rs))
+	for i, req := range rs {
 		msgs[i] = req.CallMsg
 	}
 	return msgs
 }
 
-func (br BatchRequests) MsgIDs() []string {
-	ids := make([]string, len(br))
-	for i, r := range br {
+func (rs Requests) MsgIDs() []string {
+	ids := make([]string, len(rs))
+	for i, r := range rs {
 		ids[i] = r.MsgID
 	}
 	return ids
 }
 
-func (br BatchRequests) Times() []time.Time {
-	times := make([]time.Time, len(br))
-	for i, r := range br {
+func (rs Requests) Times() []time.Time {
+	times := make([]time.Time, len(rs))
+	for i, r := range rs {
 		times[i] = r.Time()
 	}
 	return times

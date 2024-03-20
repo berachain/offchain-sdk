@@ -35,7 +35,7 @@ func NewMulticall3Batcher(address common.Address) *Multicall3Batcher {
 	}
 }
 
-// BatchTxRequests creates a batched transaction request for the given call requests.
+// BatchRequests creates a batched transaction request for the given call requests.
 func (mc *Multicall3Batcher) BatchRequests(callReqs ...*ethereum.CallMsg) *types.Request {
 	var (
 		calls       = make([]bindings.Multicall3Call, len(callReqs))
@@ -46,25 +46,25 @@ func (mc *Multicall3Batcher) BatchRequests(callReqs ...*ethereum.CallMsg) *types
 		gasPriceSet = false
 	)
 
-	for i, txReq := range callReqs {
+	for i, callReq := range callReqs {
 		// use the summed value for the batched transaction.
-		if txReq.Value != nil {
-			totalValue = totalValue.Add(totalValue, txReq.Value)
+		if callReq.Value != nil {
+			totalValue = totalValue.Add(totalValue, callReq.Value)
 		}
 
 		// use the summed gas limit for the batched transaction.
-		gasLimit += txReq.Gas
+		gasLimit += callReq.Gas
 
 		// set the gas prices to the first non-nil gas prices in the batch.
 		if !gasPriceSet {
-			gasTipCap = txReq.GasTipCap
-			gasFeeCap = txReq.GasFeeCap
+			gasTipCap = callReq.GasTipCap
+			gasFeeCap = callReq.GasFeeCap
 			gasPriceSet = true
 		}
 
 		calls[i] = bindings.Multicall3Call{
-			Target:   *txReq.To,
-			CallData: txReq.Data,
+			Target:   *callReq.To,
+			CallData: callReq.Data,
 		}
 	}
 

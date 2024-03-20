@@ -187,10 +187,10 @@ func (t *TxrV2) mainLoop(ctx context.Context) {
 
 // retrieveBatch retrieves a batch of transaction requests from the queue. It waits until 1) it
 // hits the batch timeout or 2) tx batch size is reached only if waitFullBatchTimeout is false.
-func (t *TxrV2) retrieveBatch(ctx context.Context) types.BatchRequests {
+func (t *TxrV2) retrieveBatch(ctx context.Context) types.Requests {
 	var (
-		batch types.BatchRequests
-		timer = time.NewTimer(t.cfg.TxBatchTimeout)
+		requests types.Requests
+		timer    = time.NewTimer(t.cfg.TxBatchTimeout)
 	)
 	defer timer.Stop()
 
@@ -200,9 +200,9 @@ func (t *TxrV2) retrieveBatch(ctx context.Context) types.BatchRequests {
 		case <-ctx.Done():
 			return nil
 		case <-timer.C:
-			return batch
+			return requests
 		default:
-			txsRemaining := t.cfg.TxBatchSize - len(batch)
+			txsRemaining := t.cfg.TxBatchSize - len(requests)
 
 			// If we reached max batch size, we can break out of the loop.
 			if txsRemaining == 0 {
@@ -210,7 +210,7 @@ func (t *TxrV2) retrieveBatch(ctx context.Context) types.BatchRequests {
 				if t.cfg.WaitFullBatchTimeout {
 					<-timer.C
 				}
-				return batch
+				return requests
 			}
 
 			// Get at most txsRemaining tx requests from the queue.
@@ -225,14 +225,14 @@ func (t *TxrV2) retrieveBatch(ctx context.Context) types.BatchRequests {
 				if t.cfg.UseQueueMessageID {
 					txReq.MsgID = msgIDs[i]
 				}
-				batch = append(batch, txReq)
+				requests = append(requests, txReq)
 			}
 		}
 	}
 }
 
 // fire processes the tracked tx response. If requested to build, it will first batch the messages.
-// Then it sends the batch as one tx, and async tracks the tx for its status.
+// Then it sends the batch as one tx and asynchronously tracks the tx for its status.
 // NOTE: if toBuild is false, resp.Transaction must be a valid, non-nil tx.
 func (t *TxrV2) fire(
 	ctx context.Context, resp *tracker.Response, toBuild bool, msgs ...*ethereum.CallMsg,

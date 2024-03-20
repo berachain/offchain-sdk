@@ -149,9 +149,9 @@ func (t *Tracker) markConfirmed(resp *Response, receipt *coretypes.Receipt) {
 	t.dispatchTx(resp)
 }
 
-// markExpired marks a transaction has exceeded the configured timeouts.
-// If pending, it should be resent (same tx data, same nonce) with a bumped gas.
-// If stale (i.e. not pending), it should be rebuilt (same tx data, new nonce) and resent.
+// markExpired marks a transaction has exceeded the configured timeouts. If pending, it should be
+// resent (same tx data, same nonce) with a bumped gas. If stale (i.e. not pending), it should be
+// rebuilt (same tx data, new nonce) and resent.
 func (t *Tracker) markExpired(resp *Response, isPending bool) {
 	resp.isStale = !isPending
 	t.dispatchTx(resp)

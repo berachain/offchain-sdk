@@ -16,7 +16,7 @@ type Subscriber interface {
 	OnSuccess(resp *Response, receipt *coretypes.Receipt) error
 	// OnRevert is called when a transaction has been reverted.
 	OnRevert(resp *Response, receipt *coretypes.Receipt) error
-	// OnStale is called when a transaction becomes stale.
+	// OnStale is called when a transaction becomes stale after the configured timeout.
 	OnStale(ctx context.Context, resp *Response, isPending bool) error
 }
 
@@ -64,7 +64,7 @@ func (sub *Subscription) Start(ctx context.Context, ch chan *Response) error {
 					sub.logger.Error("failed to handle stale tx", "err", err)
 				}
 			case StatusPending:
-				// If the transaction expired from timeout, call OnStale, but isPending is true.
+				// If the transaction expired from timeout, call OnStale but isPending is true.
 				if err := sub.OnStale(ctx, e, true); err != nil {
 					sub.logger.Error("failed to handle stale tx", "err", err)
 				}
