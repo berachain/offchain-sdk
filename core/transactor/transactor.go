@@ -55,7 +55,7 @@ func NewTransactor(cfg Config, signer kmstypes.TxSigner) (*TxrV2, error) {
 		factory.NewMulticall3Batcher(common.HexToAddress(cfg.Multicall3Address)),
 	)
 	dispatcher := event.NewDispatcher[*tracker.Response]()
-	tracker := tracker.New(noncer, dispatcher, cfg.TxReceiptTimeout, cfg.InMempoolTimeout)
+	tracker := tracker.New(noncer, dispatcher, cfg.InMempoolTimeout, cfg.TxReceiptTimeout)
 
 	return &TxrV2{
 		cfg:                cfg,
@@ -131,12 +131,13 @@ func (t *TxrV2) SendTxRequest(txReq *types.Request) (string, error) {
 		return "", err
 	}
 
-	msgID, err := t.requests.Push(txReq)
+	msgID := txReq.MsgID
+	queueID, err := t.requests.Push(txReq)
 	if err != nil {
 		return "", err
 	}
-	if !t.cfg.UseSQSMessageID {
-		msgID = txReq.MsgID
+	if t.cfg.UseQueueMessageID {
+		msgID = queueID
 	}
 
 	t.markState(types.StateQueued, msgID)
@@ -235,7 +236,7 @@ func (t *TxrV2) retrieveBatch(ctx context.Context) types.BatchRequests {
 
 			// Update the batched tx requests.
 			for i, txReq := range txReqs {
-				if t.cfg.UseSQSMessageID {
+				if t.cfg.UseQueueMessageID {
 					txReq.MsgID = msgIDs[i]
 				}
 				t.markState(types.StateBuilding, txReq.MsgID)
@@ -246,7 +247,7 @@ func (t *TxrV2) retrieveBatch(ctx context.Context) types.BatchRequests {
 }
 
 // sendAndTrack processes a tracked tx response. It sends the batch as one transction and also
-// async tracks the transaction for its status.
+// asynchronously tracks the transaction for its status.
 func (t *TxrV2) sendAndTrack(ctx context.Context, response *tracker.Response) error {
 	t.markState(types.StateSending, response.MsgIDs...)
 	if err := t.sender.SendTransaction(ctx, response.Transaction); err != nil {

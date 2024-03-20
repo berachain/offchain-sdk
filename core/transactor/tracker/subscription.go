@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/berachain/offchain-sdk/log"
-
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
@@ -21,7 +20,7 @@ type Subscriber interface {
 	OnStale(context.Context, *Response) error
 }
 
-// After being started, the Subscription manages and invokes a Subscriber.
+// Once started, a Subscription manages and invokes a Subscriber.
 type Subscription struct {
 	Subscriber
 	logger log.Logger

@@ -34,6 +34,7 @@ type Config struct {
 
 	// (Optional) SQS queue config. If left empty, an in-memory queue is used.
 	SQS sqs.Config
-	// If true, the SQS msg ID will be used for tracking msgs, rather an any user-provided msg ID.
-	UseSQSMessageID bool
+	// If true, the queue (SQS generates its own) message ID will be used for tracking messages,
+	// rather than the optional, user-provided message ID.
+	UseQueueMessageID bool
 }

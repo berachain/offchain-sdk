@@ -5,11 +5,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/berachain/go-utils/utils"
 	"github.com/berachain/offchain-sdk/client/eth"
 	"github.com/huandu/skiplist"
 
 	"github.com/ethereum/go-ethereum/common"
-	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
 // Noncer is a struct that manages nonces for transactions.
@@ -24,20 +24,20 @@ type Noncer struct {
 	// "in-process" nonces
 	acquired map[uint64]struct{} // The set of acquired nonces.
 	inFlight *skiplist.SkipList  // The list of nonces currently in flight; tx remains in flight
-	// until we know what state the tx is in with 100% certainty.
+	// until we know from the chain the status of the tx.
 
 	mu              sync.Mutex    // Mutex for thread-safe operations.
 	refreshInterval time.Duration // How often to refresh the mempool state.
 }
 
 // NewNoncer creates a new Noncer instance.
-func NewNoncer(sender common.Address, pendingNonceTimeout time.Duration) *Noncer {
+func NewNoncer(sender common.Address, refreshInterval time.Duration) *Noncer {
 	return &Noncer{
 		sender:          sender,
 		queuedNonces:    make(map[uint64]struct{}),
 		acquired:        make(map[uint64]struct{}),
 		inFlight:        skiplist.New(skiplist.Uint64),
-		refreshInterval: pendingNonceTimeout,
+		refreshInterval: refreshInterval,
 	}
 }
 
@@ -126,24 +126,23 @@ func (n *Noncer) RemoveAcquired(nonce uint64) {
 }
 
 // SetInFlight adds a transaction to the in-flight list. The transaction is indexed by its nonce.
-func (n *Noncer) SetInFlight(tx *coretypes.Transaction) {
+func (n *Noncer) SetInFlight(nonce uint64) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 
-	nonce := tx.Nonce()
-	delete(n.acquired, nonce) // Remove from the acquired nonces.
-	n.inFlight.Set(nonce, tx) // Add to the in-flight list.
+	delete(n.acquired, nonce)         // Remove from the acquired nonces.
+	n.inFlight.Set(nonce, struct{}{}) // Add to the in-flight list.
 
 	// Update the latest pending nonce.
 	n.latestPendingNonce = nonce + 1
 }
 
 // RemoveInFlight removes a transaction from the in-flight list by its nonce.
-func (n *Noncer) RemoveInFlight(tx *coretypes.Transaction) {
+func (n *Noncer) RemoveInFlight(nonce uint64) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 
-	n.inFlight.Remove(tx.Nonce())
+	n.inFlight.Remove(nonce)
 }
 
 // Stats returns the number of acquired nonces and the number of in-flight transactions.
@@ -151,8 +150,7 @@ func (n *Noncer) Stats() (int, int) {
 	return len(n.acquired), n.inFlight.Len()
 }
 
-// mustNonce returns the nonce of an element. Panics if the element is nil or not a geth core/types
-// Transaction.
+// mustNonce returns the nonce of an element from the key.
 func mustNonce(element *skiplist.Element) uint64 {
-	return element.Value.(*coretypes.Transaction).Nonce()
+	return utils.MustGetAs[uint64](element.Key())
 }

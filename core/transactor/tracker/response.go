@@ -1,7 +1,6 @@
 package tracker
 
 import (
-	"strings"
 	"time"
 
 	coretypes "github.com/ethereum/go-ethereum/core/types"
@@ -18,11 +17,6 @@ type Response struct {
 	// fields only the tracker will set
 	receipt *coretypes.Receipt
 	isStale bool
-}
-
-// String implements fmt.Stringer.
-func (t *Response) String() string {
-	return strings.Join(t.MsgIDs, " | ")
 }
 
 // Status represents the current status of a tx owned by the transactor. These are used only after

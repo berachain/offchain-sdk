@@ -5,9 +5,9 @@ import (
 	"time"
 
 	"github.com/berachain/offchain-sdk/client/eth"
-	"github.com/berachain/offchain-sdk/core/transactor/types"
 	"github.com/berachain/offchain-sdk/log"
 
+	"github.com/ethereum/go-ethereum"
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
@@ -75,9 +75,21 @@ func (s *Sender) retryTxWithPolicy(ctx context.Context, tx *coretypes.Transactio
 
 		// Use the factory to build and sign the new transaction.
 		if tx, err = s.factory.RebuildTransactionFromRequest(
-			ctx, types.NewCallMsgFromTx(tx), tx.Nonce(),
+			ctx, callMsgFromTx(tx), tx.Nonce(),
 		); err != nil {
 			s.logger.Error("failed to sign replacement transaction", "err", err)
 		}
+	}
+}
+
+// callMsgFromTx creates a new ethereum.CallMsg from a coretypes.Transaction.
+func callMsgFromTx(tx *coretypes.Transaction) *ethereum.CallMsg {
+	return &ethereum.CallMsg{
+		To:        tx.To(),
+		Gas:       tx.Gas(),
+		GasFeeCap: tx.GasFeeCap(),
+		GasTipCap: tx.GasTipCap(),
+		Value:     tx.Value(),
+		Data:      tx.Data(),
 	}
 }

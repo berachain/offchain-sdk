@@ -17,20 +17,21 @@ type Tracker struct {
 	noncer     *Noncer
 	dispatcher *event.Dispatcher[*Response]
 
-	staleTimeout     time.Duration // for a tx receipt
 	inMempoolTimeout time.Duration // for hitting mempool
-	ethClient        eth.Client
+	staleTimeout     time.Duration // for a tx receipt
+
+	ethClient eth.Client
 }
 
-// NewTracker creates a new transaction tracker.
+// New creates a new transaction tracker.
 func New(
 	noncer *Noncer, dispatcher *event.Dispatcher[*Response],
-	staleTimeout time.Duration, inMempoolTimeout time.Duration,
+	inMempoolTimeout, staleTimeout time.Duration,
 ) *Tracker {
 	return &Tracker{
 		noncer:           noncer,
-		staleTimeout:     staleTimeout,
 		inMempoolTimeout: inMempoolTimeout,
+		staleTimeout:     staleTimeout,
 		dispatcher:       dispatcher,
 	}
 }
@@ -41,7 +42,7 @@ func (t *Tracker) SetClient(chain eth.Client) {
 
 // Track adds a transaction response to the in-flight list and waits for a status.
 func (t *Tracker) Track(ctx context.Context, resp *Response) {
-	t.noncer.SetInFlight(resp.Transaction)
+	t.noncer.SetInFlight(resp.Nonce())
 	go t.trackStatus(ctx, resp)
 }
 
@@ -132,7 +133,7 @@ func (t *Tracker) waitMined(ctx context.Context, resp *Response, isAlreadyPendin
 func (t *Tracker) markPending(ctx context.Context, resp *Response) {
 	// Remove from the noncer inFlight set since we know the tx has reached the mempool as
 	// executable/pending.
-	t.noncer.RemoveInFlight(resp.Transaction)
+	t.noncer.RemoveInFlight(resp.Nonce())
 
 	t.waitMined(ctx, resp, true)
 }
@@ -156,6 +157,6 @@ func (t *Tracker) markStale(resp *Response, isPending bool) {
 
 // dispatchTx is called once the tx status is confirmed.
 func (t *Tracker) dispatchTx(resp *Response) {
-	t.noncer.RemoveInFlight(resp.Transaction)
+	t.noncer.RemoveInFlight(resp.Nonce())
 	t.dispatcher.Dispatch(resp)
 }

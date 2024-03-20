@@ -1,18 +1,13 @@
 package event
 
-import "fmt"
-
-// Event is an interface that all events should implement.
-type Event fmt.Stringer
-
 // Dispatcher is a generic event dispatcher. It maintains a mapping of callers to subscribers,
 // which are channels that events are sent to.
-type Dispatcher[E Event] struct {
+type Dispatcher[E any] struct {
 	subscribers []chan E
 }
 
 // NewDispatcher creates a new Dispatcher.
-func NewDispatcher[E Event]() *Dispatcher[E] {
+func NewDispatcher[E any]() *Dispatcher[E] {
 	return &Dispatcher[E]{
 		subscribers: make([]chan E, 0),
 	}
