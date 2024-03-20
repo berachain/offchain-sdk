@@ -83,7 +83,7 @@ func (r *Request) Unmarshal(data []byte) error {
 	return json.Unmarshal(data, r)
 }
 
-// BatchRequest is a batch of requests.
+// BatchRequests is a batch of requests.
 type BatchRequests []*Request
 
 func (br BatchRequests) Messages() []*ethereum.CallMsg {

@@ -98,8 +98,8 @@ func (mc *Multicall3Batcher) BatchCallRequests(
 		return nil, err
 	}
 
-	// unpack the return data into call responses
-	callResult, err := mc.packer.GetCallResponse(method, ret)
+	// unpack the return data into call results
+	callResult, err := mc.packer.GetCallResult(method, ret)
 	if err != nil {
 		sCtx.Logger().Error("failed to unpack call response", "err", err)
 		return nil, err

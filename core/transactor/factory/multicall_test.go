@@ -28,7 +28,7 @@ var (
 )
 
 // TestMulticall demonstrates how to use the multicall contract to batch multiple calls to other
-// contracts on the Ethereum blockchain.
+// contracts on a Ethereum blockchain.
 func TestMulticall(t *testing.T) {
 	// setup eth client and multicaller
 	ctx := context.Background()
@@ -72,7 +72,7 @@ func TestMulticall(t *testing.T) {
 	assert.True(t, responses[1].Success)
 
 	// unpack the first response
-	ret1, err := mcPacker.GetCallResponse("getBlockNumber", responses[0].ReturnData)
+	ret1, err := mcPacker.GetCallResult("getBlockNumber", responses[0].ReturnData)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +80,7 @@ func TestMulticall(t *testing.T) {
 	assert.Less(t, uint64(0), ret1[0].(*big.Int).Uint64())
 
 	// unpack the second response
-	ret2, err := erc20Packer.GetCallResponse("balanceOf", responses[1].ReturnData)
+	ret2, err := erc20Packer.GetCallResult("balanceOf", responses[1].ReturnData)
 	if err != nil {
 		t.Fatal(err)
 	}

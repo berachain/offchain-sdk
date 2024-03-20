@@ -36,14 +36,14 @@ func (p *Packer) CreateRequest(
 	return NewRequest(to, gasLimit, gasFeeCap, gasTipCap, value, bz, msgID), nil
 }
 
-// GetCallResponse function for unpacking the return data from a call response.
-func (p *Packer) GetCallResponse(method string, ret []byte) ([]any, error) {
+// GetCallResult function for unpacking the return data from a call result.
+func (p *Packer) GetCallResult(method string, ret []byte) ([]any, error) {
 	abi, err := p.GetAbi() // get the ABI from the metadata
 	if err != nil {
 		return nil, err
 	}
 
-	return abi.Unpack(method, ret) // unpack the response
+	return abi.Unpack(method, ret) // unpack the result
 }
 
 // MustGetEventSig returns the event signature for the given event name in the packer's ABI.
