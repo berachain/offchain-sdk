@@ -12,23 +12,11 @@ import (
 type Queue[T types.Marshallable] struct {
 	mu          sync.RWMutex
 	queuedItems *list.List
-	msgs        map[string]struct{}
 }
 
 // NewQueue creates a new Queue instance.
 func NewQueue[T types.Marshallable]() *Queue[T] {
-	return &Queue[T]{
-		queuedItems: list.New(),
-		msgs:        make(map[string]struct{}),
-	}
-}
-
-func (q *Queue[T]) InQueue(messageID string) bool {
-	q.mu.RLock()
-	defer q.mu.RUnlock()
-
-	_, ok := q.msgs[messageID]
-	return ok
+	return &Queue[T]{queuedItems: list.New()}
 }
 
 // Push adds a value to the back of the queue.
@@ -37,8 +25,6 @@ func (q *Queue[T]) Push(val T) (string, error) {
 	defer q.mu.Unlock()
 
 	q.queuedItems.PushBack(val)
-	q.msgs[val.String()] = struct{}{}
-
 	return val.String(), nil
 }
 
@@ -55,10 +41,7 @@ func (q *Queue[T]) Receive() (string, T, bool) {
 
 	q.queuedItems.Remove(element)
 	val := utils.MustGetAs[T](element.Value)
-	msgID := val.String()
-	delete(q.msgs, msgID)
-
-	return msgID, val, true
+	return val.String(), val, true
 }
 
 func (q *Queue[T]) ReceiveMany(num int32) ([]string, []T, error) {
@@ -76,9 +59,7 @@ func (q *Queue[T]) ReceiveMany(num int32) ([]string, []T, error) {
 		}
 		q.queuedItems.Remove(element)
 		val := utils.MustGetAs[T](element.Value)
-		msgID := val.String()
-		delete(q.msgs, msgID)
-		msgIDs = append(msgIDs, msgID)
+		msgIDs = append(msgIDs, val.String())
 		txRequests = append(txRequests, val)
 	}
 	return msgIDs, txRequests, nil

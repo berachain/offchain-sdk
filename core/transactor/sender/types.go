@@ -4,8 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/berachain/offchain-sdk/core/transactor/types"
-
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
@@ -23,7 +22,9 @@ type (
 
 	// Factory is an interface for signing transactions.
 	Factory interface {
-		RebuildBatch(context.Context, *types.BatchRequest, uint64) (*types.BatchRequest, error)
+		RebuildTransactionFromRequest(
+			context.Context, *ethereum.CallMsg, uint64,
+		) (*coretypes.Transaction, error)
 		GetNextNonce(uint64) (uint64, bool)
 	}
 

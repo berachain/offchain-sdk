@@ -50,18 +50,18 @@ func TestMulticall(t *testing.T) {
 
 	// set up some test calls to make
 	mcPacker := types.Packer{MetaData: bindings.Multicall3MetaData}
-	call1, err := mcPacker.CreateTxRequest("", multicallAddr, nil, nil, nil, 0, "getBlockNumber")
+	call1, err := mcPacker.CreateRequest("", multicallAddr, nil, nil, nil, 0, "getBlockNumber")
 	if err != nil {
 		t.Fatal(err)
 	}
 	erc20Packer := types.Packer{MetaData: bindings.IERC20MetaData}
-	call2, err := erc20Packer.CreateTxRequest("", erc20Addr, nil, nil, nil, 0, "balanceOf", from)
+	call2, err := erc20Packer.CreateRequest("", erc20Addr, nil, nil, nil, 0, "balanceOf", from)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// batch and send the calls to the chain
-	responses, err := multicaller.BatchCallRequests(sCtx, from, call1, call2)
+	responses, err := multicaller.BatchCallRequests(sCtx, from, call1.CallMsg, call2.CallMsg)
 	if err != nil {
 		t.Fatal(err)
 	}

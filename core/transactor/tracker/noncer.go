@@ -9,6 +9,7 @@ import (
 	"github.com/huandu/skiplist"
 
 	"github.com/ethereum/go-ethereum/common"
+	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
 // Noncer is a struct that manages nonces for transactions.
@@ -66,9 +67,9 @@ func (n *Noncer) refreshNonces(ctx context.Context) {
 	defer n.mu.Unlock()
 
 	if pendingNonce, err := n.ethClient.PendingNonceAt(ctx, n.sender); err == nil {
-		// this should already be the latest pending nonce according to the chain
+		// This should already be in sync with latest pending nonce according to the chain.
 		n.latestPendingNonce = pendingNonce
-		// TODO: handle case where pendingNonce is not already the stored latest pending nonce?
+		// TODO: handle case where stored & chain pending nonce is out of sync?
 	}
 
 	if content, err := n.ethClient.TxPoolContent(ctx); err == nil {
@@ -124,9 +125,8 @@ func (n *Noncer) RemoveAcquired(nonce uint64) {
 	delete(n.acquired, nonce)
 }
 
-// SetInFlight adds a transaction to the in-flight list.
-// The transaction is indexed by its nonce.
-func (n *Noncer) SetInFlight(tx *InFlightTx) {
+// SetInFlight adds a transaction to the in-flight list. The transaction is indexed by its nonce.
+func (n *Noncer) SetInFlight(tx *coretypes.Transaction) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 
@@ -139,7 +139,7 @@ func (n *Noncer) SetInFlight(tx *InFlightTx) {
 }
 
 // RemoveInFlight removes a transaction from the in-flight list by its nonce.
-func (n *Noncer) RemoveInFlight(tx *InFlightTx) {
+func (n *Noncer) RemoveInFlight(tx *coretypes.Transaction) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 
@@ -151,7 +151,8 @@ func (n *Noncer) Stats() (int, int) {
 	return len(n.acquired), n.inFlight.Len()
 }
 
-// mustNonce returns the nonce of an element. Panics if the element is nil or not a *InFlightTx.
+// mustNonce returns the nonce of an element. Panics if the element is nil or not a geth core/types
+// Transaction.
 func mustNonce(element *skiplist.Element) uint64 {
-	return element.Value.(*InFlightTx).Nonce()
+	return element.Value.(*coretypes.Transaction).Nonce()
 }

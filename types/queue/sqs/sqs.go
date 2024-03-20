@@ -35,13 +35,14 @@ type Queue[T types.Marshallable] struct {
 	svc      Client
 	queueURL string
 
-	msgs        sync.Map
 	inProcessMu *sync.RWMutex
 	inProcess   map[string]string
 }
 
-// NewQueue creates a new SQS object with the specified queue URL.
-func NewQueueFromConfig[T types.Marshallable](cfg aws.Config, queueURL string) (*Queue[T], error) {
+// NewQueueFromAWSConfig creates a new SQS object with the specified AWS config & queue URL.
+func NewQueueFromAWSConfig[T types.Marshallable](
+	cfg aws.Config, queueURL string,
+) (*Queue[T], error) {
 	return &Queue[T]{
 		svc:         sqs.NewFromConfig(cfg),
 		queueURL:    queueURL,
@@ -50,27 +51,19 @@ func NewQueueFromConfig[T types.Marshallable](cfg aws.Config, queueURL string) (
 	}, nil
 }
 
-func NewQueue[T types.Marshallable](
-	region, accessKeyID, secretKey, queueURL string,
-) (*Queue[T], error) {
+// NewQueueFromConfig creates a new SQS object with the specified config & queue URL.
+func NewQueueFromConfig[T types.Marshallable](cfg Config) (*Queue[T], error) {
 	awsCfg, _ := config.LoadDefaultConfig(
-		context.Background(), func(cfg *config.LoadOptions) error {
+		context.Background(), func(acfg *config.LoadOptions) error {
 			// Set the AWS region.
-			cfg.Region = region
+			acfg.Region = cfg.Region
 			// Set the AWS credentials.
-			cfg.Credentials = awsutils.NewCredentialsProvider(
-				accessKeyID, secretKey,
-			)
+			acfg.Credentials = awsutils.NewCredentialsProvider(cfg.AccessKeyID, cfg.SecretKey)
 			// Return nil since no error occurred.
 			return nil
 		})
 
-	return NewQueueFromConfig[T](awsCfg, queueURL)
-}
-
-func (q *Queue[T]) InQueue(messageID string) bool {
-	_, ok := q.msgs.Load(messageID)
-	return ok
+	return NewQueueFromAWSConfig[T](awsCfg, cfg.QueueURL)
 }
 
 // Push adds an item to the SQS queue.
@@ -90,10 +83,6 @@ func (q *Queue[T]) Push(item T) (string, error) {
 	if err != nil || output == nil || output.MessageId == nil {
 		return "", err
 	}
-
-	// Add the message to the active set.
-	q.msgs.Store(*output.MessageId, struct{}{})
-
 	return *output.MessageId, nil
 }
 
@@ -123,13 +112,9 @@ func (q *Queue[T]) Receive() (string, T, bool) {
 		return "", t, false
 	}
 
-	// Delete the message from the active set.
-	q.msgs.Delete(*resp.Messages[0].MessageId)
-
 	// Add to the inProcess MessageID queue, mark the Message as in Process.
 	// TODO memory growth atm.
 	q.inProcess[*resp.Messages[0].MessageId] = *resp.Messages[0].ReceiptHandle
-
 	return *resp.Messages[0].MessageId, t, true
 }
 
@@ -164,9 +149,6 @@ func (q *Queue[T]) ReceiveMany(num int32) ([]string, []T, error) {
 		if err = t.Unmarshal([]byte(*m.Body)); err != nil {
 			return nil, nil, err
 		}
-
-		// Delete the message from the active set.
-		q.msgs.Delete(*m.MessageId)
 
 		// Add to the inProcess MessageID queue, mark the Message as in Process.
 		// TODO memory growth atm.

@@ -3,6 +3,7 @@ package types
 import (
 	"math/big"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -14,4 +15,16 @@ type tx interface {
 	GasTipCap() *big.Int
 	Value() *big.Int
 	Data() []byte
+}
+
+// NewCallMsgFromTx creates a CallMsg from a geth core/types Transaction.
+func NewCallMsgFromTx(t tx) *ethereum.CallMsg {
+	return &ethereum.CallMsg{
+		To:        t.To(),
+		Gas:       t.Gas(),
+		GasFeeCap: t.GasFeeCap(),
+		GasTipCap: t.GasTipCap(),
+		Value:     t.Value(),
+		Data:      t.Data(),
+	}
 }

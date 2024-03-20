@@ -7,6 +7,8 @@ import (
 	"github.com/berachain/offchain-sdk/client/eth"
 	"github.com/berachain/offchain-sdk/core/transactor/types"
 	"github.com/berachain/offchain-sdk/log"
+
+	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
 // Sender is a component that sends transactions to the chain.
@@ -35,17 +37,16 @@ func (s *Sender) Setup(chain eth.Client, logger log.Logger) {
 
 // SendTransaction sends a transaction using the Ethereum client. If the transaction fails to send,
 // it retries based on the configured retry policy.
-func (s *Sender) SendTransaction(ctx context.Context, batch *types.BatchRequest) error {
-	return s.retryTxWithPolicy(ctx, batch)
+func (s *Sender) SendTransaction(ctx context.Context, tx *coretypes.Transaction) error {
+	return s.retryTxWithPolicy(ctx, tx)
 }
 
 // retryTxWithPolicy (re)tries sending tx according to the retry policy. Specifically handles two
 // common errors on sending a transaction (NonceTooLow, ReplaceUnderpriced) by replacing the tx
 // appropriately.
-func (s *Sender) retryTxWithPolicy(ctx context.Context, batch *types.BatchRequest) error {
+func (s *Sender) retryTxWithPolicy(ctx context.Context, tx *coretypes.Transaction) error {
 	for {
 		// (Re)try sending the transaction.
-		tx := batch.Transaction
 		err := s.chain.SendTransaction(ctx, tx)
 
 		// Check the policy to see if we should retry this transaction.
@@ -71,9 +72,11 @@ func (s *Sender) retryTxWithPolicy(ctx context.Context, batch *types.BatchReques
 			)
 			s.retryPolicy.UpdateTxModified(currTx, newTx)
 		}
- 
+
 		// Use the factory to build and sign the new transaction.
-		if batch, err = s.factory.RebuildBatch(ctx, batch, tx.Nonce()); err != nil {
+		if tx, err = s.factory.RebuildTransactionFromRequest(
+			ctx, types.NewCallMsgFromTx(tx), tx.Nonce(),
+		); err != nil {
 			s.logger.Error("failed to sign replacement transaction", "err", err)
 		}
 	}

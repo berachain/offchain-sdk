@@ -8,7 +8,6 @@ import (
 
 	"github.com/berachain/offchain-sdk/client/eth"
 	"github.com/berachain/offchain-sdk/core/transactor/sender"
-	"github.com/berachain/offchain-sdk/core/transactor/types"
 	kmstypes "github.com/berachain/offchain-sdk/types/kms/types"
 
 	"github.com/ethereum/go-ethereum"
@@ -44,59 +43,33 @@ func (f *Factory) SetClient(ethClient eth.Client) {
 	f.ethClient = ethClient
 }
 
-// BuildTransactionFromRequests builds a transaction from a list of requests. A non-zero nonce
-// should only be provided if this is a retry with a specific nonce necessary.
+// BuildTransactionFromRequests builds a transaction from a list of requests.
 func (f *Factory) BuildTransactionFromRequests(
-	ctx context.Context, txReqs ...*types.TxRequest,
-) (*types.BatchRequest, error) {
-	switch len(txReqs) {
+	ctx context.Context, requests ...*ethereum.CallMsg,
+) (*coretypes.Transaction, error) {
+	switch len(requests) {
 	case 0:
 		return nil, errors.New("no transaction requests provided")
 	case 1:
 		// if len(txReqs) == 1 then build a single transaction.
-		tx, err := f.buildTransaction(ctx, txReqs[0].CallMsg, 0)
-		if err != nil {
-			return nil, err
-		}
-
-		return &types.BatchRequest{
-			Transaction: tx,
-			MsgIDs:      []string{txReqs[0].MsgID},
-			TimesFired:  []time.Time{txReqs[0].Time()},
-		}, nil
+		return f.buildTransaction(ctx, requests[0], 0)
 	default:
 		// len(txReqs) > 1 then build a multicall transaction.
-		ar := f.mc3Batcher.BatchTxRequests(txReqs...)
+		ar := f.mc3Batcher.BatchRequests(requests...)
 
 		// Build the transaction to include the calldata.
 		// ar.To should be the Multicall3 contract address
 		// ar.Data should be the calldata with the batched transactions.
 		// ar.Value is the sum of the values of the batched transactions.
-		tx, err := f.buildTransaction(ctx, ar.CallMsg, 0)
-		if err != nil {
-			return nil, err
-		}
-
-		batch := &types.BatchRequest{
-			Transaction: tx,
-			MsgIDs:      make([]string, len(txReqs)),
-			TimesFired:  make([]time.Time, len(txReqs)),
-		}
-		for i, txReq := range txReqs {
-			batch.MsgIDs[i] = txReq.MsgID
-			batch.TimesFired[i] = txReq.Time()
-		}
-		return batch, nil
+		return f.buildTransaction(ctx, ar.CallMsg, 0)
 	}
 }
 
-// RebuildBatch rebuilds an already batched transaction with the forced nonce.
-func (f *Factory) RebuildBatch(
-	ctx context.Context, batch *types.BatchRequest, forcedNonce uint64,
-) (*types.BatchRequest, error) {
-	var err error
-	batch.Transaction, err = f.buildTransaction(ctx, types.NewCallMsgFromTx(batch), forcedNonce)
-	return batch, err
+// RebuildTransactionFromRequest rebuilds a transaction from a request with the forced nonce.
+func (f *Factory) RebuildTransactionFromRequest(
+	ctx context.Context, request *ethereum.CallMsg, forcedNonce uint64,
+) (*coretypes.Transaction, error) {
+	return f.buildTransaction(ctx, request, forcedNonce)
 }
 
 // buildTransaction builds a transaction with the configured signer. If nonce of 0 is provided,
@@ -148,14 +121,15 @@ func (f *Factory) buildTransaction(
 	if callMsg.GasFeeCap != nil {
 		txData.GasFeeCap = callMsg.GasFeeCap
 	} else {
-		head, err := f.ethClient.HeaderByNumber(ctx, nil)
+		var header *coretypes.Header
+		header, err = f.ethClient.HeaderByNumber(ctx, nil)
 		if err != nil {
 			return nil, err
 		}
 
 		// use base fee wiggle multiplier of 2
 		txData.GasFeeCap = new(big.Int).Add(
-			txData.GasTipCap, new(big.Int).Mul(head.BaseFee, common.Big2),
+			txData.GasTipCap, new(big.Int).Mul(header.BaseFee, common.Big2),
 		)
 	}
 

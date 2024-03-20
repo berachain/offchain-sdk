@@ -11,6 +11,7 @@ import (
 	"github.com/berachain/offchain-sdk/core/transactor/types"
 	sdk "github.com/berachain/offchain-sdk/types"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -34,10 +35,10 @@ func NewMulticall3Batcher(address common.Address) *Multicall3Batcher {
 	}
 }
 
-// BatchTxRequests creates a batched transaction request for the given transaction requests.
-func (mc *Multicall3Batcher) BatchTxRequests(txReqs ...*types.TxRequest) *types.TxRequest {
+// BatchTxRequests creates a batched transaction request for the given call requests.
+func (mc *Multicall3Batcher) BatchRequests(callReqs ...*ethereum.CallMsg) *types.Request {
 	var (
-		calls       = make([]bindings.Multicall3Call, len(txReqs))
+		calls       = make([]bindings.Multicall3Call, len(callReqs))
 		totalValue  = big.NewInt(0)
 		gasLimit    = uint64(0)
 		gasTipCap   *big.Int
@@ -45,7 +46,7 @@ func (mc *Multicall3Batcher) BatchTxRequests(txReqs ...*types.TxRequest) *types.
 		gasPriceSet = false
 	)
 
-	for i, txReq := range txReqs {
+	for i, txReq := range callReqs {
 		// use the summed value for the batched transaction.
 		if txReq.Value != nil {
 			totalValue = totalValue.Add(totalValue, txReq.Value)
@@ -67,23 +68,23 @@ func (mc *Multicall3Batcher) BatchTxRequests(txReqs ...*types.TxRequest) *types.
 		}
 	}
 
-	txRequest, _ := mc.packer.CreateTxRequest(
+	txRequest, _ := mc.packer.CreateRequest(
 		"", mc.contractAddress, totalValue, gasTipCap, gasFeeCap, gasLimit, method, false, calls,
 	)
 	return txRequest
 }
 
 // BatchCallRequests uses the Multicall3 contract to create a batched call request for the given
-// tx requests and return the batched call response data for each call.
+// call messages and return the batched call result data for each call.
 func (mc *Multicall3Batcher) BatchCallRequests(
 	ctx context.Context,
 	from common.Address,
-	txReqs ...*types.TxRequest,
+	callReqs ...*ethereum.CallMsg,
 ) ([]bindings.Multicall3Result, error) {
 	sCtx := sdk.UnwrapContext(ctx)
 
 	// get the batched tx (call) requests
-	batchedCall := mc.BatchTxRequests(txReqs...)
+	batchedCall := mc.BatchRequests(callReqs...)
 	batchedCall.From = from
 
 	// call the multicall3 contract with the batched call request

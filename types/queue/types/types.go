@@ -4,7 +4,7 @@ import (
 	"fmt"
 )
 
-// Marshallable is an interface that defines the Marshal and Unmarshal methods.
+// Marshallable is an interface that defines the necessary methods to be (un)marshalled.
 type Marshallable interface {
 	fmt.Stringer
 	New() Marshallable
@@ -12,8 +12,8 @@ type Marshallable interface {
 	Unmarshal([]byte) error
 }
 
+// Queue defines the interaction with a queue.
 type Queue[T Marshallable] interface {
-	InQueue(messageID string) bool
 	Push(T) (string, error)
 	Receive() (string, T, bool)
 	ReceiveMany(num int32) ([]string, []T, error)

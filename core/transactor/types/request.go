@@ -11,11 +11,10 @@ import (
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
-	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
-// TxRequest is a transaction request, using the go-ethereum call msg.
-type TxRequest struct {
+// Request is a transaction request, using the go-ethereum call msg.
+type Request struct {
 	// CallMsg is used to provide the basic tx data. The From field is ignored for txs, only used
 	// for eth calls.
 	*ethereum.CallMsg
@@ -23,20 +22,20 @@ type TxRequest struct {
 	// MsgID is the (optional) user-provided string id for this tx request.
 	MsgID string
 
-	// timeFired is the time at which this tx was initially requested; filled in automatically.
-	timeFired time.Time
+	// initialTime is the time at which this tx was initially requested; filled in automatically.
+	initialTime time.Time
 }
 
-// NewTxRequest returns a new transaction request with the given input data. The ID is optional,
+// NewRequest returns a new transaction request with the given input data. The ID is optional,
 // but at most 1 is allowed per tx request.
-func NewTxRequest(
+func NewRequest(
 	to common.Address, gasLimit uint64, gasFeeCap, gasTipCap, value *big.Int, data []byte,
 	msgID ...string,
-) *TxRequest {
+) *Request {
 	if len(msgID) > 1 {
 		panic("must only pass in 1 id for a new tx request")
 	}
-	return &TxRequest{
+	return &Request{
 		CallMsg: &ethereum.CallMsg{
 			To:        &to,
 			Gas:       gasLimit,
@@ -45,26 +44,14 @@ func NewTxRequest(
 			Value:     value,
 			Data:      data,
 		},
-		MsgID:     strings.Join(msgID, ""),
-		timeFired: time.Now(),
+		MsgID:       strings.Join(msgID, ""),
+		initialTime: time.Now(),
 	}
 }
 
-// NewCallMsgFromTx creates a CallMsg from a geth Transaction. Used for rebuilding.
-func NewCallMsgFromTx(t tx) *ethereum.CallMsg {
-	return &ethereum.CallMsg{
-		To:        t.To(),
-		Gas:       t.Gas(),
-		GasFeeCap: t.GasFeeCap(),
-		GasTipCap: t.GasTipCap(),
-		Value:     t.Value(),
-		Data:      t.Data(),
-	}
-}
-
-// Validate ensures that a timeFired is set on the tx request.
-func (tx *TxRequest) Validate() error {
-	if tx.timeFired.Equal(time.Time{}) || (tx.timeFired == time.Time{}) {
+// Validate ensures that the initialTime is set on the tx request.
+func (r *Request) Validate() error {
+	if r.initialTime.Equal(time.Time{}) || (r.initialTime == time.Time{}) {
 		return errors.New("timeFired must be set")
 	}
 
@@ -72,38 +59,53 @@ func (tx *TxRequest) Validate() error {
 }
 
 // Time returns the time this tx was initially requested.
-func (tx *TxRequest) Time() time.Time {
-	return tx.timeFired
+func (r *Request) Time() time.Time {
+	return r.initialTime
 }
 
 // String() implements fmt.Stringer.
-func (tx *TxRequest) String() string {
-	return tx.MsgID
+func (r *Request) String() string {
+	return r.MsgID
 }
 
-// New returns a new empty TxRequest.
-func (TxRequest) New() types.Marshallable {
-	return &TxRequest{}
+// New returns a new empty Request.
+func (Request) New() types.Marshallable {
+	return &Request{}
 }
 
-// NewTxRequest returns a new TxRequest with the given type and error.
-func (tx TxRequest) Marshal() ([]byte, error) {
-	return json.Marshal(tx)
+// NewTxRequest returns a new Request with the given type and error.
+func (r Request) Marshal() ([]byte, error) {
+	return json.Marshal(r)
 }
 
-// Unmarshal unmarshals a TxRequest from the given data.
-func (tx *TxRequest) Unmarshal(data []byte) error {
-	return json.Unmarshal(data, tx)
+// Unmarshal unmarshals a Request from the given data.
+func (r *Request) Unmarshal(data []byte) error {
+	return json.Unmarshal(data, r)
 }
 
-// BatchRequest is built by the factory and contains a list of TxRequests.
-type BatchRequest struct {
-	*coretypes.Transaction
+// BatchRequest is a batch of requests.
+type BatchRequests []*Request
 
-	MsgIDs     []string
-	TimesFired []time.Time
+func (br BatchRequests) Messages() []*ethereum.CallMsg {
+	msgs := make([]*ethereum.CallMsg, len(br))
+	for i, req := range br {
+		msgs[i] = req.CallMsg
+	}
+	return msgs
 }
 
-func (br *BatchRequest) Len() int {
-	return len(br.MsgIDs)
+func (br BatchRequests) MsgIDs() []string {
+	ids := make([]string, len(br))
+	for i, r := range br {
+		ids[i] = r.MsgID
+	}
+	return ids
+}
+
+func (br BatchRequests) Times() []time.Time {
+	times := make([]time.Time, len(br))
+	for i, r := range br {
+		times[i] = r.Time()
+	}
+	return times
 }
