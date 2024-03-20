@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/berachain/offchain-sdk/log"
+
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
