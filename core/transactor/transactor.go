@@ -170,7 +170,7 @@ func (t *TxrV2) mainLoop(ctx context.Context) {
 				continue
 			}
 
-			// We got a batch, so we can fire. But first wait for the previous sending to finish.
+			// We got a batch, so we can build and fire, after the previous fire has finished.
 			t.senderMu.Lock()
 			go func() {
 				defer t.senderMu.Unlock()
@@ -178,7 +178,7 @@ func (t *TxrV2) mainLoop(ctx context.Context) {
 				t.fire(
 					ctx,
 					&tracker.Response{MsgIDs: requests.MsgIDs(), InitialTimes: requests.Times()},
-					requests.Messages()...,
+					true, requests.Messages()...,
 				)
 			}()
 		}
@@ -231,30 +231,36 @@ func (t *TxrV2) retrieveBatch(ctx context.Context) types.BatchRequests {
 	}
 }
 
-// fire builds a tx and processes the tracked tx response. It will batch the messages, sends the
-// batch as one transction, and asynchronously tracks the transaction for its status.
-func (t *TxrV2) fire(ctx context.Context, resp *tracker.Response, msgs ...*ethereum.CallMsg) {
-	var err error
+// fire processes the tracked tx response. If requested to build, it will first batch the messages.
+// Then it sends the batch as one tx, and async tracks the tx for its status.
+// NOTE: if toBuild is false, resp.Transaction must be a valid, non-nil tx.
+func (t *TxrV2) fire(
+	ctx context.Context, resp *tracker.Response, toBuild bool, msgs ...*ethereum.CallMsg,
+) {
 	defer func() {
 		// If there was an error in building or sending the tx, let the subscribers know.
-		if resp.Error = err; resp.Error != nil {
+		if resp.Status() == tracker.StatusError {
 			t.dispatcher.Dispatch(resp)
 		}
 	}()
 
-	t.markState(types.StateBuilding, resp.MsgIDs...)
-	resp.Transaction, err = t.factory.BuildTransactionFromRequests(ctx, msgs...)
-	if err != nil {
-		return
+	if toBuild {
+		// Call the factory to build the (batched) transaction.
+		t.markState(types.StateBuilding, resp.MsgIDs...)
+		resp.Transaction, resp.Error = t.factory.BuildTransactionFromRequests(ctx, msgs...)
+		if resp.Error != nil {
+			return
+		}
 	}
 
+	// Call the sender to send the transaction to the chain.
 	t.markState(types.StateSending, resp.MsgIDs...)
-	if err = t.sender.SendTransaction(ctx, resp.Transaction); err != nil {
+	if resp.Error = t.sender.SendTransaction(ctx, resp.Transaction); resp.Error != nil {
 		return
 	}
-
 	t.logger.Debug("📡 sent transaction", "hash", resp.Hash().Hex(), "reqs", len(resp.MsgIDs))
 
+	// Call the tracker to track the transaction async.
 	t.markState(types.StateInFlight, resp.MsgIDs...)
 	t.tracker.Track(ctx, resp)
 }

@@ -75,8 +75,8 @@ func (t *Tracker) trackStatus(ctx context.Context, resp *Response) {
 				}
 
 				if _, isQueued := content["queued"][txHashHex]; isQueued {
-					// mark the transaction as stale, but it does exist in the mempool.
-					t.markStale(resp, false)
+					// mark the transaction as expired, but it does exist in the mempool.
+					t.markExpired(resp, false)
 					return
 				}
 			}
@@ -111,9 +111,9 @@ func (t *Tracker) waitMined(ctx context.Context, resp *Response, isAlreadyPendin
 			// If the context is done, it could be due to cancellation or other reasons.
 			return
 		case <-timer.C:
-			// If the timeout is reached, mark the transaction as stale (the tx has been lost and
+			// If the timeout is reached, mark the transaction as expired (the tx has been lost and
 			// not found anywhere if isAlreadyPending == false).
-			t.markStale(resp, isAlreadyPending)
+			t.markExpired(resp, isAlreadyPending)
 			return
 		default:
 			// Else check for the receipt again.
@@ -149,8 +149,10 @@ func (t *Tracker) markConfirmed(resp *Response, receipt *coretypes.Receipt) {
 	t.dispatchTx(resp)
 }
 
-// markStale marks a stale transaction that needs to be resent if not pending.
-func (t *Tracker) markStale(resp *Response, isPending bool) {
+// markExpired marks a transaction has exceeded the configured timeouts.
+// If pending, it should be resent (same tx data, same nonce) with a bumped gas.
+// If stale (i.e. not pending), it should be rebuilt (same tx data, new nonce) and resent.
+func (t *Tracker) markExpired(resp *Response, isPending bool) {
 	resp.isStale = !isPending
 	t.dispatchTx(resp)
 }

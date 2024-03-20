@@ -2,7 +2,6 @@ package tracker
 
 import (
 	"context"
-	"time"
 
 	"github.com/berachain/offchain-sdk/log"
 
@@ -12,13 +11,13 @@ import (
 // Subscriber is an interface that defines methods for handling responses from the transactor.
 type Subscriber interface {
 	// OnError is called when a transaction request fails to build or send.
-	OnError(context.Context, *Response) error
+	OnError(ctx context.Context, resp *Response) error
 	// OnSuccess is called when a transaction has been successfully included in a block.
-	OnSuccess(*Response, *coretypes.Receipt) error
+	OnSuccess(resp *Response, receipt *coretypes.Receipt) error
 	// OnRevert is called when a transaction has been reverted.
-	OnRevert(*Response, *coretypes.Receipt) error
+	OnRevert(resp *Response, receipt *coretypes.Receipt) error
 	// OnStale is called when a transaction becomes stale.
-	OnStale(context.Context, *Response) error
+	OnStale(ctx context.Context, resp *Response, isPending bool) error
 }
 
 // Once started, a Subscription manages and invokes a Subscriber.
@@ -60,13 +59,15 @@ func (sub *Subscription) Start(ctx context.Context, ch chan *Response) error {
 					sub.logger.Error("failed to handle reverted tx", "err", err)
 				}
 			case StatusStale:
-				// If the transaction is stale, call OnStale.
-				if err := sub.OnStale(ctx, e); err != nil {
+				// If the transaction expired from timeout, call OnStale.
+				if err := sub.OnStale(ctx, e, false); err != nil {
 					sub.logger.Error("failed to handle stale tx", "err", err)
 				}
 			case StatusPending:
-				// If the transaction is pending, do nothing.
-				time.Sleep(retryPendingBackoff)
+				// If the transaction expired from timeout, call OnStale, but isPending is true.
+				if err := sub.OnStale(ctx, e, true); err != nil {
+					sub.logger.Error("failed to handle stale tx", "err", err)
+				}
 			}
 		}
 	}

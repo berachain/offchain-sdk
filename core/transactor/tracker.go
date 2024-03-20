@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/berachain/offchain-sdk/core/transactor/sender"
 	"github.com/berachain/offchain-sdk/core/transactor/tracker"
 	"github.com/berachain/offchain-sdk/core/transactor/types"
 
@@ -58,7 +59,7 @@ func (t *TxrV2) OnRevert(resp *tracker.Response, receipt *coretypes.Receipt) err
 	return nil
 }
 
-func (t *TxrV2) OnStale(ctx context.Context, resp *tracker.Response) error {
+func (t *TxrV2) OnStale(ctx context.Context, resp *tracker.Response, isPending bool) error {
 	t.removeStateTracking(resp.MsgIDs...)
 	t.logger.Warn(
 		"🔄 transaction is stale", "tx-hash", resp.Hash(),
@@ -67,7 +68,14 @@ func (t *TxrV2) OnStale(ctx context.Context, resp *tracker.Response) error {
 
 	// Try resending the tx to the chain if configured to do so.
 	if t.cfg.ResendStaleTxs {
-		t.fire(ctx, resp, types.CallMsgFromTx(resp.Transaction))
+		if isPending {
+			// resend (same tx data, same nonce) with a bumped gas.
+			resp.Transaction = sender.BumpGas(resp.Transaction)
+			t.fire(ctx, resp, false, types.CallMsgFromTx(resp.Transaction))
+		} else {
+			// rebuild (same tx data, new nonce) and resend.
+			t.fire(ctx, resp, true, types.CallMsgFromTx(resp.Transaction))
+		}
 	}
 	return nil
 }
