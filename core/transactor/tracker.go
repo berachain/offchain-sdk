@@ -11,15 +11,17 @@ import (
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
+// OnError is called when a transaction request fails to build or send.
 func (t *TxrV2) OnError(_ context.Context, resp *tracker.Response) error {
 	t.noncer.RemoveAcquired(resp.Nonce())
 	t.removeStateTracking(resp.MsgIDs...)
 	t.logger.Error("❌ error sending transaction", "err", resp.Error, "msgs", resp.MsgIDs)
 
-	// TODO: move ontop dead queue.
+	// TODO: move ontop dead queue, for SQS.
 	return nil
 }
 
+// OnSuccess is called when a transaction has been successfully included in a block.
 func (t *TxrV2) OnSuccess(resp *tracker.Response, receipt *coretypes.Receipt) error {
 	t.removeStateTracking(resp.MsgIDs...)
 	t.logger.Info(
@@ -49,6 +51,7 @@ func (t *TxrV2) OnSuccess(resp *tracker.Response, receipt *coretypes.Receipt) er
 	return nil
 }
 
+// OnRevert is called when a transaction has been reverted.
 func (t *TxrV2) OnRevert(resp *tracker.Response, receipt *coretypes.Receipt) error {
 	t.removeStateTracking(resp.MsgIDs...)
 	t.logger.Error(
@@ -56,10 +59,11 @@ func (t *TxrV2) OnRevert(resp *tracker.Response, receipt *coretypes.Receipt) err
 		"gas-used", receipt.GasUsed, "status", receipt.Status, "nonce", resp.Nonce(),
 	)
 
-	// TODO: delete from sqs queue / move onto the dead queue?
+	// TODO: delete from SQS queue / move onto the dead queue?
 	return nil
 }
 
+// OnStale is called when a transaction becomes stale after the configured timeout.
 func (t *TxrV2) OnStale(ctx context.Context, resp *tracker.Response, isPending bool) error {
 	t.removeStateTracking(resp.MsgIDs...)
 	t.logger.Warn(
