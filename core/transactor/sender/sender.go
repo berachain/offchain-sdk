@@ -11,11 +11,11 @@ import (
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
-// Sender is a component that sends transactions to the chain.
+// Sender is a component that sends (and retries) transactions to the chain.
 type Sender struct {
 	factory             Factory             // used to rebuild transactions, if necessary
-	txReplacementPolicy TxReplacementPolicy // policy to replace transactions
-	retryPolicy         RetryPolicy         // policy to retry transactions
+	txReplacementPolicy txReplacementPolicy // policy to replace transactions
+	retryPolicy         retryPolicy         // policy to retry transactions
 
 	chain  eth.Client
 	logger log.Logger
@@ -25,8 +25,8 @@ type Sender struct {
 func New(factory Factory, noncer Noncer) *Sender {
 	return &Sender{
 		factory:             factory,
-		txReplacementPolicy: &DefaultTxReplacementPolicy{noncer: noncer},
-		retryPolicy:         &ExpoRetryPolicy{}, // TODO: choose from config.
+		txReplacementPolicy: &defaultTxReplacementPolicy{noncer: noncer},
+		retryPolicy:         &expoRetryPolicy{}, // TODO: choose from config.
 	}
 }
 

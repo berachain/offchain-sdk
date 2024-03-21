@@ -10,16 +10,16 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 )
 
-var _ TxReplacementPolicy = (*DefaultTxReplacementPolicy)(nil)
+var _ txReplacementPolicy = (*defaultTxReplacementPolicy)(nil)
 
-// DefaultTxReplacementPolicy is the default transaction replacement policy. It bumps the gas price
+// defaultTxReplacementPolicy is the default transaction replacement policy. It bumps the gas price
 // by 15% (only 10% is required but we add a buffer to be safe) and generates a replacement 1559
 // dynamic fee transaction.
-type DefaultTxReplacementPolicy struct {
+type defaultTxReplacementPolicy struct {
 	noncer Noncer
 }
 
-func (d *DefaultTxReplacementPolicy) GetNew(
+func (d *defaultTxReplacementPolicy) GetNew(
 	tx *coretypes.Transaction, err error,
 ) (*coretypes.Transaction, error) {
 	// If the sender is out of balance, return the error.

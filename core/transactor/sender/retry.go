@@ -21,26 +21,26 @@ const (
 )
 
 var (
-	_ RetryPolicy = (*NoRetryPolicy)(nil)
-	_ RetryPolicy = (*ExpoRetryPolicy)(nil)
+	_ retryPolicy = (*noRetryPolicy)(nil)
+	_ retryPolicy = (*expoRetryPolicy)(nil)
 )
 
-// NoRetryPolicy does not retry transactions.
-type NoRetryPolicy struct{}
+// noRetryPolicy does not retry transactions.
+type noRetryPolicy struct{}
 
-func (*NoRetryPolicy) Get(*coretypes.Transaction, error) (bool, time.Duration) {
+func (*noRetryPolicy) Get(*coretypes.Transaction, error) (bool, time.Duration) {
 	return false, 0
 }
 
-func (*NoRetryPolicy) UpdateTxModified(common.Hash, common.Hash) {}
+func (*noRetryPolicy) UpdateTxModified(common.Hash, common.Hash) {}
 
-// ExpoRetryPolicy is a RetryPolicy that does an exponential backoff until maxRetries is
+// expoRetryPolicy is a RetryPolicy that does an exponential backoff until maxRetries is
 // reached. This does not assume anything about whether the specifc tx should be retried.
-type ExpoRetryPolicy struct {
+type expoRetryPolicy struct {
 	retries sync.Map
 }
 
-func (erp *ExpoRetryPolicy) Get(tx *coretypes.Transaction, err error) (bool, time.Duration) {
+func (erp *expoRetryPolicy) Get(tx *coretypes.Transaction, err error) (bool, time.Duration) {
 	var (
 		txHash = tx.Hash()
 		tri    *txRetryInfo
@@ -75,7 +75,7 @@ func (erp *ExpoRetryPolicy) Get(tx *coretypes.Transaction, err error) (bool, tim
 	return true, waitTime
 }
 
-func (erp *ExpoRetryPolicy) UpdateTxModified(oldTx, newTx common.Hash) {
+func (erp *expoRetryPolicy) UpdateTxModified(oldTx, newTx common.Hash) {
 	if txri, found := erp.retries.Load(oldTx); found {
 		erp.retries.Delete(oldTx)
 		erp.retries.Store(newTx, txri)

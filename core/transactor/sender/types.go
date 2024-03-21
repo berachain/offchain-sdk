@@ -24,14 +24,14 @@ type (
 )
 
 type (
-	// TxReplacementPolicy is a type that takes a tx and returns a replacement tx.
-	TxReplacementPolicy interface {
+	// txReplacementPolicy is a type that takes a tx and returns a replacement tx.
+	txReplacementPolicy interface {
 		GetNew(*coretypes.Transaction, error) (*coretypes.Transaction, error)
 	}
 
-	// A RetryPolicy is used to determine if a transaction should be retried and how long to wait
+	// retryPolicy is used to determine if a transaction should be retried and how long to wait
 	// before retrying again.
-	RetryPolicy interface {
+	retryPolicy interface {
 		Get(*coretypes.Transaction, error) (bool, time.Duration)
 		UpdateTxModified(common.Hash, common.Hash)
 	}
