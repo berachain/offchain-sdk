@@ -250,7 +250,7 @@ contract('GovernorCompatibilityBravo', function (accounts) {
         });
 
         describe('on vote', function () {
-          it('if vote type is invalide', async function () {
+          it('if vote type is invalid', async function () {
             await this.helper.propose({ from: proposer });
             await this.helper.waitForSnapshot();
             await expectRevert(
