@@ -7,7 +7,10 @@ import (
 )
 
 type Config struct {
-	// Hex string address of the multicall contract to be used for batched txs.
+	// Hex string address of the multicall contract to be used for batched txs. Currently
+	// configured to use the following `public`, `payable` function on this contract:
+	//   call data signature: `tryAggregate(bool,(address,bytes))`
+	//   returns: `([](bool,bytes))`
 	Multicall3Address string
 
 	// How large an individual batched tx will be (uses multicall contract if > 1).
