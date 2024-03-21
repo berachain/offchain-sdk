@@ -7,6 +7,7 @@ import (
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/txpool"
 	coretypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/core/vm"
 )
 
 var _ TxReplacementPolicy = (*DefaultTxReplacementPolicy)(nil)
@@ -20,8 +21,12 @@ type DefaultTxReplacementPolicy struct {
 
 func (d *DefaultTxReplacementPolicy) GetNew(
 	tx *coretypes.Transaction, err error,
-) *coretypes.Transaction {
-	// TODO: check if out of ogas
+) (*coretypes.Transaction, error) {
+	// If the sender is out of balance, return the error.
+	if errors.Is(err, vm.ErrInsufficientBalance) ||
+		(err != nil && strings.Contains(err.Error(), "insufficient balance for transfer")) {
+		return nil, err
+	}
 
 	// Replace the nonce if the nonce was too low.
 	var shouldBumpGas bool
@@ -38,5 +43,5 @@ func (d *DefaultTxReplacementPolicy) GetNew(
 		tx = BumpGas(tx)
 	}
 
-	return tx
+	return tx, nil
 }

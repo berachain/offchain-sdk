@@ -61,7 +61,10 @@ func (s *Sender) retryTxWithPolicy(ctx context.Context, tx *coretypes.Transactio
 		s.logger.Error("failed to send tx, retrying...", "hash", currTx, "err", err)
 
 		// Get the replacement tx if necessary.
-		tx = s.txReplacementPolicy.GetNew(tx, err)
+		if tx, err = s.txReplacementPolicy.GetNew(tx, err); err != nil {
+			s.logger.Error("failed to get replacement tx", "err", err)
+			return err
+		}
 
 		// Update the retry policy if the transaction has been changed and log.
 		if newTx := tx.Hash(); newTx != currTx {
@@ -77,7 +80,8 @@ func (s *Sender) retryTxWithPolicy(ctx context.Context, tx *coretypes.Transactio
 		if tx, err = s.factory.RebuildTransactionFromRequest(
 			ctx, types.CallMsgFromTx(tx), tx.Nonce(),
 		); err != nil {
-			s.logger.Error("failed to sign replacement transaction", "err", err)
+			s.logger.Error("failed to build replacement transaction", "err", err)
+			return err
 		}
 	}
 }

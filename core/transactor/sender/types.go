@@ -26,7 +26,7 @@ type (
 type (
 	// TxReplacementPolicy is a type that takes a tx and returns a replacement tx.
 	TxReplacementPolicy interface {
-		GetNew(*coretypes.Transaction, error) *coretypes.Transaction
+		GetNew(*coretypes.Transaction, error) (*coretypes.Transaction, error)
 	}
 
 	// A RetryPolicy is used to determine if a transaction should be retried and how long to wait

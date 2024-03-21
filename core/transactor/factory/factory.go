@@ -19,8 +19,8 @@ import (
 type Factory struct {
 	noncer        Noncer
 	signer        kmstypes.TxSigner
-	mc3Batcher    *Multicall3Batcher
 	signTxTimeout time.Duration
+	mc3Batcher    *Multicall3Batcher
 
 	// caches
 	ethClient     eth.Client
@@ -36,8 +36,9 @@ func New(
 	return &Factory{
 		noncer:        noncer,
 		signer:        signer,
-		signerAddress: signer.Address(),
+		signTxTimeout: signTxTimeout,
 		mc3Batcher:    mc3Batcher,
+		signerAddress: signer.Address(),
 	}
 }
 

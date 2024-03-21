@@ -53,9 +53,8 @@ func (t *Tracker) Track(ctx context.Context, resp *Response) {
 // trackStatus polls the for transaction status and updates the in-flight list.
 func (t *Tracker) trackStatus(ctx context.Context, resp *Response) {
 	var (
-		txNonce = strconv.FormatUint(resp.Nonce(), 10)
-		txHash  = resp.Hash()
-		timer   = time.NewTimer(t.inMempoolTimeout)
+		txHash = resp.Hash()
+		timer  = time.NewTimer(t.inMempoolTimeout)
 	)
 	defer timer.Stop()
 
@@ -72,20 +71,8 @@ func (t *Tracker) trackStatus(ctx context.Context, resp *Response) {
 			return
 		default:
 			// Check the mempool again.
-			if content, err := t.ethClient.TxPoolContent(ctx); err == nil {
-				if senderTxs, ok := content["pending"][t.senderAddr]; ok {
-					if _, isPending := senderTxs[txNonce]; isPending {
-						t.markPending(ctx, resp)
-						return
-					}
-				}
-
-				if senderTxs, ok := content["queued"][t.senderAddr]; ok {
-					if _, isQueued := senderTxs[txNonce]; isQueued {
-						// mark the transaction as expired, but it does exist in the mempool.
-						t.markExpired(resp, false)
-					}
-				}
+			if t.checkMempool(ctx, resp) {
+				return
 			}
 
 			// Check for the receipt again.
@@ -98,6 +85,32 @@ func (t *Tracker) trackStatus(ctx context.Context, resp *Response) {
 			time.Sleep(retryPendingBackoff)
 		}
 	}
+}
+
+// checkMempool marks the tx according to its state in the mempool. Returns true if found.
+func (t *Tracker) checkMempool(ctx context.Context, resp *Response) bool {
+	content, err := t.ethClient.TxPoolContent(ctx)
+	if err != nil {
+		return false
+	}
+	txNonce := strconv.FormatUint(resp.Nonce(), 10)
+
+	if senderTxs, ok := content["pending"][t.senderAddr]; ok {
+		if _, isPending := senderTxs[txNonce]; isPending {
+			t.markPending(ctx, resp)
+			return true
+		}
+	}
+
+	if senderTxs, ok := content["queued"][t.senderAddr]; ok {
+		if _, isQueued := senderTxs[txNonce]; isQueued {
+			// mark the transaction as expired, but it does exist in the mempool.
+			t.markExpired(resp, false)
+			return true
+		}
+	}
+
+	return false
 }
 
 // waitMined waits for a receipt until the transaction is either confirmed or marked stale.

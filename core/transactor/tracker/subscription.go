@@ -4,21 +4,7 @@ import (
 	"context"
 
 	"github.com/berachain/offchain-sdk/log"
-
-	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
-
-// Subscriber is an interface that defines methods for handling responses from the transactor.
-type Subscriber interface {
-	// OnError is called when a transaction request fails to build or send.
-	OnError(ctx context.Context, resp *Response) error
-	// OnSuccess is called when a transaction has been successfully included in a block.
-	OnSuccess(resp *Response, receipt *coretypes.Receipt) error
-	// OnRevert is called when a transaction has been reverted.
-	OnRevert(resp *Response, receipt *coretypes.Receipt) error
-	// OnStale is called when a transaction becomes stale after the configured timeout.
-	OnStale(ctx context.Context, resp *Response, isPending bool) error
-}
 
 // Once started, a Subscription manages and invokes a Subscriber.
 type Subscription struct {
