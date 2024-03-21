@@ -12,7 +12,7 @@ import (
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
-const retryPendingBackoff = 500 * time.Millisecond
+const retryBackoff = 500 * time.Millisecond
 
 // Tracker is a component that keeps track of the transactions that are already sent to the chain.
 type Tracker struct {
@@ -82,7 +82,7 @@ func (t *Tracker) trackStatus(ctx context.Context, resp *Response) {
 			}
 
 			// If not found anywhere, wait for a backoff and try again.
-			time.Sleep(retryPendingBackoff)
+			time.Sleep(retryBackoff)
 		}
 	}
 }
@@ -143,7 +143,7 @@ func (t *Tracker) waitMined(ctx context.Context, resp *Response, isAlreadyPendin
 			}
 
 			// on any error, search for the receipt after a backoff
-			time.Sleep(retryPendingBackoff)
+			time.Sleep(retryBackoff)
 		}
 	}
 }
