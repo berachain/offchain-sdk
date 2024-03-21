@@ -20,6 +20,9 @@ type Config struct {
 	// How long to wait to retrieve txs from the queue if it is empty (ideally quick <= 1s).
 	EmptyQueueDelay time.Duration
 
+	// Maximum duration allowed for the tx to be signed (increase this if using a remote signer)
+	SignTxTimeout time.Duration
+
 	// How long to wait for the pending nonce (ideally 1 block time).
 	PendingNonceInterval time.Duration
 	// How long to wait for a tx to hit the mempool (ideally 1-2 block time).

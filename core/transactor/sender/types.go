@@ -9,13 +9,19 @@ import (
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
-// Factory is an interface for building transactions, used if retrying.
-type Factory interface {
-	RebuildTransactionFromRequest(
-		context.Context, *ethereum.CallMsg, uint64,
-	) (*coretypes.Transaction, error)
-	GetNextNonce(uint64) (uint64, bool)
-}
+type (
+	// Factory is an interface for building transactions, used if retrying.
+	Factory interface {
+		RebuildTransactionFromRequest(
+			context.Context, *ethereum.CallMsg, uint64,
+		) (*coretypes.Transaction, error)
+	}
+
+	// Noncer is the interface for acquiring fresh nonces, used if retrying.
+	Noncer interface {
+		Acquire() (uint64, bool)
+	}
+)
 
 type (
 	// TxReplacementPolicy is a type that takes a tx and returns a replacement tx.

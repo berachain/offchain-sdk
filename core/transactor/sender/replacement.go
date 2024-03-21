@@ -15,18 +15,20 @@ var _ TxReplacementPolicy = (*DefaultTxReplacementPolicy)(nil)
 // by 15% (only 10% is required but we add a buffer to be safe) and generates a replacement 1559
 // dynamic fee transaction.
 type DefaultTxReplacementPolicy struct {
-	nf Factory
+	noncer Noncer
 }
 
 func (d *DefaultTxReplacementPolicy) GetNew(
 	tx *coretypes.Transaction, err error,
 ) *coretypes.Transaction {
+	// TODO: check if out of ogas
+
 	// Replace the nonce if the nonce was too low.
 	var shouldBumpGas bool
 	if errors.Is(err, core.ErrNonceTooLow) ||
 		(err != nil && strings.Contains(err.Error(), "nonce too low")) {
 		var newNonce uint64
-		newNonce, shouldBumpGas = d.nf.GetNextNonce(tx.Nonce())
+		newNonce, shouldBumpGas = d.noncer.Acquire()
 		tx = SetNonce(tx, newNonce)
 	}
 

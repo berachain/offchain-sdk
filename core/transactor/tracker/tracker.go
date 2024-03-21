@@ -2,11 +2,13 @@ package tracker
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/berachain/offchain-sdk/client/eth"
 	"github.com/berachain/offchain-sdk/core/transactor/event"
 
+	"github.com/ethereum/go-ethereum/common"
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
@@ -16,6 +18,7 @@ const retryPendingBackoff = 500 * time.Millisecond
 type Tracker struct {
 	noncer     *Noncer
 	dispatcher *event.Dispatcher[*Response]
+	senderAddr string // hex address of tx sender
 
 	inMempoolTimeout time.Duration // for hitting mempool
 	staleTimeout     time.Duration // for a tx receipt
@@ -25,14 +28,15 @@ type Tracker struct {
 
 // New creates a new transaction tracker.
 func New(
-	noncer *Noncer, dispatcher *event.Dispatcher[*Response],
+	noncer *Noncer, dispatcher *event.Dispatcher[*Response], sender common.Address,
 	inMempoolTimeout, staleTimeout time.Duration,
 ) *Tracker {
 	return &Tracker{
 		noncer:           noncer,
+		dispatcher:       dispatcher,
+		senderAddr:       sender.Hex(),
 		inMempoolTimeout: inMempoolTimeout,
 		staleTimeout:     staleTimeout,
-		dispatcher:       dispatcher,
 	}
 }
 
@@ -49,9 +53,9 @@ func (t *Tracker) Track(ctx context.Context, resp *Response) {
 // trackStatus polls the for transaction status and updates the in-flight list.
 func (t *Tracker) trackStatus(ctx context.Context, resp *Response) {
 	var (
-		txHash    = resp.Hash()
-		txHashHex = txHash.Hex()
-		timer     = time.NewTimer(t.inMempoolTimeout)
+		txNonce = strconv.FormatUint(resp.Nonce(), 10)
+		txHash  = resp.Hash()
+		timer   = time.NewTimer(t.inMempoolTimeout)
 	)
 	defer timer.Stop()
 
@@ -69,15 +73,18 @@ func (t *Tracker) trackStatus(ctx context.Context, resp *Response) {
 		default:
 			// Check the mempool again.
 			if content, err := t.ethClient.TxPoolContent(ctx); err == nil {
-				if _, isPending := content["pending"][txHashHex]; isPending {
-					t.markPending(ctx, resp)
-					return
+				if senderTxs, ok := content["pending"][t.senderAddr]; ok {
+					if _, isPending := senderTxs[txNonce]; isPending {
+						t.markPending(ctx, resp)
+						return
+					}
 				}
 
-				if _, isQueued := content["queued"][txHashHex]; isQueued {
-					// mark the transaction as expired, but it does exist in the mempool.
-					t.markExpired(resp, false)
-					return
+				if senderTxs, ok := content["queued"][t.senderAddr]; ok {
+					if _, isQueued := senderTxs[txNonce]; isQueued {
+						// mark the transaction as expired, but it does exist in the mempool.
+						t.markExpired(resp, false)
+					}
 				}
 			}
 

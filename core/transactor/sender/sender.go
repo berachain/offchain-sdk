@@ -13,7 +13,7 @@ import (
 
 // Sender is a component that sends transactions to the chain.
 type Sender struct {
-	factory             Factory             // factory to sign new transactions
+	factory             Factory             // used to rebuild transactions, if necessary
 	txReplacementPolicy TxReplacementPolicy // policy to replace transactions
 	retryPolicy         RetryPolicy         // policy to retry transactions
 
@@ -22,10 +22,10 @@ type Sender struct {
 }
 
 // New creates a new Sender with default replacement and exponential retry policies.
-func New(factory Factory) *Sender {
+func New(factory Factory, noncer Noncer) *Sender {
 	return &Sender{
 		factory:             factory,
-		txReplacementPolicy: &DefaultTxReplacementPolicy{nf: factory},
+		txReplacementPolicy: &DefaultTxReplacementPolicy{noncer: noncer},
 		retryPolicy:         &ExpoRetryPolicy{}, // TODO: choose from config.
 	}
 }

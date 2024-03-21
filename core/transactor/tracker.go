@@ -12,6 +12,7 @@ import (
 )
 
 func (t *TxrV2) OnError(_ context.Context, resp *tracker.Response) error {
+	t.noncer.RemoveAcquired(resp.Nonce())
 	t.removeStateTracking(resp.MsgIDs...)
 	t.logger.Error("❌ error sending transaction", "err", resp.Error, "msgs", resp.MsgIDs)
 
@@ -66,16 +67,16 @@ func (t *TxrV2) OnStale(ctx context.Context, resp *tracker.Response, isPending b
 		"nonce", resp.Nonce(), "gas-price", resp.GasPrice(),
 	)
 
-	// Try resending the tx to the chain if configured to do so.
-	if t.cfg.ResendStaleTxs {
-		if isPending {
-			// resend (same tx data, same nonce) with a bumped gas.
-			resp.Transaction = sender.BumpGas(resp.Transaction)
-			t.fire(ctx, resp, false, types.CallMsgFromTx(resp.Transaction))
-		} else {
-			// rebuild (same tx data, new nonce) and resend.
-			t.fire(ctx, resp, true, types.CallMsgFromTx(resp.Transaction))
-		}
+	if isPending {
+		// For a tx that gets stuck in the mempool as pending, it can only be included in a block
+		// by bumping gas. Resend it (same tx data, same nonce) with a bumped gas.
+		resp.Transaction = sender.BumpGas(resp.Transaction)
+		t.fire(ctx, resp, false, types.CallMsgFromTx(resp.Transaction))
+	} else if t.cfg.ResendStaleTxs {
+		// Try resending the tx to the chain if configured to do so. Rebuild it (same tx data, new
+		// nonce) and resend.
+		t.fire(ctx, resp, true, types.CallMsgFromTx(resp.Transaction))
 	}
+
 	return nil
 }
