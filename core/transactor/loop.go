@@ -89,7 +89,7 @@ func (t *TxrV2) retrieveBatch(ctx context.Context) types.Requests {
 
 // fire processes the tracked tx response. If requested to build, it will first batch the messages.
 // Then it sends the batch as one tx and asynchronously tracks the tx for its status.
-// NOTE: if toBuild is false, resp.Transaction must be a valid, non-nil tx.
+// NOTE: if toBuild is false, resp.Transaction must be a valid, signed tx.
 func (t *TxrV2) fire(
 	ctx context.Context, resp *tracker.Response, toBuild bool, msgs ...*ethereum.CallMsg,
 ) {
