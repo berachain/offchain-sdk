@@ -3,6 +3,7 @@ package tracker
 import (
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
@@ -20,21 +21,49 @@ type Response struct {
 }
 
 // Status returns the current status of a transaction owned by the transactor.
-func (t *Response) Status() Status {
-	if t.Error != nil {
+func (r *Response) Status() Status {
+	if r.Error != nil {
 		return StatusError
 	}
 
-	if t.receipt == nil {
-		if t.isStale {
+	if r.receipt == nil {
+		if r.isStale {
 			return StatusStale
 		}
 		return StatusPending
 	}
 
-	if t.receipt.Status == 1 {
+	if r.receipt.Status == 1 {
 		return StatusSuccess
 	}
 
 	return StatusReverted
+}
+
+// Nonce overrides the method on Transaction to avoid dereferencing a nil pointer.
+func (r *Response) Nonce() uint64 {
+	if r.Transaction != nil {
+		return r.Transaction.Nonce()
+	}
+
+	return 0
+}
+
+// To overrides the method on Transaction to avoid dereferencing a nil pointer.
+func (r *Response) To() *common.Address {
+	if r.Transaction != nil {
+		return r.Transaction.To()
+	}
+
+	zeroAddr := common.Address{}
+	return &zeroAddr
+}
+
+// Hash overrides the method on Transaction to avoid dereferencing a nil pointer.
+func (r *Response) Hash() common.Hash {
+	if r.Transaction != nil {
+		return r.Transaction.Hash()
+	}
+
+	return common.Hash{}
 }

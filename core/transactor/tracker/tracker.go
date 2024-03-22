@@ -154,17 +154,13 @@ func (t *Tracker) markPending(ctx context.Context, resp *Response) {
 	// Remove from the noncer inFlight set since we know the tx has reached the mempool as
 	// executable/pending.
 	t.noncer.RemoveInFlight(resp.Nonce())
-
 	t.waitMined(ctx, resp, true)
 }
 
 // markConfirmed is called once a transaction has been included in the canonical chain.
 func (t *Tracker) markConfirmed(resp *Response, receipt *coretypes.Receipt) {
 	// Set the contract address field on the receipt since geth doesn't do this.
-	if contractAddr := resp.To(); contractAddr != nil && receipt != nil {
-		receipt.ContractAddress = *contractAddr
-	}
-
+	receipt.ContractAddress = *resp.To()
 	resp.receipt = receipt
 	t.dispatchTx(resp)
 }
