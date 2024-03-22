@@ -7,26 +7,33 @@ import (
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/txpool"
 	coretypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/core/vm"
 )
 
-var _ TxReplacementPolicy = (*DefaultTxReplacementPolicy)(nil)
+var _ txReplacementPolicy = (*defaultTxReplacementPolicy)(nil)
 
-// DefaultTxReplacementPolicy is the default transaction replacement policy. It bumps the gas price
+// defaultTxReplacementPolicy is the default transaction replacement policy. It bumps the gas price
 // by 15% (only 10% is required but we add a buffer to be safe) and generates a replacement 1559
 // dynamic fee transaction.
-type DefaultTxReplacementPolicy struct {
-	nf Factory
+type defaultTxReplacementPolicy struct {
+	noncer Noncer
 }
 
-func (d *DefaultTxReplacementPolicy) GetNew(
+func (d *defaultTxReplacementPolicy) GetNew(
 	tx *coretypes.Transaction, err error,
-) *coretypes.Transaction {
+) (*coretypes.Transaction, error) {
+	// If the sender is out of balance, return the error.
+	if errors.Is(err, vm.ErrInsufficientBalance) ||
+		(err != nil && strings.Contains(err.Error(), "insufficient balance for transfer")) {
+		return nil, err
+	}
+
 	// Replace the nonce if the nonce was too low.
 	var shouldBumpGas bool
 	if errors.Is(err, core.ErrNonceTooLow) ||
 		(err != nil && strings.Contains(err.Error(), "nonce too low")) {
 		var newNonce uint64
-		newNonce, shouldBumpGas = d.nf.GetNextNonce(tx.Nonce())
+		newNonce, shouldBumpGas = d.noncer.Acquire()
 		tx = SetNonce(tx, newNonce)
 	}
 
@@ -36,5 +43,5 @@ func (d *DefaultTxReplacementPolicy) GetNew(
 		tx = BumpGas(tx)
 	}
 
-	return tx
+	return tx, nil
 }

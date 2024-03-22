@@ -1,7 +1,6 @@
 package factory
 
-// Noncer is an interface for acquiring nonces.
+// Noncer is an interface for acquiring fresh nonces.
 type Noncer interface {
-	Acquire() (nonce uint64, isReplacing bool)
-	RemoveAcquired(uint64)
+	Acquire() (uint64, bool)
 }

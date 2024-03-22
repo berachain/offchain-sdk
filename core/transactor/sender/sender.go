@@ -11,22 +11,22 @@ import (
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
-// Sender is a component that sends transactions to the chain.
+// Sender is a component that sends (and retries) transactions to the chain.
 type Sender struct {
-	factory             Factory             // factory to sign new transactions
-	txReplacementPolicy TxReplacementPolicy // policy to replace transactions
-	retryPolicy         RetryPolicy         // policy to retry transactions
+	factory             Factory             // used to rebuild transactions, if necessary
+	txReplacementPolicy txReplacementPolicy // policy to replace transactions
+	retryPolicy         retryPolicy         // policy to retry transactions
 
 	chain  eth.Client
 	logger log.Logger
 }
 
 // New creates a new Sender with default replacement and exponential retry policies.
-func New(factory Factory) *Sender {
+func New(factory Factory, noncer Noncer) *Sender {
 	return &Sender{
 		factory:             factory,
-		txReplacementPolicy: &DefaultTxReplacementPolicy{nf: factory},
-		retryPolicy:         &ExpoRetryPolicy{}, // TODO: choose from config.
+		txReplacementPolicy: &defaultTxReplacementPolicy{noncer: noncer},
+		retryPolicy:         &expoRetryPolicy{}, // TODO: choose from config.
 	}
 }
 
@@ -61,7 +61,10 @@ func (s *Sender) retryTxWithPolicy(ctx context.Context, tx *coretypes.Transactio
 		s.logger.Error("failed to send tx, retrying...", "hash", currTx, "err", err)
 
 		// Get the replacement tx if necessary.
-		tx = s.txReplacementPolicy.GetNew(tx, err)
+		if tx, err = s.txReplacementPolicy.GetNew(tx, err); err != nil {
+			s.logger.Error("failed to get replacement tx", "err", err)
+			return err
+		}
 
 		// Update the retry policy if the transaction has been changed and log.
 		if newTx := tx.Hash(); newTx != currTx {
@@ -77,7 +80,8 @@ func (s *Sender) retryTxWithPolicy(ctx context.Context, tx *coretypes.Transactio
 		if tx, err = s.factory.RebuildTransactionFromRequest(
 			ctx, types.CallMsgFromTx(tx), tx.Nonce(),
 		); err != nil {
-			s.logger.Error("failed to sign replacement transaction", "err", err)
+			s.logger.Error("failed to build replacement transaction", "err", err)
+			return err
 		}
 	}
 }

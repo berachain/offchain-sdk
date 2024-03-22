@@ -15,27 +15,30 @@ import (
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
-const signTxTimeout = 2 * time.Second // TODO: read from config.
-
 // Factory is a transaction factory that builds 1559 transactions with the configured signer.
 type Factory struct {
 	noncer        Noncer
 	signer        kmstypes.TxSigner
-	signerAddress common.Address
+	signTxTimeout time.Duration
 	mc3Batcher    *Multicall3Batcher
 
 	// caches
-	ethClient eth.Client
-	chainID   *big.Int
+	ethClient     eth.Client
+	chainID       *big.Int
+	signerAddress common.Address
 }
 
 // New creates a new factory instance.
-func New(noncer Noncer, signer kmstypes.TxSigner, mc3Batcher *Multicall3Batcher) *Factory {
+func New(
+	noncer Noncer, mc3Batcher *Multicall3Batcher,
+	signer kmstypes.TxSigner, signTxTimeout time.Duration,
+) *Factory {
 	return &Factory{
 		noncer:        noncer,
 		signer:        signer,
-		signerAddress: signer.Address(),
+		signTxTimeout: signTxTimeout,
 		mc3Batcher:    mc3Batcher,
+		signerAddress: signer.Address(),
 	}
 }
 
@@ -91,11 +94,6 @@ func (f *Factory) buildTransaction(
 	var isReplacing bool
 	if nonce == 0 {
 		nonce, isReplacing = f.noncer.Acquire()
-		defer func() {
-			if err != nil {
-				f.noncer.RemoveAcquired(nonce)
-			}
-		}()
 	}
 
 	// start building the 1559 transaction
@@ -143,30 +141,18 @@ func (f *Factory) buildTransaction(
 		}
 	}
 
-	// bump gas (if necessary) and sign the transaction.
+	// bump gas (if necessary)
 	tx := coretypes.NewTx(txData)
 	if isReplacing {
 		tx = sender.BumpGas(tx)
 	}
-	tx, err = f.SignTransaction(ctx, tx)
-	return tx, err
-}
 
-// signTransaction signs a transaction with the configured signer.
-func (f *Factory) SignTransaction(
-	ctx context.Context, tx *coretypes.Transaction,
-) (*coretypes.Transaction, error) {
-	ctxWithTimeout, cancel := context.WithTimeout(ctx, signTxTimeout)
+	// sign the transaction
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, f.signTxTimeout)
 	signer, err := f.signer.SignerFunc(ctxWithTimeout, tx.ChainId())
 	cancel()
 	if err != nil {
 		return nil, err
 	}
 	return signer(f.signerAddress, tx)
-}
-
-// GetNextNonce lets the noncer know that the old nonce could not be sent and acquires a new one.
-func (f *Factory) GetNextNonce(oldNonce uint64) (uint64, bool) {
-	f.noncer.RemoveAcquired(oldNonce)
-	return f.noncer.Acquire()
 }

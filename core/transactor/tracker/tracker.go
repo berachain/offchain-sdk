@@ -2,20 +2,23 @@ package tracker
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/berachain/offchain-sdk/client/eth"
 	"github.com/berachain/offchain-sdk/core/transactor/event"
 
+	"github.com/ethereum/go-ethereum/common"
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
-const retryPendingBackoff = 500 * time.Millisecond
+const retryBackoff = 500 * time.Millisecond
 
 // Tracker is a component that keeps track of the transactions that are already sent to the chain.
 type Tracker struct {
 	noncer     *Noncer
 	dispatcher *event.Dispatcher[*Response]
+	senderAddr string // hex address of tx sender
 
 	inMempoolTimeout time.Duration // for hitting mempool
 	staleTimeout     time.Duration // for a tx receipt
@@ -25,14 +28,15 @@ type Tracker struct {
 
 // New creates a new transaction tracker.
 func New(
-	noncer *Noncer, dispatcher *event.Dispatcher[*Response],
+	noncer *Noncer, dispatcher *event.Dispatcher[*Response], sender common.Address,
 	inMempoolTimeout, staleTimeout time.Duration,
 ) *Tracker {
 	return &Tracker{
 		noncer:           noncer,
+		dispatcher:       dispatcher,
+		senderAddr:       sender.Hex(),
 		inMempoolTimeout: inMempoolTimeout,
 		staleTimeout:     staleTimeout,
-		dispatcher:       dispatcher,
 	}
 }
 
@@ -49,9 +53,8 @@ func (t *Tracker) Track(ctx context.Context, resp *Response) {
 // trackStatus polls the for transaction status and updates the in-flight list.
 func (t *Tracker) trackStatus(ctx context.Context, resp *Response) {
 	var (
-		txHash    = resp.Hash()
-		txHashHex = txHash.Hex()
-		timer     = time.NewTimer(t.inMempoolTimeout)
+		txHash = resp.Hash()
+		timer  = time.NewTimer(t.inMempoolTimeout)
 	)
 	defer timer.Stop()
 
@@ -68,17 +71,8 @@ func (t *Tracker) trackStatus(ctx context.Context, resp *Response) {
 			return
 		default:
 			// Check the mempool again.
-			if content, err := t.ethClient.TxPoolContent(ctx); err == nil {
-				if _, isPending := content["pending"][txHashHex]; isPending {
-					t.markPending(ctx, resp)
-					return
-				}
-
-				if _, isQueued := content["queued"][txHashHex]; isQueued {
-					// mark the transaction as expired, but it does exist in the mempool.
-					t.markExpired(resp, false)
-					return
-				}
+			if t.checkMempool(ctx, resp) {
+				return
 			}
 
 			// Check for the receipt again.
@@ -88,9 +82,35 @@ func (t *Tracker) trackStatus(ctx context.Context, resp *Response) {
 			}
 
 			// If not found anywhere, wait for a backoff and try again.
-			time.Sleep(retryPendingBackoff)
+			time.Sleep(retryBackoff)
 		}
 	}
+}
+
+// checkMempool marks the tx according to its state in the mempool. Returns true if found.
+func (t *Tracker) checkMempool(ctx context.Context, resp *Response) bool {
+	content, err := t.ethClient.TxPoolContent(ctx)
+	if err != nil {
+		return false
+	}
+	txNonce := strconv.FormatUint(resp.Nonce(), 10)
+
+	if senderTxs, ok := content["pending"][t.senderAddr]; ok {
+		if _, isPending := senderTxs[txNonce]; isPending {
+			t.markPending(ctx, resp)
+			return true
+		}
+	}
+
+	if senderTxs, ok := content["queued"][t.senderAddr]; ok {
+		if _, isQueued := senderTxs[txNonce]; isQueued {
+			// mark the transaction as expired, but it does exist in the mempool.
+			t.markExpired(resp, false)
+			return true
+		}
+	}
+
+	return false
 }
 
 // waitMined waits for a receipt until the transaction is either confirmed or marked stale.
@@ -123,7 +143,7 @@ func (t *Tracker) waitMined(ctx context.Context, resp *Response, isAlreadyPendin
 			}
 
 			// on any error, search for the receipt after a backoff
-			time.Sleep(retryPendingBackoff)
+			time.Sleep(retryBackoff)
 		}
 	}
 }
