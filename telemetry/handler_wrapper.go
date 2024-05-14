@@ -11,9 +11,9 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// Metrics Wrapper can wrap a HTTP server with Metrics instance
+// GetHandlerWrapper wraps a HTTP server with the given Metrics instance.
 // to collect telemetry for every request/response.
-func MetricsWrapper(m Metrics, log log.Logger) server.HandlerWrapper {
+func GetHandlerWrapper(m Metrics, log log.Logger) server.HandlerWrapper {
 	return func(next server.HandlerFunc) server.HandlerFunc {
 		return func(c context.Context, req server.Request, rsp interface{}) error {
 			metricsTags := getRequestTags(req)
