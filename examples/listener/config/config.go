@@ -1,6 +1,10 @@
 package config
 
-import "time"
+import (
+	"time"
+
+	"github.com/berachain/offchain-sdk/telemetry"
+)
 
 type SubStruct struct {
 	AddressToListen string
@@ -17,5 +21,6 @@ type Jobs struct {
 }
 
 type Config struct {
-	Jobs Jobs
+	Jobs    Jobs
+	Metrics telemetry.Config
 }
