@@ -2,6 +2,7 @@ package app
 
 import (
 	"github.com/berachain/offchain-sdk/log"
+	"github.com/berachain/offchain-sdk/telemetry"
 
 	"github.com/berachain/offchain-sdk/baseapp"
 	coreapp "github.com/berachain/offchain-sdk/core/app"
@@ -22,6 +23,7 @@ var _ coreapp.App[config.Config] = &ListenerApp{}
 // The event is watched by the offchain-sdk and when it is emitted, the execution function is called.
 type ListenerApp struct {
 	*baseapp.BaseApp
+	metrics telemetry.Metrics
 }
 
 // Name implements the `App` interface.
@@ -35,6 +37,22 @@ func (app *ListenerApp) Setup(
 	config config.Config,
 	logger log.Logger,
 ) {
+	var err error
+
+	// Set up metrics instance
+	app.metrics, err = telemetry.NewMetrics(&config.Metrics)
+	if err != nil {
+		logger.Error("error setting up metrics", "error", err)
+		return
+	}
+
+	// Spin up Prometheus HTTP server
+	if config.Metrics.Prometheus.Enabled {
+		if err = ab.RegisterPrometheusTelemetry(); err != nil {
+			panic(err)
+		}
+	}
+
 	// This job is subscribed to the `NumberChanged(uint256)` event.
 	ab.RegisterJob(
 		jobs.NewEthSub(

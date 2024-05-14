@@ -5,11 +5,26 @@ EventName = "NumberChanged(uint256)"
 [App.Jobs.Poller]
 Interval = "1s"
 
+[App.Metrics]
+HealthReportInterval = "5s"
+
+# NOTE: if not enabling Datadog, can omit this section.
+[App.Telemetry.Datadog]
+Enabled = false
+StatsdAddr = ""
+Namespace = ""
+
+[App.Metrics.Prometheus]
+Enabled = true
+Namespace = "example"
+Subsystem = "listener_app"
+
 [App.ConnectionPool]
 EthHTTPURLs = ["http://localhost:10545"]
 EthWSURLs = ["ws://localhost:10546"]
 DefaultTimeout = "5s"
 HealthCheckInterval = "5s"
 
+# For Prometheus to run, must also expose the HTTP server endpoint.
 [Server.HTTP]
 Port = 8080
