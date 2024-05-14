@@ -7,18 +7,16 @@ import (
 	"github.com/DataDog/datadog-go/v5/statsd"
 )
 
-type Config struct {
-	Enabled    bool
-	StatsdAddr string
-	Namespace  string
-}
-
 type metrics struct {
 	enabled bool
 	client  *statsd.Client
 }
 
 func NewMetrics(cfg *Config) (*metrics, error) { //nolint:revive // only used as Metrics interface.
+	if err := cfg.Validate(); err != nil {
+		return nil, err
+	}
+
 	m := &metrics{enabled: cfg.Enabled}
 	if !m.enabled {
 		return m, nil
