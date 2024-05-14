@@ -18,7 +18,7 @@ type metrics struct {
 	client  *statsd.Client
 }
 
-func NewMetrics(cfg *Config) (*metrics, error) {
+func NewMetrics(cfg *Config) (*metrics, error) { //nolint:revive // only used as Metrics interface.
 	m := &metrics{enabled: cfg.Enabled}
 	if !m.enabled {
 		return m, nil
@@ -44,16 +44,16 @@ func (m *metrics) Gauge(name string, value float64, tags []string, rate float64)
 	if !m.enabled {
 		return
 	}
-	//#nosec:G104 // error handled by m.client.Gauge()
-	m.client.Gauge(name, value, tags, rate) //nolint:errcheck // error handled by m.client.Gauge()
+	//#nosec:G104 // handled by m.client.Gauge()
+	m.client.Gauge(name, value, tags, rate) //nolint:errcheck // handled by m.client.Gauge()
 }
 
 func (m *metrics) Count(name string, value int64, tags []string) {
 	if !m.enabled {
 		return
 	}
-	//#nosec:G104 // error handled by m.client.Count()
-	m.client.Count(name, value, tags, 1) //nolint:errcheck // error handled by m.client.Count()
+	//#nosec:G104 // handled by m.client.Count()
+	m.client.Count(name, value, tags, 1) //nolint:errcheck // handled by m.client.Count()
 }
 
 func (m *metrics) IncMonotonic(name string, tags []string) {
@@ -64,40 +64,40 @@ func (m *metrics) Incr(name string, tags []string) {
 	if !m.enabled {
 		return
 	}
-	//#nosec:G104 // error handled by m.client.Incr()
-	m.client.Incr(name, tags, 1) //nolint:errcheck // error handled by m.client.Incr()
+	//#nosec:G104 // handled by m.client.Incr()
+	m.client.Incr(name, tags, 1) //nolint:errcheck // handled by m.client.Incr()
 }
 
 func (m *metrics) Decr(name string, tags []string) {
 	if !m.enabled {
 		return
 	}
-	//#nosec:G104 // error handled by m.client.Decr()
-	m.client.Decr(name, tags, 1) //nolint:errcheck // error handled by m.client.Decr()
+	//#nosec:G104 // handled by m.client.Decr()
+	m.client.Decr(name, tags, 1) //nolint:errcheck // handled by m.client.Decr()
 }
 
 func (m *metrics) Set(name string, value string, tags []string) {
 	if !m.enabled {
 		return
 	}
-	//#nosec:G104 // error handled by m.client.Set()
-	m.client.Set(name, value, tags, 1) //nolint:errcheck // error handled by m.client.Set()
+	//#nosec:G104 // handled by m.client.Set()
+	m.client.Set(name, value, tags, 1) //nolint:errcheck // handled by m.client.Set()
 }
 
 func (m *metrics) Histogram(name string, value float64, tags []string, rate float64) {
 	if !m.enabled {
 		return
 	}
-	//#nosec:G104 // error handled by m.client.Histogram()
-	m.client.Histogram(name, value, tags, rate) //nolint:errcheck // error handled by m.client.Histogram()
+	//#nosec:G104 // handled by m.client.Histogram()
+	m.client.Histogram(name, value, tags, rate) //nolint:errcheck // handled by m.client.Histogram()
 }
 
 func (m *metrics) Time(name string, value time.Duration, tags []string) {
 	if !m.enabled {
 		return
 	}
-	//#nosec:G104 // error handled by m.client.Timing()
-	m.client.Timing(name, value, tags, 1) //nolint:errcheck // error handled by m.client.Timing()
+	//#nosec:G104 // handled by m.client.Timing()
+	m.client.Timing(name, value, tags, 1) //nolint:errcheck // handled by m.client.Timing()
 }
 
 func (m *metrics) Error(errName string) {

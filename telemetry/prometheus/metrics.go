@@ -9,7 +9,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const initialVecCapacity = 32
+const (
+	initialVecCapacity = 32
+	tagSlices          = 2
+)
 
 type metrics struct {
 	cfg *Config
@@ -20,7 +23,7 @@ type metrics struct {
 }
 
 // NewMetrics initializes a new instance of Prometheus metrics.
-func NewMetrics(cfg *Config) (*metrics, error) {
+func NewMetrics(cfg *Config) (*metrics, error) { //nolint:revive // only used as Metrics interface.
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
@@ -41,7 +44,7 @@ func (p *metrics) Close() error {
 }
 
 // Gauge implements the Gauge method of the Metrics interface using GaugeVec.
-func (p *metrics) Gauge(name string, value float64, tags []string, rate float64) {
+func (p *metrics) Gauge(name string, value float64, tags []string, _ float64) {
 	if !p.cfg.Enabled {
 		return
 	}
@@ -214,8 +217,8 @@ func parseTagsToLabelPairs(tags []string) ([]string, []string) {
 	labels := make([]string, 0, len(tags))
 	labelValues := make([]string, 0, len(tags))
 	for _, tag := range tags {
-		kv := strings.SplitN(tag, ":", 2)
-		if len(kv) == 2 {
+		kv := strings.SplitN(tag, ":", tagSlices)
+		if len(kv) == tagSlices {
 			labels = append(labels, kv[0])
 			labelValues = append(labelValues, kv[1])
 		}
