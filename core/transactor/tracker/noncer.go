@@ -75,7 +75,7 @@ func (n *Noncer) refreshNonces(ctx context.Context) {
 
 	// Use txpool.inspect instead of txpool.content. Less data to fetch.
 	if content, err := n.ethClient.TxPoolInspect(ctx); err == nil {
-		for nonceStr := range content["queued"][n.sender] {
+		for nonceStr := range content["pending"][n.sender] {
 			nonce, _ := strconv.ParseUint(nonceStr, 10, 64)
 			n.queuedNonces[nonce] = struct{}{}
 		}
