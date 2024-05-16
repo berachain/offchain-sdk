@@ -20,7 +20,7 @@ type Noncer struct {
 
 	// mempool state
 	latestPendingNonce uint64
-	queuedNonces       map[uint64]struct{}
+	pendingNonces      map[uint64]struct{}
 
 	// "in-process" nonces
 	acquired map[uint64]struct{} // The set of acquired nonces.
@@ -35,7 +35,7 @@ type Noncer struct {
 func NewNoncer(sender common.Address, refreshInterval time.Duration) *Noncer {
 	return &Noncer{
 		sender:          sender,
-		queuedNonces:    make(map[uint64]struct{}),
+		pendingNonces:   make(map[uint64]struct{}),
 		acquired:        make(map[uint64]struct{}),
 		inFlight:        skiplist.New(skiplist.Uint64),
 		refreshInterval: refreshInterval,
@@ -62,7 +62,7 @@ func (n *Noncer) refreshLoop(ctx context.Context) {
 	}
 }
 
-// refreshNonces refreshes the pending nonce and queued nonces from the mempool.
+// refreshNonces refreshes the pending nonces from the mempool.
 func (n *Noncer) refreshNonces(ctx context.Context) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
@@ -77,7 +77,7 @@ func (n *Noncer) refreshNonces(ctx context.Context) {
 	if content, err := n.ethClient.TxPoolInspect(ctx); err == nil {
 		for nonceStr := range content["pending"][n.sender] {
 			nonce, _ := strconv.ParseUint(nonceStr, 10, 64)
-			n.queuedNonces[nonce] = struct{}{}
+			n.pendingNonces[nonce] = struct{}{}
 		}
 	}
 }
@@ -111,9 +111,9 @@ func (n *Noncer) Acquire() (uint64, bool) {
 	}
 	n.acquired[nonce] = struct{}{}
 
-	// Set isReplacing to true only if the next nonce is already queued in the mempool.
-	if _, isQueued := n.queuedNonces[nonce]; isQueued {
-		delete(n.queuedNonces, nonce)
+	// Set isReplacing to true only if the next nonce is already pending in the mempool.
+	if _, isPending := n.pendingNonces[nonce]; isPending {
+		delete(n.pendingNonces, nonce)
 		isReplacing = true
 	}
 

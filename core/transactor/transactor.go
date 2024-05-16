@@ -190,13 +190,13 @@ func (t *TxrV2) resendStaleTxns(ctx context.Context) error {
 	sCtx := sdk.UnwrapContext(ctx)
 	chain := sCtx.Chain()
 
-	content, err := chain.TxPoolContent(ctx)
+	content, err := chain.TxPoolContentFrom(ctx, t.signerAddr)
 	if err != nil {
 		t.logger.Error("failed to get tx pool content", "err", err)
 		return err
 	}
 
-	for _, txn := range content["pending"][t.signerAddr] {
+	for _, txn := range content["pending"] {
 		bumpedTxn := sender.BumpGas(txn)
 		if err = t.sender.SendTransaction(ctx, bumpedTxn); err != nil {
 			t.logger.Error("failed to resend stale transaction", "err", err)
