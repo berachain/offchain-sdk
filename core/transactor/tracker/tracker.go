@@ -94,15 +94,15 @@ func (t *Tracker) checkMempool(ctx context.Context, resp *Response) bool {
 		return false
 	}
 	txNonce := strconv.FormatUint(resp.Nonce(), 10)
-
-	if senderTxs, ok := content["pending"][t.senderAddr]; ok {
+	senderAddr := common.HexToAddress(t.senderAddr)
+	if senderTxs, ok := content["pending"][senderAddr]; ok {
 		if _, isPending := senderTxs[txNonce]; isPending {
 			t.markPending(ctx, resp)
 			return true
 		}
 	}
 
-	if senderTxs, ok := content["queued"][t.senderAddr]; ok {
+	if senderTxs, ok := content["queued"][senderAddr]; ok {
 		if _, isQueued := senderTxs[txNonce]; isQueued {
 			// mark the transaction as expired, but it does exist in the mempool.
 			t.markExpired(resp, false)

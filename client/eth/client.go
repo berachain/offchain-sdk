@@ -47,10 +47,10 @@ type Reader interface {
 	) (tx *ethcoretypes.Transaction, isPending bool, err error)
 	TxPoolContent(
 		ctx context.Context) (
-		map[string]map[string]map[string]*ethcoretypes.Transaction, error)
+		map[string]map[common.Address]map[string]*ethcoretypes.Transaction, error)
 	TxPoolInspect(
 		ctx context.Context,
-	) (map[string]map[string]map[string]string, error)
+	) (map[string]map[common.Address]map[string]string, error)
 }
 
 type Writer interface {
@@ -142,8 +142,8 @@ func (c *ExtendedEthClient) SubscribeFilterLogs(
 
 func (c *ExtendedEthClient) TxPoolContent(
 	ctx context.Context,
-) (map[string]map[string]map[string]*ethcoretypes.Transaction, error) {
-	var result map[string]map[string]map[string]*ethcoretypes.Transaction
+) (map[string]map[common.Address]map[string]*ethcoretypes.Transaction, error) {
+	var result map[string]map[common.Address]map[string]*ethcoretypes.Transaction
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
 	defer cancel()
 	if err := c.Client.Client().CallContext(
@@ -156,8 +156,8 @@ func (c *ExtendedEthClient) TxPoolContent(
 
 func (c *ExtendedEthClient) TxPoolInspect(
 	ctx context.Context,
-) (map[string]map[string]map[string]string, error) {
-	var result map[string]map[string]map[string]string
+) (map[string]map[common.Address]map[string]string, error) {
+	var result map[string]map[common.Address]map[string]string
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
 	defer cancel()
 	if err := c.Client.Client().CallContext(

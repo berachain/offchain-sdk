@@ -256,7 +256,7 @@ func (c *ChainProviderImpl) TransactionByHash(
 }
 
 func (c *ChainProviderImpl) TxPoolContent(ctx context.Context) (
-	map[string]map[string]map[string]*types.Transaction, error,
+	map[string]map[common.Address]map[string]*types.Transaction, error,
 ) {
 	if client, ok := c.GetHTTP(); ok {
 		ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
@@ -267,7 +267,7 @@ func (c *ChainProviderImpl) TxPoolContent(ctx context.Context) (
 }
 
 func (c *ChainProviderImpl) TxPoolInspect(ctx context.Context) (
-	map[string]map[string]map[string]string, error,
+	map[string]map[common.Address]map[string]string, error,
 ) {
 	if client, ok := c.GetHTTP(); ok {
 		ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
