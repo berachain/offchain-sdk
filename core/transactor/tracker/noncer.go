@@ -2,6 +2,7 @@ package tracker
 
 import (
 	"context"
+	"strconv"
 	"sync"
 	"time"
 
@@ -14,7 +15,7 @@ import (
 
 // Noncer is a struct that manages nonces for transactions.
 type Noncer struct {
-	sender    common.Address // The address of the sender.
+	Sender    common.Address // The address of the sender.
 	ethClient eth.Client     // The Ethereum client.
 
 	// mempool state
@@ -33,7 +34,7 @@ type Noncer struct {
 // NewNoncer creates a new Noncer instance.
 func NewNoncer(sender common.Address, refreshInterval time.Duration) *Noncer {
 	return &Noncer{
-		sender:          sender,
+		Sender:          sender,
 		queuedNonces:    make(map[uint64]struct{}),
 		acquired:        make(map[uint64]struct{}),
 		inFlight:        skiplist.New(skiplist.Uint64),
@@ -66,15 +67,17 @@ func (n *Noncer) refreshNonces(ctx context.Context) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 
-	if pendingNonce, err := n.ethClient.PendingNonceAt(ctx, n.sender); err == nil {
+	if pendingNonce, err := n.ethClient.PendingNonceAt(ctx, n.Sender); err == nil {
 		// This should already be in sync with latest pending nonce according to the chain.
 		n.latestPendingNonce = pendingNonce
 		// TODO: handle case where stored & chain pending nonce is out of sync?
 	}
 
-	if content, err := n.ethClient.TxPoolContent(ctx); err == nil {
-		for _, tx := range content["queued"][n.sender.Hex()] {
-			n.queuedNonces[tx.Nonce()] = struct{}{}
+	// Use txpool.inspect instead of txpool.content. Less data to fetch.
+	if content, err := n.ethClient.TxPoolInspect(ctx); err == nil {
+		for nonceStr := range content["queued"][n.Sender.Hex()] {
+			nonce, _ := strconv.ParseUint(nonceStr, 10, 64)
+			n.queuedNonces[nonce] = struct{}{}
 		}
 	}
 }

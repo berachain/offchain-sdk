@@ -266,6 +266,17 @@ func (c *ChainProviderImpl) TxPoolContent(ctx context.Context) (
 	return nil, ErrClientNotFound
 }
 
+func (c *ChainProviderImpl) TxPoolInspect(ctx context.Context) (
+	map[string]map[string]map[string]string, error,
+) {
+	if client, ok := c.GetHTTP(); ok {
+		ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
+		defer cancel()
+		return client.TxPoolInspect(ctxWithTimeout)
+	}
+	return nil, ErrClientNotFound
+}
+
 func (c *ChainProviderImpl) Health() bool {
 	httpOk, wsOk := false, false
 	if client, ok := c.GetHTTP(); ok {

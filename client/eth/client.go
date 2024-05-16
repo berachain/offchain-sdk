@@ -48,6 +48,9 @@ type Reader interface {
 	TxPoolContent(
 		ctx context.Context) (
 		map[string]map[string]map[string]*ethcoretypes.Transaction, error)
+	TxPoolInspect(
+		ctx context.Context,
+	) (map[string]map[string]map[string]string, error)
 }
 
 type Writer interface {
@@ -145,6 +148,20 @@ func (c *ExtendedEthClient) TxPoolContent(
 	defer cancel()
 	if err := c.Client.Client().CallContext(
 		ctxWithTimeout, &result, "txpool_content",
+	); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (c *ExtendedEthClient) TxPoolInspect(
+	ctx context.Context,
+) (map[string]map[string]map[string]string, error) {
+	var result map[string]map[string]map[string]string
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
+	defer cancel()
+	if err := c.Client.Client().CallContext(
+		ctxWithTimeout, &result, "txpool_inspect",
 	); err != nil {
 		return nil, err
 	}

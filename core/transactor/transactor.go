@@ -96,6 +96,13 @@ func (t *TxrV2) Setup(ctx context.Context) error {
 	t.sender.Setup(chain, t.logger)
 	t.tracker.SetClient(chain)
 	t.noncer.Start(ctx, chain)
+
+	// If there are any pending txns at startup, they are likely to be stuck in the mempool.
+	// Resend them.
+	if err := t.resendStaleTxns(ctx); err != nil {
+		return err
+	}
+
 	go t.mainLoop(ctx)
 
 	return nil
@@ -174,4 +181,24 @@ func (t *TxrV2) removeStateTracking(msgIDs ...string) {
 	for _, msgID := range msgIDs {
 		delete(t.preconfirmedStates, msgID)
 	}
+}
+
+// resendStaleTxns resends all the stale (pending) transactions in the tx pool.
+func (t *TxrV2) resendStaleTxns(ctx context.Context) error {
+	sCtx := sdk.UnwrapContext(ctx)
+	chain := sCtx.Chain()
+
+	content, err := chain.TxPoolContent(ctx)
+	if err != nil {
+		t.logger.Error("failed to get tx pool content", "err", err)
+		return err
+	}
+	for _, txn := range content["pending"][t.noncer.Sender.Hex()] {
+		bumpedTxn := sender.BumpGas(txn)
+		if err = t.sender.SendTransaction(ctx, bumpedTxn); err != nil {
+			t.logger.Error("failed to resend stale transaction", "err", err)
+			return err
+		}
+	}
+	return nil
 }
