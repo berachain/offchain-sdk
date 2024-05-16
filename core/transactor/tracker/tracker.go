@@ -18,7 +18,7 @@ const retryBackoff = 500 * time.Millisecond
 type Tracker struct {
 	noncer     *Noncer
 	dispatcher *event.Dispatcher[*Response]
-	senderAddr string // hex address of tx sender
+	senderAddr common.Address // tx sender address
 
 	inMempoolTimeout time.Duration // for hitting mempool
 	staleTimeout     time.Duration // for a tx receipt
@@ -34,7 +34,7 @@ func New(
 	return &Tracker{
 		noncer:           noncer,
 		dispatcher:       dispatcher,
-		senderAddr:       sender.Hex(),
+		senderAddr:       sender,
 		inMempoolTimeout: inMempoolTimeout,
 		staleTimeout:     staleTimeout,
 	}
@@ -94,15 +94,14 @@ func (t *Tracker) checkMempool(ctx context.Context, resp *Response) bool {
 		return false
 	}
 	txNonce := strconv.FormatUint(resp.Nonce(), 10)
-	senderAddr := common.HexToAddress(t.senderAddr)
-	if senderTxs, ok := content["pending"][senderAddr]; ok {
+	if senderTxs, ok := content["pending"][t.senderAddr]; ok {
 		if _, isPending := senderTxs[txNonce]; isPending {
 			t.markPending(ctx, resp)
 			return true
 		}
 	}
 
-	if senderTxs, ok := content["queued"][senderAddr]; ok {
+	if senderTxs, ok := content["queued"][t.senderAddr]; ok {
 		if _, isQueued := senderTxs[txNonce]; isQueued {
 			// mark the transaction as expired, but it does exist in the mempool.
 			t.markExpired(resp, false)
