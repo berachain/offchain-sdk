@@ -40,7 +40,7 @@ func New(config Config) *Limiter {
 	}
 }
 
-func RateLimiterMiddleware(
+func Middleware(
 	limiter *Limiter,
 ) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
