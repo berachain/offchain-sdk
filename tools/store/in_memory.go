@@ -30,7 +30,7 @@ func (c *InMemoryStore) Set(_ context.Context, key string, value interface{}) er
 func (c *InMemoryStore) Increment(_ context.Context, key string) (int64, time.Duration, error) {
 	item, exp, err := c.cache.GetWithTTL(key)
 	if errors.Is(err, ttlcache.ErrNotFound) {
-		err = c.cache.SetWithTTL(key, 1, c.ttl)
+		err = c.cache.SetWithTTL(key, int64(1), c.ttl)
 		return 1, c.ttl, err
 	} else if err != nil {
 		return 0, 0, err
