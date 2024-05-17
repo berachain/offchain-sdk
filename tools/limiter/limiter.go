@@ -15,7 +15,7 @@ type Limiter struct {
 	Period time.Duration
 }
 
-type LimiterConfig struct {
+type Config struct {
 	Enabled          bool
 	TTL              time.Duration
 	Rate             int
@@ -25,7 +25,7 @@ type LimiterConfig struct {
 	ProxyCount       int
 }
 
-func New(config LimiterConfig) *Limiter {
+func New(config Config) *Limiter {
 	var lstore store.Store
 	if config.Kind == "redis" {
 		lstore = store.NewRedisStore(config.TTL, config.RedisAddr, config.RedisClusterMode)
