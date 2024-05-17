@@ -37,9 +37,9 @@ type Server struct {
 // New creates a new server.
 func New(cfg *Config, logger log.Logger, middlewares ...Middleware) *Server {
 	return &Server{
-		cfg:    cfg,
-		logger: logger,
-		mux:    http.NewServeMux(),
+		cfg:         cfg,
+		logger:      logger,
+		mux:         http.NewServeMux(),
 		middlewares: middlewares,
 	}
 }

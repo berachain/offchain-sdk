@@ -24,7 +24,6 @@ func NewInMemoryStore(ttl time.Duration) Store {
 
 func (c *InMemoryStore) Set(_ context.Context, key string, value interface{}) error {
 	return c.cache.SetWithTTL(key, value, c.ttl)
-
 }
 
 func (c *InMemoryStore) Increment(_ context.Context, key string) (int64, time.Duration, error) {

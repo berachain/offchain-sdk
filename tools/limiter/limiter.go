@@ -18,7 +18,7 @@ type Limiter struct {
 
 type Config struct {
 	Enabled          bool
-	Period              time.Duration
+	Period           time.Duration
 	Rate             int
 	RedisAddr        string
 	RedisClusterMode bool
