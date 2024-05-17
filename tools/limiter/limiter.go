@@ -10,16 +10,16 @@ import (
 )
 
 type Limiter struct {
-	Store  store.Store
-	Rate   int
-	Period time.Duration
+	Store      store.Store
+	Rate       int
+	Period     time.Duration
+	ProxyCount int
 }
 
 type Config struct {
 	Enabled          bool
 	TTL              time.Duration
 	Rate             int
-	Kind             string
 	RedisAddr        string
 	RedisClusterMode bool
 	ProxyCount       int
@@ -27,19 +27,17 @@ type Config struct {
 
 func New(config Config) *Limiter {
 	var lstore store.Store
-	switch config.Kind {
-	case "redis":
+	if config.RedisAddr != "" {
 		lstore = store.NewRedisStore(config.TTL, config.RedisAddr, config.RedisClusterMode)
-	case "memory":
-		fallthrough
-	default:
+	} else {
 		lstore = store.NewInMemoryStore(config.TTL)
 	}
 
 	return &Limiter{
-		Store:  lstore,
-		Rate:   config.Rate,
-		Period: time.Second,
+		Store:      lstore,
+		Rate:       config.Rate,
+		Period:     time.Second,
+		ProxyCount: config.ProxyCount,
 	}
 }
 
@@ -48,7 +46,7 @@ func Middleware(
 ) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			key := getClientIPFromRequest(1, r)
+			key := getClientIPFromRequest(limiter.ProxyCount, r)
 			count, _, err := limiter.Store.Increment(r.Context(), key)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
