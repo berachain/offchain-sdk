@@ -1,7 +1,6 @@
 package limiter
 
 import (
-	"fmt"
 	"net"
 	"net/http"
 	"strings"
@@ -59,9 +58,7 @@ func Middleware(
 				http.Error(w, "rate limit exceeded", http.StatusTooManyRequests)
 				return
 			}
-			fmt.Println("rate limit before")
 			next.ServeHTTP(w, r)
-			fmt.Println("rate limit after")
 		})
 	}
 }
