@@ -27,9 +27,12 @@ type Config struct {
 
 func New(config Config) *Limiter {
 	var lstore store.Store
-	if config.Kind == "redis" {
+	switch config.Kind {
+	case "redis":
 		lstore = store.NewRedisStore(config.TTL, config.RedisAddr, config.RedisClusterMode)
-	} else {
+	case "memory":
+		fallthrough
+	default:
 		lstore = store.NewInMemoryStore(config.TTL)
 	}
 
