@@ -20,7 +20,8 @@ type Noncer struct {
 
 	// mempool state
 	latestPendingNonce uint64
-	pendingNonces      map[uint64]struct{}
+	// TODO: purge old nonces from the map to avoid infinite memory growth
+	pendingNonces map[uint64]struct{}
 
 	// "in-process" nonces
 	acquired map[uint64]struct{} // The set of acquired nonces.
