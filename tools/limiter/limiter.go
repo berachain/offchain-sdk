@@ -18,7 +18,7 @@ type Limiter struct {
 
 type Config struct {
 	Enabled          bool
-	TTL              time.Duration
+	Period              time.Duration
 	Rate             int
 	RedisAddr        string
 	RedisClusterMode bool
@@ -28,9 +28,9 @@ type Config struct {
 func New(config Config) *Limiter {
 	var lstore store.Store
 	if config.RedisAddr != "" {
-		lstore = store.NewRedisStore(config.TTL, config.RedisAddr, config.RedisClusterMode)
+		lstore = store.NewRedisStore(config.Period, config.RedisAddr, config.RedisClusterMode)
 	} else {
-		lstore = store.NewInMemoryStore(config.TTL)
+		lstore = store.NewInMemoryStore(config.Period)
 	}
 
 	return &Limiter{

@@ -59,6 +59,16 @@ func (ab *AppBuilder) RegisterHTTPHandler(handler *server.Handler) error {
 	return nil
 }
 
+// RegisterMiddleware registers a middleware to the HTTP server.
+func (ab *AppBuilder) RegisterMiddleware(m server.Middleware) error {
+	if ab.svr == nil {
+		return errors.New("must enable the HTTP server to register a middleware")
+	}
+
+	ab.svr.RegisterMiddleware(m)
+	return nil
+}
+
 // RegisterPrometheusTelemetry registers a Prometheus metrics HTTP server.
 func (ab *AppBuilder) RegisterPrometheusTelemetry() error {
 	if ab.svr == nil {
