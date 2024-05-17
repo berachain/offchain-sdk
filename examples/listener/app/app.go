@@ -3,6 +3,7 @@ package app
 import (
 	"github.com/berachain/offchain-sdk/log"
 	"github.com/berachain/offchain-sdk/telemetry"
+	"github.com/berachain/offchain-sdk/tools/limiter"
 
 	"github.com/berachain/offchain-sdk/baseapp"
 	coreapp "github.com/berachain/offchain-sdk/core/app"
@@ -85,6 +86,12 @@ func (app *ListenerApp) Setup(
 
 	// We register a database with our app.
 	ab.RegisterDB(memdb.New())
+
+	if config.RateLimit.Enabled {
+		// We register a rate limiter with our app.
+		rateLimiter := limiter.New(config.RateLimit)
+		ab.RegisterMiddleware(limiter.Middleware(rateLimiter))
+	}
 
 	// And then we setup everything by calling `BuildApp`.
 	app.BaseApp = ab.BuildApp(logger)

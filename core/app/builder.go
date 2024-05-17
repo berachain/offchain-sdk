@@ -16,5 +16,6 @@ type Builder interface {
 	RegisterJob(job.Basic)
 	RegisterDB(db ethdb.KeyValueStore)
 	RegisterHTTPHandler(handler *server.Handler) error
+	RegisterMiddleware(m server.Middleware) error
 	RegisterPrometheusTelemetry() error
 }

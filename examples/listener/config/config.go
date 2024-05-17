@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/berachain/offchain-sdk/telemetry"
+	"github.com/berachain/offchain-sdk/tools/limiter"
 )
 
 type SubStruct struct {
@@ -21,6 +22,7 @@ type Jobs struct {
 }
 
 type Config struct {
-	Jobs    Jobs
-	Metrics telemetry.Config
+	Jobs      Jobs
+	Metrics   telemetry.Config
+	RateLimit limiter.Config
 }
