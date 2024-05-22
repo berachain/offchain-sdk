@@ -20,7 +20,7 @@ type Factory struct {
 	noncer        Noncer
 	signer        kmstypes.TxSigner
 	signTxTimeout time.Duration
-	mc3Batcher    *Multicall3Batcher
+	batcher       Batcher
 
 	// caches
 	ethClient     eth.Client
@@ -30,14 +30,13 @@ type Factory struct {
 
 // New creates a new factory instance.
 func New(
-	noncer Noncer, mc3Batcher *Multicall3Batcher,
-	signer kmstypes.TxSigner, signTxTimeout time.Duration,
+	noncer Noncer, batcher Batcher, signer kmstypes.TxSigner, signTxTimeout time.Duration,
 ) *Factory {
 	return &Factory{
 		noncer:        noncer,
 		signer:        signer,
 		signTxTimeout: signTxTimeout,
-		mc3Batcher:    mc3Batcher,
+		batcher:       batcher,
 		signerAddress: signer.Address(),
 	}
 }
@@ -58,7 +57,7 @@ func (f *Factory) BuildTransactionFromRequests(
 		return f.buildTransaction(ctx, requests[0], 0)
 	default:
 		// len(txReqs) > 1 then build a multicall transaction.
-		ar := f.mc3Batcher.BatchRequests(requests...)
+		ar := f.batcher.BatchRequests(requests...)
 
 		// Build the transaction to include the calldata.
 		// ar.To should be the Multicall3 contract address

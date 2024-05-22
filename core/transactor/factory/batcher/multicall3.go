@@ -1,4 +1,4 @@
-package factory
+package batcher
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/berachain/offchain-sdk/contracts/bindings"
+	"github.com/berachain/offchain-sdk/core/transactor/factory"
 	"github.com/berachain/offchain-sdk/core/transactor/types"
 	sdk "github.com/berachain/offchain-sdk/types"
 
@@ -16,27 +17,29 @@ import (
 )
 
 const (
-	method            = `tryAggregate`
+	tryAggregate      = `tryAggregate`
 	executionReverted = `execution reverted: `
 )
 
-// forge create Multicall3 --rpc-url=http://devnet.beraswillmakeit.com:8545
-// --private-key=0xfffdbb37105441e14b0ee6330d855d8504ff39e705c3afa8f859ac9865f99306.
-type Multicall3Batcher struct {
+var _ factory.Batcher = (*Multicall3)(nil)
+
+// Corresponds to the Multicall3 contract (https://www.multicall3.com), also dumped into
+// contracts/src/Multicall3.sol.
+type Multicall3 struct {
 	contractAddress common.Address
 	packer          *types.Packer
 }
 
-// NewMulticall3Batcher creates a new Multicall3Batcher instance.
-func NewMulticall3Batcher(address common.Address) *Multicall3Batcher {
-	return &Multicall3Batcher{
+// NewMulticall3 creates a new Multicall3 instance.
+func NewMulticall3(address common.Address) *Multicall3 {
+	return &Multicall3{
 		contractAddress: address,
 		packer:          &types.Packer{MetaData: bindings.Multicall3MetaData},
 	}
 }
 
 // BatchRequests creates a batched transaction request for the given call requests.
-func (mc *Multicall3Batcher) BatchRequests(callReqs ...*ethereum.CallMsg) *types.Request {
+func (mc *Multicall3) BatchRequests(callReqs ...*ethereum.CallMsg) *types.Request {
 	var (
 		calls       = make([]bindings.Multicall3Call, len(callReqs))
 		totalValue  = big.NewInt(0)
@@ -69,18 +72,17 @@ func (mc *Multicall3Batcher) BatchRequests(callReqs ...*ethereum.CallMsg) *types
 	}
 
 	txRequest, _ := mc.packer.CreateRequest(
-		"", mc.contractAddress, totalValue, gasTipCap, gasFeeCap, gasLimit, method, false, calls,
+		"", mc.contractAddress, totalValue, gasTipCap, gasFeeCap, gasLimit,
+		tryAggregate, false, calls,
 	)
 	return txRequest
 }
 
 // BatchCallRequests uses the Multicall3 contract to create a batched call request for the given
-// call messages and return the batched call result data for each call.
-func (mc *Multicall3Batcher) BatchCallRequests(
-	ctx context.Context,
-	from common.Address,
-	callReqs ...*ethereum.CallMsg,
-) ([]bindings.Multicall3Result, error) {
+// call messages and return the batched call result data for each call, as a `[]Multicall3Result`.
+func (mc *Multicall3) BatchCallRequests(
+	ctx context.Context, from common.Address, callReqs ...*ethereum.CallMsg,
+) (any, error) {
 	sCtx := sdk.UnwrapContext(ctx)
 
 	// get the batched tx (call) requests
@@ -99,7 +101,7 @@ func (mc *Multicall3Batcher) BatchCallRequests(
 	}
 
 	// unpack the return data into call results
-	callResult, err := mc.packer.GetCallResult(method, ret)
+	callResult, err := mc.packer.GetCallResult(tryAggregate, ret)
 	if err != nil {
 		sCtx.Logger().Error("failed to unpack call response", "err", err)
 		return nil, err

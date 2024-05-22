@@ -1,7 +1,7 @@
 [profile.default]
 ignored_error_codes = [1878, 5574]
-evm_version = 'shanghai'
-solc_version = '0.8.22'
+evm_version = 'cancun'
+solc_version = '0.8.24'
 cache = true
 force = false
 optimizer = true
@@ -21,6 +21,8 @@ remappings = [
 [profile.ci]
 fuzz = { runs = 100_000 }
 verbosity = 4
+evm_version = 'cancun'
+solc_version = '0.8.24'
 
 [rpc_endpoints]
 local = "${RPC_URL_LOCAL}"

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.24;
 
+/// @notice For the examples/listener project.
 contract ToListen {
     uint256 public num;
 
