@@ -75,14 +75,20 @@ func TestPayableMulticall(t *testing.T) {
 
 	cumSum := uint64(0)
 	for i, response := range responses {
-		rsp, err := pmcABI.Unpack("incNumber", response)
+		var rsp []any
+		rsp, err = pmcABI.Unpack("incNumber", response)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if len(rsp) != 1 {
 			t.Fatalf("expected 1 response, got %d for resp # %d", len(rsp), i)
 		}
-		rspInt := rsp[0].(*big.Int)
+
+		var rspInt *big.Int
+		rspInt, ok = rsp[0].(*big.Int)
+		if !ok {
+			t.Fatalf("expected *big.Int, got %T for resp # %d", rsp[0], i)
+		}
 		cumSum += uint64(i + 1)
 		assert.Equal(t, rspInt.Uint64(), cumSum, "unexpected response value")
 	}
