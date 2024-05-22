@@ -42,7 +42,6 @@ func TestPayableMulticall(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// this call will revert bc of a value of 0, but the batch should still succeed
 	call2, err := pmcPacker.CreateRequest(
 		"", payableMulticallAddr, big.NewInt(2), nil, nil, 0, "incNumber", big.NewInt(2),
 	)
