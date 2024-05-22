@@ -255,13 +255,58 @@ func (c *ChainProviderImpl) TransactionByHash(
 	return nil, false, ErrClientNotFound
 }
 
-func (c *ChainProviderImpl) TxPoolContent(ctx context.Context) (
-	map[string]map[string]map[string]*types.Transaction, error,
+/*
+TxPoolContentFrom returns the pending and queued transactions of this address.
+Example response:
+
+	{
+		"pending": {
+		"0": {
+			// transaction details...
+		}
+		},
+		"queued": {
+		"0": {
+			// transaction details...
+		}
+		}
+	}
+*/
+func (c *ChainProviderImpl) TxPoolContentFrom(ctx context.Context, address common.Address) (
+	map[string]map[string]*types.Transaction, error,
 ) {
 	if client, ok := c.GetHTTP(); ok {
 		ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
 		defer cancel()
-		return client.TxPoolContent(ctxWithTimeout)
+		return client.TxPoolContentFrom(ctxWithTimeout, address)
+	}
+	return nil, ErrClientNotFound
+}
+
+/*
+TxPoolInspect returns the textual summary of all pending and queued transactions.
+Example response:
+
+	{
+		"pending": {
+			"0x12345": {
+				"0": "0x12345789: 1 wei + 2 gas x 3 wei"
+			}
+		},
+		"queued": {
+			"0x12345": {
+				"0": "0x12345789: 1 wei + 2 gas x 3 wei"
+			}
+		}
+	}
+*/
+func (c *ChainProviderImpl) TxPoolInspect(ctx context.Context) (
+	map[string]map[common.Address]map[string]string, error,
+) {
+	if client, ok := c.GetHTTP(); ok {
+		ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
+		defer cancel()
+		return client.TxPoolInspect(ctxWithTimeout)
 	}
 	return nil, ErrClientNotFound
 }

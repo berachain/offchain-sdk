@@ -45,9 +45,49 @@ type Reader interface {
 	SuggestGasTipCap(ctx context.Context) (*big.Int, error)
 	TransactionByHash(ctx context.Context, hash common.Hash,
 	) (tx *ethcoretypes.Transaction, isPending bool, err error)
-	TxPoolContent(
-		ctx context.Context) (
-		map[string]map[string]map[string]*ethcoretypes.Transaction, error)
+
+	/*
+		TxPoolContentFrom returns the pending and queued transactions of this address.
+		Example response:
+
+		{
+			"pending": {
+				"0": {
+					// transaction details...
+				}
+			},
+			"queued": {
+				"0": {
+					// transaction details...
+				}
+			}
+		}
+
+	*/
+	TxPoolContentFrom(ctx context.Context, address common.Address) (
+		map[string]map[string]*ethcoretypes.Transaction, error)
+
+	/*
+		TxPoolInspect returns the textual summary of all pending and queued transactions.
+		Example response:
+
+		{
+			"pending": {
+				"0x12345": {
+					"0": "0x12345789: 1 wei + 2 gas x 3 wei"
+				}
+			},
+			"queued": {
+				"0x12345": {
+					"0": "0x12345789: 1 wei + 2 gas x 3 wei"
+				}
+			}
+		}
+
+	*/
+	TxPoolInspect(
+		ctx context.Context,
+	) (map[string]map[common.Address]map[string]string, error)
 }
 
 type Writer interface {
@@ -137,14 +177,28 @@ func (c *ExtendedEthClient) SubscribeFilterLogs(
 	return c.Client.SubscribeFilterLogs(ctxWithTimeout, q, ch)
 }
 
-func (c *ExtendedEthClient) TxPoolContent(
-	ctx context.Context,
-) (map[string]map[string]map[string]*ethcoretypes.Transaction, error) {
-	var result map[string]map[string]map[string]*ethcoretypes.Transaction
+func (c *ExtendedEthClient) TxPoolContentFrom(
+	ctx context.Context, address common.Address,
+) (map[string]map[string]*ethcoretypes.Transaction, error) {
+	var result map[string]map[string]*ethcoretypes.Transaction
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
 	defer cancel()
 	if err := c.Client.Client().CallContext(
-		ctxWithTimeout, &result, "txpool_content",
+		ctxWithTimeout, &result, "txpool_contentFrom", address,
+	); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (c *ExtendedEthClient) TxPoolInspect(
+	ctx context.Context,
+) (map[string]map[common.Address]map[string]string, error) {
+	var result map[string]map[common.Address]map[string]string
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
+	defer cancel()
+	if err := c.Client.Client().CallContext(
+		ctxWithTimeout, &result, "txpool_inspect",
 	); err != nil {
 		return nil, err
 	}

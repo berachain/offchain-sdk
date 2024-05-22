@@ -22,8 +22,9 @@ import (
 
 // TxrV2 is the main transactor object. TODO: deprecate off being a job.
 type TxrV2 struct {
-	cfg    Config
-	logger log.Logger
+	cfg        Config
+	logger     log.Logger
+	signerAddr common.Address
 
 	requests   queuetypes.Queue[*types.Request]
 	factory    *factory.Factory
@@ -62,6 +63,7 @@ func NewTransactor(cfg Config, signer kmstypes.TxSigner) (*TxrV2, error) {
 	return &TxrV2{
 		cfg:                cfg,
 		requests:           queue,
+		signerAddr:         signer.Address(),
 		factory:            factory,
 		noncer:             noncer,
 		sender:             sender.New(factory, noncer),
@@ -96,6 +98,13 @@ func (t *TxrV2) Setup(ctx context.Context) error {
 	t.sender.Setup(chain, t.logger)
 	t.tracker.SetClient(chain)
 	t.noncer.Start(ctx, chain)
+
+	// If there are any pending txns at startup, they are likely to be stuck in the mempool.
+	// Resend them.
+	if err := t.resendStaleTxns(ctx); err != nil {
+		return err
+	}
+
 	go t.mainLoop(ctx)
 
 	return nil
@@ -174,4 +183,25 @@ func (t *TxrV2) removeStateTracking(msgIDs ...string) {
 	for _, msgID := range msgIDs {
 		delete(t.preconfirmedStates, msgID)
 	}
+}
+
+// resendStaleTxns resends all the stale (pending) transactions in the tx pool.
+func (t *TxrV2) resendStaleTxns(ctx context.Context) error {
+	sCtx := sdk.UnwrapContext(ctx)
+	chain := sCtx.Chain()
+
+	content, err := chain.TxPoolContentFrom(ctx, t.signerAddr)
+	if err != nil {
+		t.logger.Error("failed to get tx pool content", "err", err)
+		return err
+	}
+
+	for _, txn := range content["pending"] {
+		bumpedTxn := sender.BumpGas(txn)
+		if err = t.sender.SendTransaction(ctx, bumpedTxn); err != nil {
+			t.logger.Error("failed to resend stale transaction", "err", err)
+			return err
+		}
+	}
+	return nil
 }

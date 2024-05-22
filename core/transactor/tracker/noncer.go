@@ -2,6 +2,7 @@ package tracker
 
 import (
 	"context"
+	"strconv"
 	"sync"
 	"time"
 
@@ -19,7 +20,8 @@ type Noncer struct {
 
 	// mempool state
 	latestPendingNonce uint64
-	queuedNonces       map[uint64]struct{}
+	// TODO: purge old nonces from the map to avoid infinite memory growth
+	inMempoolNonces map[uint64]struct{}
 
 	// "in-process" nonces
 	acquired map[uint64]struct{} // The set of acquired nonces.
@@ -34,7 +36,7 @@ type Noncer struct {
 func NewNoncer(sender common.Address, refreshInterval time.Duration) *Noncer {
 	return &Noncer{
 		sender:          sender,
-		queuedNonces:    make(map[uint64]struct{}),
+		inMempoolNonces: make(map[uint64]struct{}),
 		acquired:        make(map[uint64]struct{}),
 		inFlight:        skiplist.New(skiplist.Uint64),
 		refreshInterval: refreshInterval,
@@ -61,7 +63,7 @@ func (n *Noncer) refreshLoop(ctx context.Context) {
 	}
 }
 
-// refreshNonces refreshes the pending nonce and queued nonces from the mempool.
+// refreshNonces refreshes the pending nonces from the mempool.
 func (n *Noncer) refreshNonces(ctx context.Context) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
@@ -72,9 +74,15 @@ func (n *Noncer) refreshNonces(ctx context.Context) {
 		// TODO: handle case where stored & chain pending nonce is out of sync?
 	}
 
-	if content, err := n.ethClient.TxPoolContent(ctx); err == nil {
-		for _, tx := range content["queued"][n.sender.Hex()] {
-			n.queuedNonces[tx.Nonce()] = struct{}{}
+	// Use txpool.inspect instead of txpool.content. Less data to fetch.
+	if content, err := n.ethClient.TxPoolInspect(ctx); err == nil {
+		for nonceStr := range content["pending"][n.sender] {
+			nonce, _ := strconv.ParseUint(nonceStr, 10, 64)
+			n.inMempoolNonces[nonce] = struct{}{}
+		}
+		for nonceStr := range content["queued"][n.sender] {
+			nonce, _ := strconv.ParseUint(nonceStr, 10, 64)
+			n.inMempoolNonces[nonce] = struct{}{}
 		}
 	}
 }
@@ -108,9 +116,9 @@ func (n *Noncer) Acquire() (uint64, bool) {
 	}
 	n.acquired[nonce] = struct{}{}
 
-	// Set isReplacing to true only if the next nonce is already queued in the mempool.
-	if _, isQueued := n.queuedNonces[nonce]; isQueued {
-		delete(n.queuedNonces, nonce)
+	// Set isReplacing to true only if the next nonce is already pending in the mempool.
+	if _, inMempool := n.inMempoolNonces[nonce]; inMempool {
+		delete(n.inMempoolNonces, nonce)
 		isReplacing = true
 	}
 
