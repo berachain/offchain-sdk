@@ -2,6 +2,7 @@ package transactor
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
@@ -16,8 +17,6 @@ import (
 	"github.com/berachain/offchain-sdk/types/queue/mem"
 	"github.com/berachain/offchain-sdk/types/queue/sqs"
 	queuetypes "github.com/berachain/offchain-sdk/types/queue/types"
-
-	"github.com/ethereum/go-ethereum/common"
 )
 
 // TxrV2 is the main transactor object. TODO: deprecate off being a job.
@@ -39,7 +38,8 @@ type TxrV2 struct {
 }
 
 // NewTransactor creates a new transactor with the given config and signer.
-func NewTransactor(cfg Config, signer kmstypes.TxSigner) (*TxrV2, error) {
+func NewTransactor(cfg Config, signer kmstypes.TxSigner, batcher factory.Batcher) (*TxrV2, error) {
+	// Determine queue type based on given configuration.
 	var queue queuetypes.Queue[*types.Request]
 	if cfg.SQS.QueueURL != "" {
 		var err error
@@ -50,11 +50,14 @@ func NewTransactor(cfg Config, signer kmstypes.TxSigner) (*TxrV2, error) {
 		queue = mem.NewQueue[*types.Request]()
 	}
 
+	// Ensure a batcher is provided if batching is required.
+	if cfg.TxBatchSize > 1 && batcher == nil {
+		return nil, errors.New("batcher must be provided when tx batch size is greater than 1")
+	}
+
+	// Build the transactor components.
 	noncer := tracker.NewNoncer(signer.Address(), cfg.PendingNonceInterval)
-	factory := factory.New(
-		noncer, factory.NewMulticall3Batcher(common.HexToAddress(cfg.Multicall3Address)),
-		signer, cfg.SignTxTimeout,
-	)
+	factory := factory.New(noncer, batcher, signer, cfg.SignTxTimeout)
 	dispatcher := event.NewDispatcher[*tracker.Response]()
 	tracker := tracker.New(
 		noncer, dispatcher, signer.Address(), cfg.InMempoolTimeout, cfg.TxReceiptTimeout,

@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.24;
 
 import "../lib/forge-std/src/Script.sol";
 import "../src/ToListen.sol";
 
+/// @notice For the examples/listener project.
 contract DeployScript is Script {
     function run() external returns (ToListen) {
         vm.startBroadcast(
