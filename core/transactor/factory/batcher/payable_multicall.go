@@ -28,7 +28,7 @@ type PayableMulticall struct {
 func NewPayableMulticall(address common.Address) *PayableMulticall {
 	return &PayableMulticall{
 		contractAddress: address,
-		packer:          &types.Packer{MetaData: bindings.PayableMulticallableMetaData},
+		packer:          &types.Packer{MetaData: bindings.PayableMulticallMetaData},
 	}
 }
 
