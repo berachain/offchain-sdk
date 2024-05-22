@@ -21,8 +21,7 @@ type Noncer struct {
 	// mempool state
 	latestPendingNonce uint64
 	// TODO: purge old nonces from the map to avoid infinite memory growth
-	pendingNonces map[uint64]struct{}
-	queuedNonces  map[uint64]struct{}
+	inMempoolNonces map[uint64]struct{}
 
 	// "in-process" nonces
 	acquired map[uint64]struct{} // The set of acquired nonces.
@@ -37,8 +36,7 @@ type Noncer struct {
 func NewNoncer(sender common.Address, refreshInterval time.Duration) *Noncer {
 	return &Noncer{
 		sender:          sender,
-		pendingNonces:   make(map[uint64]struct{}),
-		queuedNonces:    make(map[uint64]struct{}),
+		inMempoolNonces: make(map[uint64]struct{}),
 		acquired:        make(map[uint64]struct{}),
 		inFlight:        skiplist.New(skiplist.Uint64),
 		refreshInterval: refreshInterval,
@@ -80,11 +78,11 @@ func (n *Noncer) refreshNonces(ctx context.Context) {
 	if content, err := n.ethClient.TxPoolInspect(ctx); err == nil {
 		for nonceStr := range content["pending"][n.sender] {
 			nonce, _ := strconv.ParseUint(nonceStr, 10, 64)
-			n.pendingNonces[nonce] = struct{}{}
+			n.inMempoolNonces[nonce] = struct{}{}
 		}
 		for nonceStr := range content["queued"][n.sender] {
 			nonce, _ := strconv.ParseUint(nonceStr, 10, 64)
-			n.queuedNonces[nonce] = struct{}{}
+			n.inMempoolNonces[nonce] = struct{}{}
 		}
 	}
 }
@@ -119,12 +117,8 @@ func (n *Noncer) Acquire() (uint64, bool) {
 	n.acquired[nonce] = struct{}{}
 
 	// Set isReplacing to true only if the next nonce is already pending in the mempool.
-	if _, isPending := n.pendingNonces[nonce]; isPending {
-		delete(n.pendingNonces, nonce)
-		isReplacing = true
-	}
-	if _, isQueued := n.queuedNonces[nonce]; isQueued {
-		delete(n.queuedNonces, nonce)
+	if _, inMempool := n.inMempoolNonces[nonce]; inMempool {
+		delete(n.inMempoolNonces, nonce)
 		isReplacing = true
 	}
 
