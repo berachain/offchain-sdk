@@ -43,7 +43,7 @@ func TestPayableMulticall(t *testing.T) {
 	}
 	// this call will revert bc of a value of 0, but the batch should still succeed
 	call2, err := pmcPacker.CreateRequest(
-		"", payableMulticallAddr, big.NewInt(2), nil, nil, 0, "incNumber",
+		"", payableMulticallAddr, big.NewInt(0), nil, nil, 0, "incNumber",
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -68,21 +68,4 @@ func TestPayableMulticall(t *testing.T) {
 	}
 
 	t.Log("responses", responses)
-
-	// pmcABI, err := pmcPacker.GetAbi()
-	// if err != nil {
-	// 	t.Fatal(err)
-	// }
-
-	// for i, response := range responses {
-	// 	rsp, err := pmcABI.Unpack("incNumber", response)
-	// 	if err != nil {
-	// 		t.Fatal(err)
-	// 	}
-	// 	if len(rsp) != 1 {
-	// 		t.Fatalf("expected 1 response, got %d for resp # %d", len(rsp), i)
-	// 	}
-	// 	rspInt := rsp[0].(*big.Int)
-	// 	t.Log("response", i, "--", rspInt)
-	// }
 }
