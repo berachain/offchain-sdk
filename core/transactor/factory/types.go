@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/berachain/offchain-sdk/core/transactor/types"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 )

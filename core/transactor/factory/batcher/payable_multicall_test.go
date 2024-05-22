@@ -8,6 +8,7 @@ import (
 	"github.com/berachain/offchain-sdk/contracts/bindings"
 	"github.com/berachain/offchain-sdk/core/transactor/factory/batcher"
 	"github.com/berachain/offchain-sdk/core/transactor/types"
+
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -66,5 +67,22 @@ func TestPayableMulticall(t *testing.T) {
 		t.Fatalf("expected [][]byte, got %T", resp)
 	}
 
-	t.Log(responses)
+	t.Log("responses", responses)
+
+	// pmcABI, err := pmcPacker.GetAbi()
+	// if err != nil {
+	// 	t.Fatal(err)
+	// }
+
+	// for i, response := range responses {
+	// 	rsp, err := pmcABI.Unpack("incNumber", response)
+	// 	if err != nil {
+	// 		t.Fatal(err)
+	// 	}
+	// 	if len(rsp) != 1 {
+	// 		t.Fatalf("expected 1 response, got %d for resp # %d", len(rsp), i)
+	// 	}
+	// 	rspInt := rsp[0].(*big.Int)
+	// 	t.Log("response", i, "--", rspInt)
+	// }
 }
