@@ -17,6 +17,7 @@ import (
 	"github.com/berachain/offchain-sdk/types/queue/mem"
 	"github.com/berachain/offchain-sdk/types/queue/sqs"
 	queuetypes "github.com/berachain/offchain-sdk/types/queue/types"
+
 	"github.com/ethereum/go-ethereum/common"
 )
 
