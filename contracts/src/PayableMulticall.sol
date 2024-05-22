@@ -10,9 +10,9 @@ contract PayableMulticall is PayableMulticallable {
 
     /// @notice is multicallable! increments number by how much is payed to the contract.
     /// @return multicallBalance after increment
-    function incNumber() external payable standalonePayable returns (uint256) {
+    function incNumber(uint256 amount) external payable standalonePayable returns (uint256) {
         if (msg.value == 0) revert();
-        multicallBalance += useValue(msg.value);
+        multicallBalance += useValue(amount);
         return multicallBalance;
     }
 

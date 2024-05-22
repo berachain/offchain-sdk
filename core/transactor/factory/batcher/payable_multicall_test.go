@@ -8,6 +8,7 @@ import (
 	"github.com/berachain/offchain-sdk/contracts/bindings"
 	"github.com/berachain/offchain-sdk/core/transactor/factory/batcher"
 	"github.com/berachain/offchain-sdk/core/transactor/types"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -36,20 +37,20 @@ func TestPayableMulticall(t *testing.T) {
 	// set up some test calls to make
 	pmcPacker := types.Packer{MetaData: bindings.PayableMulticallMetaData}
 	call1, err := pmcPacker.CreateRequest(
-		"", payableMulticallAddr, big.NewInt(1), nil, nil, 0, "incNumber",
+		"", payableMulticallAddr, big.NewInt(1), nil, nil, 0, "incNumber", big.NewInt(1),
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
 	// this call will revert bc of a value of 0, but the batch should still succeed
 	call2, err := pmcPacker.CreateRequest(
-		"", payableMulticallAddr, big.NewInt(0), nil, nil, 0, "incNumber",
+		"", payableMulticallAddr, big.NewInt(2), nil, nil, 0, "incNumber", big.NewInt(2),
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
 	call3, err := pmcPacker.CreateRequest(
-		"", payableMulticallAddr, big.NewInt(3), nil, nil, 0, "incNumber",
+		"", payableMulticallAddr, big.NewInt(3), nil, nil, 0, "incNumber", big.NewInt(3),
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -67,5 +68,22 @@ func TestPayableMulticall(t *testing.T) {
 		t.Fatalf("expected [][]byte, got %T", resp)
 	}
 
-	t.Log("responses", responses)
+	pmcABI, err := pmcPacker.GetAbi()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cumSum := uint64(0)
+	for i, response := range responses {
+		rsp, err := pmcABI.Unpack("incNumber", response)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(rsp) != 1 {
+			t.Fatalf("expected 1 response, got %d for resp # %d", len(rsp), i)
+		}
+		rspInt := rsp[0].(*big.Int)
+		cumSum += uint64(i + 1)
+		assert.Equal(t, rspInt.Uint64(), cumSum, "unexpected response value")
+	}
 }

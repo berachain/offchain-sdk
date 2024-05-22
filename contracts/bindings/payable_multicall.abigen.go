@@ -31,7 +31,7 @@ var (
 
 // PayableMulticallMetaData contains all meta data concerning the PayableMulticall contract.
 var PayableMulticallMetaData = &bind.MetaData{
-	ABI: "[{\"type\":\"constructor\",\"inputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"receive\",\"stateMutability\":\"payable\"},{\"type\":\"function\",\"name\":\"incNumber\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"payable\"},{\"type\":\"function\",\"name\":\"multicall\",\"inputs\":[{\"name\":\"requireSuccess\",\"type\":\"bool\",\"internalType\":\"bool\"},{\"name\":\"data\",\"type\":\"bytes[]\",\"internalType\":\"bytes[]\"}],\"outputs\":[{\"name\":\"\",\"type\":\"bytes[]\",\"internalType\":\"bytes[]\"}],\"stateMutability\":\"payable\"},{\"type\":\"function\",\"name\":\"multicallBalance\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"error\",\"name\":\"AmountOverflow\",\"inputs\":[]},{\"type\":\"error\",\"name\":\"EthTransferFailed\",\"inputs\":[]}]",
+	ABI: "[{\"type\":\"constructor\",\"inputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"receive\",\"stateMutability\":\"payable\"},{\"type\":\"function\",\"name\":\"incNumber\",\"inputs\":[{\"name\":\"amount\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"payable\"},{\"type\":\"function\",\"name\":\"multicall\",\"inputs\":[{\"name\":\"requireSuccess\",\"type\":\"bool\",\"internalType\":\"bool\"},{\"name\":\"data\",\"type\":\"bytes[]\",\"internalType\":\"bytes[]\"}],\"outputs\":[{\"name\":\"\",\"type\":\"bytes[]\",\"internalType\":\"bytes[]\"}],\"stateMutability\":\"payable\"},{\"type\":\"function\",\"name\":\"multicallBalance\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"error\",\"name\":\"AmountOverflow\",\"inputs\":[]},{\"type\":\"error\",\"name\":\"EthTransferFailed\",\"inputs\":[]}]",
 }
 
 // PayableMulticallABI is the input ABI used to generate the binding from.
@@ -211,25 +211,25 @@ func (_PayableMulticall *PayableMulticallCallerSession) MulticallBalance() (*big
 	return _PayableMulticall.Contract.MulticallBalance(&_PayableMulticall.CallOpts)
 }
 
-// IncNumber is a paid mutator transaction binding the contract method 0x2c8337d9.
+// IncNumber is a paid mutator transaction binding the contract method 0xafd97196.
 //
-// Solidity: function incNumber() payable returns(uint256)
-func (_PayableMulticall *PayableMulticallTransactor) IncNumber(opts *bind.TransactOpts) (*types.Transaction, error) {
-	return _PayableMulticall.contract.Transact(opts, "incNumber")
+// Solidity: function incNumber(uint256 amount) payable returns(uint256)
+func (_PayableMulticall *PayableMulticallTransactor) IncNumber(opts *bind.TransactOpts, amount *big.Int) (*types.Transaction, error) {
+	return _PayableMulticall.contract.Transact(opts, "incNumber", amount)
 }
 
-// IncNumber is a paid mutator transaction binding the contract method 0x2c8337d9.
+// IncNumber is a paid mutator transaction binding the contract method 0xafd97196.
 //
-// Solidity: function incNumber() payable returns(uint256)
-func (_PayableMulticall *PayableMulticallSession) IncNumber() (*types.Transaction, error) {
-	return _PayableMulticall.Contract.IncNumber(&_PayableMulticall.TransactOpts)
+// Solidity: function incNumber(uint256 amount) payable returns(uint256)
+func (_PayableMulticall *PayableMulticallSession) IncNumber(amount *big.Int) (*types.Transaction, error) {
+	return _PayableMulticall.Contract.IncNumber(&_PayableMulticall.TransactOpts, amount)
 }
 
-// IncNumber is a paid mutator transaction binding the contract method 0x2c8337d9.
+// IncNumber is a paid mutator transaction binding the contract method 0xafd97196.
 //
-// Solidity: function incNumber() payable returns(uint256)
-func (_PayableMulticall *PayableMulticallTransactorSession) IncNumber() (*types.Transaction, error) {
-	return _PayableMulticall.Contract.IncNumber(&_PayableMulticall.TransactOpts)
+// Solidity: function incNumber(uint256 amount) payable returns(uint256)
+func (_PayableMulticall *PayableMulticallTransactorSession) IncNumber(amount *big.Int) (*types.Transaction, error) {
+	return _PayableMulticall.Contract.IncNumber(&_PayableMulticall.TransactOpts, amount)
 }
 
 // Multicall is a paid mutator transaction binding the contract method 0xafe7260f.
