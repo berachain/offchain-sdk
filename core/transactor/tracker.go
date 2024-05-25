@@ -6,7 +6,6 @@ import (
 
 	"github.com/berachain/offchain-sdk/core/transactor/sender"
 	"github.com/berachain/offchain-sdk/core/transactor/tracker"
-	"github.com/berachain/offchain-sdk/core/transactor/types"
 
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
@@ -54,7 +53,7 @@ func (t *TxrV2) OnSuccess(resp *tracker.Response, receipt *coretypes.Receipt) er
 // OnRevert is called when a transaction has been reverted.
 func (t *TxrV2) OnRevert(resp *tracker.Response, receipt *coretypes.Receipt) error {
 	t.removeStateTracking(resp.MsgIDs...)
-	t.logger.Error(
+	t.logger.Warn(
 		"🔻 transaction mined: reverted", "tx-hash", receipt.TxHash.Hex(),
 		"gas-used", receipt.GasUsed, "status", receipt.Status, "nonce", resp.Nonce(),
 	)
@@ -79,7 +78,7 @@ func (t *TxrV2) OnStale(ctx context.Context, resp *tracker.Response, isPending b
 	// Try resending the tx to the chain if pending or configured to do so. Rebuild it (same tx
 	// data, new nonce) and resend.
 	if isPending || t.cfg.ResendStaleTxs {
-		go t.fire(ctx, resp, false, types.CallMsgFromTx(resp.Transaction))
+		go t.fire(ctx, resp, false)
 	}
 
 	return nil
