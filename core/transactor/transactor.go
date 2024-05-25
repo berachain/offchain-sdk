@@ -162,6 +162,7 @@ func (t *TxrV2) SendTxRequest(txReq *types.Request) (string, error) {
 
 // ForceTxRequest immediately (whenever the sender is free from any previous sends) builds and
 // sends the tx request to the chain, after validating it.
+// NOTE: this bypasses the queue and batching even if configured to do so.
 func (t *TxrV2) ForceTxRequest(txReq *types.Request) (string, error) {
 	if err := txReq.Validate(); err != nil {
 		return "", err
