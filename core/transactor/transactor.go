@@ -99,9 +99,12 @@ func (t *TxrV2) Setup(ctx context.Context) error {
 	t.tracker.SetClient(chain)
 	t.noncer.Start(ctx, chain)
 
-	// If there are any pending txns at startup, they are likely to be "stuck". Resend them.
-	if err := t.resendStaleTxns(ctx, chain); err != nil {
-		return err
+	// If there are any pending txns at startup, they are likely to be "stuck". Resend them if
+	// configured to do so.
+	if t.cfg.ResendStaleTxs {
+		if err := t.resendStaleTxns(ctx, chain); err != nil {
+			return err
+		}
 	}
 
 	go t.mainLoop(ctx)
@@ -110,7 +113,7 @@ func (t *TxrV2) Setup(ctx context.Context) error {
 }
 
 // Execute implements job.Basic.
-func (t *TxrV2) Execute(_ context.Context, _ any) (any, error) {
+func (t *TxrV2) Execute(context.Context, any) (any, error) {
 	acquired, inFlight := t.noncer.Stats()
 	t.logger.Info(
 		"🧠 system status",
