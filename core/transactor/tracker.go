@@ -71,15 +71,15 @@ func (t *TxrV2) OnStale(ctx context.Context, resp *tracker.Response, isPending b
 		"nonce", resp.Nonce(), "gas-price", resp.GasPrice(),
 	)
 
+	// For a pending tx "stuck" the mempool, it can only be included by bumping gas.
 	if isPending {
-		// For a tx that gets stuck in the mempool as pending, it can only be included in a block
-		// by bumping gas. Resend it (same tx data, same nonce) with a bumped gas.
 		resp.Transaction = sender.BumpGas(resp.Transaction)
-		t.fire(ctx, resp, false, types.CallMsgFromTx(resp.Transaction))
-	} else if t.cfg.ResendStaleTxs {
-		// Try resending the tx to the chain if configured to do so. Rebuild it (same tx data, new
-		// nonce) and resend.
-		t.fire(ctx, resp, true, types.CallMsgFromTx(resp.Transaction))
+	}
+
+	// Try resending the tx to the chain if pending or configured to do so. Rebuild it (same tx
+	// data, new nonce) and resend.
+	if isPending || t.cfg.ResendStaleTxs {
+		go t.fire(ctx, resp, false, types.CallMsgFromTx(resp.Transaction))
 	}
 
 	return nil

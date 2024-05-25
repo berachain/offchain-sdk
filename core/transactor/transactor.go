@@ -160,6 +160,21 @@ func (t *TxrV2) SendTxRequest(txReq *types.Request) (string, error) {
 	return msgID, nil
 }
 
+// ForceTxRequest immediately (whenever the sender is free from any previous sends) builds and
+// sends the tx request to the chain, after validating it.
+func (t *TxrV2) ForceTxRequest(txReq *types.Request) (string, error) {
+	if err := txReq.Validate(); err != nil {
+		return "", err
+	}
+
+	go t.fire(
+		context.Background(),
+		&tracker.Response{MsgIDs: []string{txReq.MsgID}, InitialTimes: []time.Time{txReq.Time()}},
+		true, txReq.CallMsg,
+	)
+	return txReq.MsgID, nil
+}
+
 // GetPreconfirmedState returns the status of the given message ID before it has been confirmed by
 // the chain.
 func (t *TxrV2) GetPreconfirmedState(msgID string) types.PreconfirmedState {
