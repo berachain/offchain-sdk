@@ -108,7 +108,7 @@ func (t *TxrV2) fire(
 		t.dispatcher.Dispatch(resp)
 		return
 	}
-	t.logger.Debug("📡 sent transaction", "hash", resp.Hash().Hex(), "reqs", len(resp.MsgIDs))
+	t.logger.Info("📡 sent transaction", "hash", resp.Hash().Hex(), "reqs", len(resp.MsgIDs))
 
 	// Call the tracker to track the transaction async.
 	t.markState(types.StateInFlight, resp.MsgIDs...)
