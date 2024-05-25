@@ -11,17 +11,16 @@ import (
 )
 
 // OnError is called when a transaction request fails to build or send.
-func (t *TxrV2) OnError(_ context.Context, resp *tracker.Response) error {
+func (t *TxrV2) OnError(_ context.Context, resp *tracker.Response) {
 	t.noncer.RemoveAcquired(resp.Nonce())
 	t.removeStateTracking(resp.MsgIDs...)
 	t.logger.Error("❌ error sending transaction", "err", resp.Error, "msgs", resp.MsgIDs)
 
 	// TODO: move ontop dead queue, for SQS.
-	return nil
 }
 
 // OnSuccess is called when a transaction has been successfully included in a block.
-func (t *TxrV2) OnSuccess(resp *tracker.Response, receipt *coretypes.Receipt) error {
+func (t *TxrV2) OnSuccess(resp *tracker.Response, receipt *coretypes.Receipt) {
 	t.removeStateTracking(resp.MsgIDs...)
 	t.logger.Info(
 		"⛏️ transaction mined: success", "tx-hash", receipt.TxHash.Hex(),
@@ -47,11 +46,10 @@ func (t *TxrV2) OnSuccess(resp *tracker.Response, receipt *coretypes.Receipt) er
 		t.logger.Error("error deleting request from queue", "id", key, "err", value)
 		return true
 	})
-	return nil
 }
 
 // OnRevert is called when a transaction has been reverted.
-func (t *TxrV2) OnRevert(resp *tracker.Response, receipt *coretypes.Receipt) error {
+func (t *TxrV2) OnRevert(resp *tracker.Response, receipt *coretypes.Receipt) {
 	t.removeStateTracking(resp.MsgIDs...)
 	t.logger.Warn(
 		"🔻 transaction mined: reverted", "tx-hash", receipt.TxHash.Hex(),
@@ -59,11 +57,10 @@ func (t *TxrV2) OnRevert(resp *tracker.Response, receipt *coretypes.Receipt) err
 	)
 
 	// TODO: delete from SQS queue / move onto the dead queue?
-	return nil
 }
 
 // OnStale is called when a transaction becomes stale after the configured timeout.
-func (t *TxrV2) OnStale(ctx context.Context, resp *tracker.Response, isPending bool) error {
+func (t *TxrV2) OnStale(ctx context.Context, resp *tracker.Response, isPending bool) {
 	t.removeStateTracking(resp.MsgIDs...)
 	t.logger.Warn(
 		"🔄 transaction is stale", "tx-hash", resp.Hash(),
@@ -80,6 +77,4 @@ func (t *TxrV2) OnStale(ctx context.Context, resp *tracker.Response, isPending b
 	if isPending || t.cfg.ResendStaleTxs {
 		go t.fire(ctx, resp, false)
 	}
-
-	return nil
 }

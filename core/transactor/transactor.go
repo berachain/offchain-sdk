@@ -28,13 +28,14 @@ type TxrV2 struct {
 	logger     log.Logger
 	signerAddr common.Address
 
-	requests   queuetypes.Queue[*types.Request]
-	factory    *factory.Factory
-	noncer     *tracker.Noncer
-	sender     *sender.Sender
-	senderMu   sync.Mutex
-	dispatcher *event.Dispatcher[*tracker.Response]
-	tracker    *tracker.Tracker
+	requests     queuetypes.Queue[*types.Request]
+	factory      *factory.Factory
+	noncer       *tracker.Noncer
+	sender       *sender.Sender
+	senderMu     sync.Mutex
+	dispatcher   *event.Dispatcher[*tracker.Response]
+	tracker      *tracker.Tracker
+	trackerIndex int
 
 	preconfirmedStates map[string]types.PreconfirmedState
 	preconfirmedMu     sync.RWMutex
@@ -91,7 +92,7 @@ func (t *TxrV2) Setup(ctx context.Context) error {
 	t.logger = sCtx.Logger()
 
 	// Register the transactor as a subscriber to the tracker.
-	t.SubscribeTxResults(ctx, t)
+	t.trackerIndex = t.SubscribeTxResults(ctx, t)
 
 	// Setup and start all the transactor components.
 	t.factory.SetClient(chain)
@@ -127,15 +128,18 @@ func (t *TxrV2) IntervalTime(context.Context) time.Duration {
 	return t.cfg.StatusUpdateInterval
 }
 
-// SubscribeTxResults sends the tx results, once confirmed, to the given subscriber.
-func (t *TxrV2) SubscribeTxResults(ctx context.Context, subscriber tracker.Subscriber) {
+// Teardown implements job.HasTeardown.
+func (t *TxrV2) Teardown() error {
+	t.dispatcher.Unsubscribe(t.trackerIndex)
+	return nil
+}
+
+// SubscribeTxResults ensures that tx results, once confirmed, are sent the given subscriber. It
+// returns the global index of the subscription for the results.
+func (t *TxrV2) SubscribeTxResults(ctx context.Context, subscriber tracker.Subscriber) int {
 	ch := make(chan *tracker.Response)
-	go func() {
-		subCtx, cancel := context.WithCancel(ctx)
-		_ = tracker.NewSubscription(subscriber, t.logger).Start(subCtx, ch) // TODO: handle error
-		cancel()
-	}()
-	t.dispatcher.Subscribe(ch)
+	go tracker.NewSubscription(subscriber, t.logger).Start(ctx, ch)
+	return t.dispatcher.Subscribe(ch)
 }
 
 // SendTxRequest adds the given tx request to the tx queue, after validating it.
