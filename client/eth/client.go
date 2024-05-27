@@ -52,20 +52,22 @@ type Reader interface {
 
 		{
 			"pending": {
-				"0": {
+				"1": {
 					// transaction details...
-				}
+				},
+				...
 			},
 			"queued": {
-				"0": {
+				"3": {
 					// transaction details...
-				}
+				},
+				...
 			}
 		}
-
 	*/
 	TxPoolContentFrom(ctx context.Context, address common.Address) (
-		map[string]map[string]*ethcoretypes.Transaction, error)
+		map[string]map[string]*ethcoretypes.Transaction, error,
+	)
 
 	/*
 		TxPoolInspect returns the textual summary of all pending and queued transactions.
@@ -74,20 +76,19 @@ type Reader interface {
 		{
 			"pending": {
 				"0x12345": {
-					"0": "0x12345789: 1 wei + 2 gas x 3 wei"
-				}
+					"1": "0x12345789: 1 wei + 2 gas x 3 wei"
+				},
+				...
 			},
 			"queued": {
-				"0x12345": {
-					"0": "0x12345789: 1 wei + 2 gas x 3 wei"
-				}
+				"0x67890": {
+					"2": "0x12345789: 1 wei + 2 gas x 3 wei"
+				},
+				...
 			}
 		}
-
 	*/
-	TxPoolInspect(
-		ctx context.Context,
-	) (map[string]map[common.Address]map[string]string, error)
+	TxPoolInspect(ctx context.Context) (map[string]map[common.Address]map[string]string, error)
 }
 
 type Writer interface {

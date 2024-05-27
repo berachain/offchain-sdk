@@ -27,16 +27,10 @@ func (t *TxrV2) mainLoop(ctx context.Context) {
 			}
 
 			// We got a batch, so we can build and fire, after the previous fire has finished.
-			t.senderMu.Lock()
-			go func() {
-				defer t.senderMu.Unlock()
-
-				t.fire(
-					ctx,
-					&tracker.Response{MsgIDs: requests.MsgIDs(), InitialTimes: requests.Times()},
-					true, requests.Messages()...,
-				)
-			}()
+			go t.fire(
+				ctx, &tracker.Response{MsgIDs: requests.MsgIDs(), InitialTimes: requests.Times()},
+				true, requests.Messages()...,
+			)
 		}
 	}
 }
@@ -76,35 +70,36 @@ func (t *TxrV2) retrieveBatch(ctx context.Context) types.Requests {
 				continue
 			}
 
-			// Update the batched tx requests.
-			for i, txReq := range txReqs {
-				if t.cfg.UseQueueMessageID {
+			// If using the queue message ID, we need to update the message ID for each tx request.
+			if t.cfg.UseQueueMessageID {
+				for i, txReq := range txReqs {
 					txReq.MsgID = msgIDs[i]
 				}
-				requests = append(requests, txReq)
 			}
+
+			// Append the tx requests for retrieval.
+			requests = append(requests, txReqs...)
 		}
 	}
 }
 
 // fire processes the tracked tx response. If requested to build, it will first batch the messages.
-// Then it sends the batch as one tx and asynchronously tracks the tx for its status.
-// NOTE: if toBuild is false, resp.Transaction must be a valid, signed tx.
+// Then it sends the batch as one tx and asynchronously tracks the tx for its status. Will return
+// early and notify tx subscribers if an error occurs during building or sending.
+// NOTE: if `toBuild` is false, resp.Transaction must be a valid, signed tx.
+// NOTE: this function blocks until any previous calls to `fire` are completed.
 func (t *TxrV2) fire(
 	ctx context.Context, resp *tracker.Response, toBuild bool, msgs ...*ethereum.CallMsg,
 ) {
-	defer func() {
-		// If there was an error in building or sending the tx, let the subscribers know.
-		if resp.Status() == tracker.StatusError {
-			t.dispatcher.Dispatch(resp)
-		}
-	}()
+	t.senderMu.Lock()
+	defer t.senderMu.Unlock()
 
 	if toBuild {
 		// Call the factory to build the (batched) transaction.
 		t.markState(types.StateBuilding, resp.MsgIDs...)
 		resp.Transaction, resp.Error = t.factory.BuildTransactionFromRequests(ctx, msgs...)
 		if resp.Error != nil {
+			t.dispatcher.Dispatch(resp)
 			return
 		}
 	}
@@ -112,9 +107,10 @@ func (t *TxrV2) fire(
 	// Call the sender to send the transaction to the chain.
 	t.markState(types.StateSending, resp.MsgIDs...)
 	if resp.Error = t.sender.SendTransaction(ctx, resp.Transaction); resp.Error != nil {
+		t.dispatcher.Dispatch(resp)
 		return
 	}
-	t.logger.Debug("📡 sent transaction", "hash", resp.Hash().Hex(), "reqs", len(resp.MsgIDs))
+	t.logger.Info("📡 sent transaction", "hash", resp.Hash().Hex(), "reqs", len(resp.MsgIDs))
 
 	// Call the tracker to track the transaction async.
 	t.markState(types.StateInFlight, resp.MsgIDs...)

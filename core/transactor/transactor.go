@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/berachain/offchain-sdk/client/eth"
 	"github.com/berachain/offchain-sdk/core/transactor/event"
 	"github.com/berachain/offchain-sdk/core/transactor/factory"
 	"github.com/berachain/offchain-sdk/core/transactor/sender"
@@ -27,13 +28,14 @@ type TxrV2 struct {
 	logger     log.Logger
 	signerAddr common.Address
 
-	requests   queuetypes.Queue[*types.Request]
-	factory    *factory.Factory
-	noncer     *tracker.Noncer
-	sender     *sender.Sender
-	senderMu   sync.Mutex
-	dispatcher *event.Dispatcher[*tracker.Response]
-	tracker    *tracker.Tracker
+	requests     queuetypes.Queue[*types.Request]
+	factory      *factory.Factory
+	noncer       *tracker.Noncer
+	sender       *sender.Sender
+	senderMu     sync.Mutex
+	dispatcher   *event.Dispatcher[*tracker.Response]
+	tracker      *tracker.Tracker
+	trackerIndex int
 
 	preconfirmedStates map[string]types.PreconfirmedState
 	preconfirmedMu     sync.RWMutex
@@ -90,13 +92,7 @@ func (t *TxrV2) Setup(ctx context.Context) error {
 	t.logger = sCtx.Logger()
 
 	// Register the transactor as a subscriber to the tracker.
-	ch := make(chan *tracker.Response)
-	go func() {
-		subCtx, cancel := context.WithCancel(ctx)
-		_ = tracker.NewSubscription(t, t.logger).Start(subCtx, ch) // TODO: handle error
-		cancel()
-	}()
-	t.dispatcher.Subscribe(ch)
+	t.trackerIndex = t.SubscribeTxResults(ctx, t)
 
 	// Setup and start all the transactor components.
 	t.factory.SetClient(chain)
@@ -104,9 +100,8 @@ func (t *TxrV2) Setup(ctx context.Context) error {
 	t.tracker.SetClient(chain)
 	t.noncer.Start(ctx, chain)
 
-	// If there are any pending txns at startup, they are likely to be stuck in the mempool.
-	// Resend them.
-	if err := t.resendStaleTxns(ctx); err != nil {
+	// If there are any pending txns at startup, they are likely to be "stuck". Resend them.
+	if err := t.resendStaleTxns(ctx, chain); err != nil {
 		return err
 	}
 
@@ -116,7 +111,7 @@ func (t *TxrV2) Setup(ctx context.Context) error {
 }
 
 // Execute implements job.Basic.
-func (t *TxrV2) Execute(_ context.Context, _ any) (any, error) {
+func (t *TxrV2) Execute(context.Context, any) (any, error) {
 	acquired, inFlight := t.noncer.Stats()
 	t.logger.Info(
 		"🧠 system status",
@@ -130,15 +125,18 @@ func (t *TxrV2) IntervalTime(context.Context) time.Duration {
 	return t.cfg.StatusUpdateInterval
 }
 
-// SubscribeTxResults sends the tx results, once confirmed, to the given subscriber.
-func (t *TxrV2) SubscribeTxResults(ctx context.Context, subscriber tracker.Subscriber) {
+// Teardown implements job.HasTeardown.
+func (t *TxrV2) Teardown() error {
+	t.dispatcher.Unsubscribe(t.trackerIndex)
+	return nil
+}
+
+// SubscribeTxResults ensures that tx results, once confirmed, are sent the given subscriber. It
+// returns the global index of the subscription for the results.
+func (t *TxrV2) SubscribeTxResults(ctx context.Context, subscriber tracker.Subscriber) int {
 	ch := make(chan *tracker.Response)
-	go func() {
-		subCtx, cancel := context.WithCancel(ctx)
-		_ = tracker.NewSubscription(subscriber, t.logger).Start(subCtx, ch) // TODO: handle error
-		cancel()
-	}()
-	t.dispatcher.Subscribe(ch)
+	go tracker.NewSubscription(subscriber, t.logger).Start(ctx, ch)
+	return t.dispatcher.Subscribe(ch)
 }
 
 // SendTxRequest adds the given tx request to the tx queue, after validating it.
@@ -158,6 +156,22 @@ func (t *TxrV2) SendTxRequest(txReq *types.Request) (string, error) {
 
 	t.markState(types.StateQueued, msgID)
 	return msgID, nil
+}
+
+// ForceTxRequest immediately (whenever the sender is free from any previous sends) builds and
+// sends the tx request to the chain, after validating it.
+// NOTE: this bypasses the queue and batching even if configured to do so.
+func (t *TxrV2) ForceTxRequest(ctx context.Context, txReq *types.Request) (string, error) {
+	if err := txReq.Validate(); err != nil {
+		return "", err
+	}
+
+	go t.fire(
+		ctx,
+		&tracker.Response{MsgIDs: []string{txReq.MsgID}, InitialTimes: []time.Time{txReq.Time()}},
+		true, txReq.CallMsg,
+	)
+	return txReq.MsgID, nil
 }
 
 // GetPreconfirmedState returns the status of the given message ID before it has been confirmed by
@@ -190,23 +204,21 @@ func (t *TxrV2) removeStateTracking(msgIDs ...string) {
 	}
 }
 
-// resendStaleTxns resends all the stale (pending) transactions in the tx pool.
-func (t *TxrV2) resendStaleTxns(ctx context.Context) error {
-	sCtx := sdk.UnwrapContext(ctx)
-	chain := sCtx.Chain()
-
-	content, err := chain.TxPoolContentFrom(ctx, t.signerAddr)
+// resendStaleTxns resends all the stale (pending) transactions in the mempool with bumped gas.
+// NOTE: blocks until resending all the pending txs either error and/or are sent to the chain.
+func (t *TxrV2) resendStaleTxns(ctx context.Context, chain eth.Client) error {
+	txPoolContent, err := chain.TxPoolContentFrom(ctx, t.signerAddr)
 	if err != nil {
-		t.logger.Error("failed to get tx pool content", "err", err)
+		t.logger.Error("failed to get tx pool content from", "err", err)
 		return err
 	}
 
-	for _, txn := range content["pending"] {
-		bumpedTxn := sender.BumpGas(txn)
-		if err = t.sender.SendTransaction(ctx, bumpedTxn); err != nil {
-			t.logger.Error("failed to resend stale transaction", "err", err)
-			return err
+	if pendingTxs := txPoolContent["pending"]; len(pendingTxs) > 0 {
+		t.logger.Info("🔄 resending stale (pending in txpool) txs", "count", len(pendingTxs))
+		for _, tx := range pendingTxs {
+			t.fire(ctx, &tracker.Response{Transaction: sender.BumpGas(tx)}, false)
 		}
 	}
+
 	return nil
 }

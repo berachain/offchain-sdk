@@ -55,8 +55,7 @@ func (r *Response) To() *common.Address {
 		return r.Transaction.To()
 	}
 
-	zeroAddr := common.Address{}
-	return &zeroAddr
+	return &(common.Address{})
 }
 
 // Hash overrides the method on Transaction to avoid dereferencing a nil pointer.

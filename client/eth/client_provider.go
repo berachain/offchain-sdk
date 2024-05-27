@@ -261,14 +261,16 @@ Example response:
 
 	{
 		"pending": {
-		"0": {
-			// transaction details...
-		}
+			"1": {
+				// transaction details...
+			},
+			...
 		},
 		"queued": {
-		"0": {
-			// transaction details...
-		}
+			"3": {
+				// transaction details...
+			},
+			...
 		}
 	}
 */
@@ -290,13 +292,15 @@ Example response:
 	{
 		"pending": {
 			"0x12345": {
-				"0": "0x12345789: 1 wei + 2 gas x 3 wei"
-			}
+				"1": "0x12345789: 1 wei + 2 gas x 3 wei"
+			},
+			...
 		},
 		"queued": {
-			"0x12345": {
-				"0": "0x12345789: 1 wei + 2 gas x 3 wei"
-			}
+			"0x67890": {
+				"2": "0x12345789: 1 wei + 2 gas x 3 wei"
+			},
+			...
 		}
 	}
 */
