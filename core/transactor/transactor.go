@@ -100,12 +100,9 @@ func (t *TxrV2) Setup(ctx context.Context) error {
 	t.tracker.SetClient(chain)
 	t.noncer.Start(ctx, chain)
 
-	// If there are any pending txns at startup, they are likely to be "stuck". Resend them if
-	// configured to do so.
-	if t.cfg.ResendStaleTxs {
-		if err := t.resendStaleTxns(ctx, chain); err != nil {
-			return err
-		}
+	// If there are any pending txns at startup, they are likely to be "stuck". Resend them.
+	if err := t.resendStaleTxns(ctx, chain); err != nil {
+		return err
 	}
 
 	go t.mainLoop(ctx)
@@ -207,7 +204,7 @@ func (t *TxrV2) removeStateTracking(msgIDs ...string) {
 	}
 }
 
-// resendStaleTxns resends all the stale (pending) transactions in the mempool.
+// resendStaleTxns resends all the stale (pending) transactions in the mempool with bumped gas.
 // NOTE: blocks until resending all the pending txs either error and/or are sent to the chain.
 func (t *TxrV2) resendStaleTxns(ctx context.Context, chain eth.Client) error {
 	txPoolContent, err := chain.TxPoolContentFrom(ctx, t.signerAddr)
@@ -217,7 +214,7 @@ func (t *TxrV2) resendStaleTxns(ctx context.Context, chain eth.Client) error {
 	}
 
 	if pendingTxs := txPoolContent["pending"]; len(pendingTxs) > 0 {
-		t.logger.Info("🔄 resending stale transactions", "count", len(pendingTxs))
+		t.logger.Info("🔄 resending stale (pending in txpool) txs", "count", len(pendingTxs))
 		for _, tx := range pendingTxs {
 			t.fire(ctx, &tracker.Response{Transaction: sender.BumpGas(tx)}, false)
 		}

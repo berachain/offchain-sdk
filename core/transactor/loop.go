@@ -18,7 +18,7 @@ func (t *TxrV2) mainLoop(ctx context.Context) {
 			return
 		default:
 			// Attempt the retrieve a batch from the queue.
-			requests := t.retrieveBatch()
+			requests := t.retrieveBatch(ctx)
 			if len(requests) == 0 {
 				// We didn't get any transactions, so we wait for more.
 				t.logger.Info("no tx requests to process....")
@@ -37,7 +37,7 @@ func (t *TxrV2) mainLoop(ctx context.Context) {
 
 // retrieveBatch retrieves a batch of transaction requests from the queue. It waits until 1) it
 // hits the batch timeout or 2) tx batch size is reached only if waitFullBatchTimeout is false.
-func (t *TxrV2) retrieveBatch() types.Requests {
+func (t *TxrV2) retrieveBatch(ctx context.Context) types.Requests {
 	var (
 		requests types.Requests
 		timer    = time.NewTimer(t.cfg.TxBatchTimeout)
@@ -47,6 +47,8 @@ func (t *TxrV2) retrieveBatch() types.Requests {
 	// Loop until the batch tx timeout expires.
 	for {
 		select {
+		case <-ctx.Done():
+			return nil
 		case <-timer.C:
 			return requests
 		default:
