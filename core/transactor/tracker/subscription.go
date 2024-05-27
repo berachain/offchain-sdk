@@ -32,7 +32,7 @@ func NewSubscription(s Subscriber, logger log.Logger) *Subscription {
 
 // Start starts the Subscription, listening for transaction events.
 //
-//nolint:gocognit // okay.
+
 func (sub *Subscription) Start(ctx context.Context, ch chan *Response) {
 	// Loop over the channel, handling events as they come in.
 	for {
