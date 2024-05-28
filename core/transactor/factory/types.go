@@ -17,10 +17,11 @@ type Noncer interface {
 // Batcher is an interface for batching requests, commonly implemented by multicallers.
 type Batcher interface {
 	// BatchRequests creates a batched transaction request for the given call requests.
-	BatchRequests(callReqs ...*ethereum.CallMsg) *types.Request
+	BatchRequests(requireSuccess bool, callReqs ...*ethereum.CallMsg) *types.Request
 
 	// BatchCallRequests returns multicall results after executing the given call requests.
 	BatchCallRequests(
-		ctx context.Context, from common.Address, callReqs ...*ethereum.CallMsg,
+		ctx context.Context, from common.Address, requireSuccess bool,
+		callReqs ...*ethereum.CallMsg,
 	) (any, error)
 }

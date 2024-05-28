@@ -57,7 +57,7 @@ func TestPayableMulticall(t *testing.T) {
 
 	// batch and send the calls to the chain
 	resp, err := multicaller.BatchCallRequests(
-		sCtx, walletAddr, call1.CallMsg, call2.CallMsg, call3.CallMsg,
+		sCtx, walletAddr, false, call1.CallMsg, call2.CallMsg, call3.CallMsg,
 	)
 	if err != nil {
 		t.Fatal(err)

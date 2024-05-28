@@ -61,7 +61,7 @@ func NewTransactor(cfg Config, signer kmstypes.TxSigner, batcher factory.Batcher
 
 	// Build the transactor components.
 	noncer := tracker.NewNoncer(signer.Address(), cfg.PendingNonceInterval)
-	factory := factory.New(noncer, batcher, signer, cfg.SignTxTimeout)
+	factory := factory.New(noncer, batcher, signer, cfg.SignTxTimeout, cfg.MulticallRequireSuccess)
 	dispatcher := event.NewDispatcher[*tracker.Response]()
 	tracker := tracker.New(
 		noncer, dispatcher, signer.Address(), cfg.InMempoolTimeout, cfg.TxReceiptTimeout,

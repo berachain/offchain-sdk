@@ -66,12 +66,12 @@ func (t *Tracker) trackStatus(ctx context.Context, resp *Response) {
 			// If the context is done, it could be due to cancellation or other reasons.
 			return
 		case <-timer.C:
-			// Not found in mempool, wait for it to be mined or go stale.
+			// Not found in pending mempool, wait for it to be mined or go stale.
 			t.waitMined(ctx, resp, false)
 			return
 		default:
-			// Check the mempool again.
-			if t.checkMempool(ctx, resp) {
+			// Check in the pending mempool again.
+			if t.checkPending(ctx, resp) {
 				return
 			}
 
@@ -87,24 +87,16 @@ func (t *Tracker) trackStatus(ctx context.Context, resp *Response) {
 	}
 }
 
-// checkMempool marks the tx according to its state in the mempool. Returns true if found.
-func (t *Tracker) checkMempool(ctx context.Context, resp *Response) bool {
+// checkPending marks the tx if its in the pending set in the mempool. Returns true if found.
+func (t *Tracker) checkPending(ctx context.Context, resp *Response) bool {
 	content, err := t.ethClient.TxPoolContentFrom(ctx, t.senderAddr)
 	if err != nil {
 		return false
 	}
-	txNonce := strconv.FormatUint(resp.Nonce(), 10)
-	if senderTxs, ok := content["pending"]; ok {
-		if _, isPending := senderTxs[txNonce]; isPending {
-			t.markPending(ctx, resp)
-			return true
-		}
-	}
 
-	if senderTxs, ok := content["queued"]; ok {
-		if _, isQueued := senderTxs[txNonce]; isQueued {
-			// mark the transaction as expired, but it does exist in the mempool.
-			t.markExpired(resp, false)
+	if senderTxs, ok := content["pending"]; ok {
+		if _, isPending := senderTxs[strconv.FormatUint(resp.Nonce(), 10)]; isPending {
+			t.markPending(ctx, resp)
 			return true
 		}
 	}
@@ -114,6 +106,11 @@ func (t *Tracker) checkMempool(ctx context.Context, resp *Response) bool {
 
 // waitMined waits for a receipt until the transaction is either confirmed or marked stale.
 func (t *Tracker) waitMined(ctx context.Context, resp *Response, isAlreadyPending bool) {
+	// Check if the tx is in the queued set in the mempool, in which case it can be marked stale.
+	if t.checkQueued(ctx, resp) {
+		return
+	}
+
 	var (
 		txHash  = resp.Hash()
 		receipt *coretypes.Receipt
@@ -145,6 +142,24 @@ func (t *Tracker) waitMined(ctx context.Context, resp *Response, isAlreadyPendin
 			time.Sleep(retryBackoff)
 		}
 	}
+}
+
+// checkQueued marks the tx if its in the queued set in the mempool. Returns true if found.
+func (t *Tracker) checkQueued(ctx context.Context, resp *Response) bool {
+	content, err := t.ethClient.TxPoolContentFrom(ctx, t.senderAddr)
+	if err != nil {
+		return false
+	}
+
+	if senderTxs, ok := content["queued"]; ok {
+		if _, isQueued := senderTxs[strconv.FormatUint(resp.Nonce(), 10)]; isQueued {
+			// mark the transaction as expired, but it does exist in the mempool.
+			t.markExpired(resp, false)
+			return true
+		}
+	}
+
+	return false
 }
 
 // markPending marks the transaction as pending. The transaction is sitting in the "pending" set of
