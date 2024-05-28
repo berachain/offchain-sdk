@@ -129,7 +129,7 @@ func (c *ExtendedEthClient) Close() error {
 	if c == nil {
 		return ErrClosed
 	}
-	c.Close()
+	c.Client.Close()
 	return nil
 }
 
