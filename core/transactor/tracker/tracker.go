@@ -114,6 +114,20 @@ func (t *Tracker) waitMined(ctx context.Context, resp *Response, isAlreadyPendin
 			t.markExpired(resp, isAlreadyPending)
 			return
 		default:
+			// Check in the pending mempool again if the tx is not already pending.
+			if !isAlreadyPending {
+				if pendingNonces, err := getPendingNoncesFor(
+					ctx, t.ethClient, t.senderAddr,
+				); err == nil {
+					if _, isAlreadyPending = pendingNonces[resp.Nonce()]; isAlreadyPending {
+						// If it's pending now, after the initial `inMempoolTimeout`, we can assume
+						// the tx is "stuck" as pending.
+						t.markExpired(resp, isAlreadyPending)
+						return
+					}
+				}
+			}
+
 			// Else check for the receipt again.
 			if receipt, err = t.ethClient.TransactionReceipt(ctx, txHash); err == nil {
 				t.markConfirmed(resp, receipt)
