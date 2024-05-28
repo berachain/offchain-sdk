@@ -24,10 +24,8 @@ type Config struct {
 
 	// How long to wait for the pending nonce (ideally 1 block time).
 	PendingNonceInterval time.Duration
-	// How long to wait for a tx to hit the mempool (ideally 1-2 block time).
-	InMempoolTimeout time.Duration
-	// How long to wait for a tx to be mined/confirmed by the chain.
-	TxReceiptTimeout time.Duration
+	// How long to wait for a tx to hit the mempool and/or be confirmed by the chain.
+	TxWaitingTimeout time.Duration
 	// Whether we should resend txs that are stale (not confirmed after the receipt timeout).
 	ResendStaleTxs bool
 

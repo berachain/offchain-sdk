@@ -19,8 +19,7 @@ type Tracker struct {
 	dispatcher *event.Dispatcher[*Response]
 	senderAddr common.Address // tx sender address
 
-	inMempoolTimeout time.Duration // for hitting mempool
-	staleTimeout     time.Duration // for a tx receipt
+	waitingTimeout time.Duration // how long to spin for a tx status
 
 	ethClient eth.Client
 }
@@ -28,14 +27,13 @@ type Tracker struct {
 // New creates a new transaction tracker.
 func New(
 	noncer *Noncer, dispatcher *event.Dispatcher[*Response], sender common.Address,
-	inMempoolTimeout, staleTimeout time.Duration,
+	txWaitingTimeout time.Duration,
 ) *Tracker {
 	return &Tracker{
-		noncer:           noncer,
-		dispatcher:       dispatcher,
-		senderAddr:       sender,
-		inMempoolTimeout: inMempoolTimeout,
-		staleTimeout:     staleTimeout,
+		noncer:         noncer,
+		dispatcher:     dispatcher,
+		senderAddr:     sender,
+		waitingTimeout: txWaitingTimeout,
 	}
 }
 
@@ -49,11 +47,13 @@ func (t *Tracker) Track(ctx context.Context, resp *Response) {
 	go t.trackStatus(ctx, resp)
 }
 
-// trackStatus polls the for transaction status and updates the in-flight list.
+// trackStatus polls the for transaction status (waits for it to reach the mempool or be confirmed)
+// and updates the in-flight list.
 func (t *Tracker) trackStatus(ctx context.Context, resp *Response) {
 	var (
-		txHash = resp.Hash()
-		timer  = time.NewTimer(t.inMempoolTimeout)
+		txHash           = resp.Hash()
+		timer            = time.NewTimer(t.waitingTimeout)
+		isAlreadyPending bool
 	)
 	defer timer.Stop()
 
@@ -65,17 +65,20 @@ func (t *Tracker) trackStatus(ctx context.Context, resp *Response) {
 			// If the context is done, it could be due to cancellation or other reasons.
 			return
 		case <-timer.C:
-			// Not found in pending mempool, wait for it to be mined or go stale.
-			t.waitMined(ctx, resp, false)
+			// Not found after waitingTimeout, mark it stale.
+			t.markExpired(resp, isAlreadyPending)
 			return
 		default:
 			// Check in the pending mempool again.
-			if pendingNonces, err := getPendingNoncesFor(
-				ctx, t.ethClient, t.senderAddr,
-			); err == nil {
-				if _, isPending := pendingNonces[resp.Nonce()]; isPending {
-					t.markPending(ctx, resp)
-					return
+			if !isAlreadyPending {
+				if pendingNonces, err := getPendingNoncesFor(
+					ctx, t.ethClient, t.senderAddr,
+				); err == nil {
+					if _, isAlreadyPending := pendingNonces[resp.Nonce()]; isAlreadyPending {
+						// Remove from the noncer inFlight set since we know the tx has reached
+						// the mempool as executable/pending.
+						t.noncer.RemoveInFlight(resp.Nonce())
+					}
 				}
 			}
 
@@ -89,64 +92,6 @@ func (t *Tracker) trackStatus(ctx context.Context, resp *Response) {
 			time.Sleep(retryBackoff)
 		}
 	}
-}
-
-// waitMined waits for a receipt until the transaction is either confirmed or marked stale.
-func (t *Tracker) waitMined(ctx context.Context, resp *Response, isAlreadyPending bool) {
-	var (
-		txHash  = resp.Hash()
-		receipt *coretypes.Receipt
-		err     error
-		timer   = time.NewTimer(t.staleTimeout)
-	)
-	defer timer.Stop()
-
-	// Loop until the context is done, the transaction status is determined, or the timeout is
-	// reached.
-	for {
-		select {
-		case <-ctx.Done():
-			// If the context is done, it could be due to cancellation or other reasons.
-			return
-		case <-timer.C:
-			// If the timeout is reached, mark the transaction as expired (the tx has been lost and
-			// not found anywhere if isAlreadyPending == false).
-			t.markExpired(resp, isAlreadyPending)
-			return
-		default:
-			// Check in the pending mempool again if the tx is not already pending.
-			if !isAlreadyPending {
-				if pendingNonces, err := getPendingNoncesFor(
-					ctx, t.ethClient, t.senderAddr,
-				); err == nil {
-					if _, isAlreadyPending = pendingNonces[resp.Nonce()]; isAlreadyPending {
-						// If it's pending now, after the initial `inMempoolTimeout`, we can assume
-						// the tx is "stuck" as pending.
-						t.markExpired(resp, isAlreadyPending)
-						return
-					}
-				}
-			}
-
-			// Else check for the receipt again.
-			if receipt, err = t.ethClient.TransactionReceipt(ctx, txHash); err == nil {
-				t.markConfirmed(resp, receipt)
-				return
-			}
-
-			// on any error, search for the receipt after a backoff
-			time.Sleep(retryBackoff)
-		}
-	}
-}
-
-// markPending marks the transaction as pending. The transaction is sitting in the "pending" set of
-// the mempool --> up to the chain to confirm, remove from inflight.
-func (t *Tracker) markPending(ctx context.Context, resp *Response) {
-	// Remove from the noncer inFlight set since we know the tx has reached the mempool as
-	// executable/pending.
-	t.noncer.RemoveInFlight(resp.Nonce())
-	t.waitMined(ctx, resp, true)
 }
 
 // markConfirmed is called once a transaction has been included in the canonical chain.
