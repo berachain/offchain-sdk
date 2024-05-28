@@ -75,7 +75,7 @@ func (mc *Multicall3) BatchRequests(
 
 	txRequest, _ := mc.packer.CreateRequest(
 		"", mc.contractAddress, totalValue, gasTipCap, gasFeeCap, gasLimit,
-		tryAggregate, false, calls,
+		tryAggregate, requireSuccess, calls,
 	)
 	return txRequest
 }

@@ -70,7 +70,7 @@ func (mc *PayableMulticall) BatchRequests(
 
 	txRequest, _ := mc.packer.CreateRequest(
 		"", mc.contractAddress, totalValue, gasTipCap, gasFeeCap, gasLimit,
-		multicall, false, calls,
+		multicall, requireSuccess, calls,
 	)
 	return txRequest
 }

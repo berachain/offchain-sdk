@@ -16,7 +16,7 @@ type Config struct {
 	WaitFullBatchTimeout bool
 	// How long to wait to retrieve txs from the queue if it is empty (ideally quick <= 1s).
 	EmptyQueueDelay time.Duration
-	// what the requireSuccess flag should be set to if using multicall for batching txs.
+	// What the `requireSuccess` flag should be set for calls to `multicall`, if batching txs.
 	MulticallRequireSuccess bool
 
 	// Maximum duration allowed for the tx to be signed (increase this if using a remote signer)
