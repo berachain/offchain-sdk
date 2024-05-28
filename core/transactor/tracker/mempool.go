@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/berachain/offchain-sdk/client/eth"
+
 	"github.com/ethereum/go-ethereum/common"
 )
 

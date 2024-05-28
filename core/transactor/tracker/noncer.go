@@ -119,7 +119,7 @@ func (n *Noncer) Acquire() (uint64, bool) {
 	}
 	n.acquired[nonce] = struct{}{}
 
-	// isReplacing is true only if the returned nonce is already pending/queued in the mempool.
+	// Tx is "replacing" only if the returned nonce is already pending/queued in the mempool.
 	return nonce, n.inMempoolNonces.Remove(nonce)
 }
 

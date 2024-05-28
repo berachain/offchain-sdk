@@ -6,13 +6,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/berachain/offchain-sdk/client/eth"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	ethcoretypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
-
-	"github.com/berachain/offchain-sdk/client/eth"
-	"github.com/stretchr/testify/assert"
 )
 
 // This file tests the methods on the extended eth client.
