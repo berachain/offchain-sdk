@@ -52,13 +52,13 @@ type Reader interface {
 
 		{
 			"pending": {
-				"1": {
+				1: {
 					// transaction details...
 				},
 				...
 			},
 			"queued": {
-				"3": {
+				3: {
 					// transaction details...
 				},
 				...
@@ -66,7 +66,7 @@ type Reader interface {
 		}
 	*/
 	TxPoolContentFrom(ctx context.Context, address common.Address) (
-		map[string]map[string]*ethcoretypes.Transaction, error,
+		map[string]map[uint64]*ethcoretypes.Transaction, error,
 	)
 
 	/*
@@ -76,19 +76,19 @@ type Reader interface {
 		{
 			"pending": {
 				"0x12345": {
-					"1": "0x12345789: 1 wei + 2 gas x 3 wei"
+					1: "0x12345789: 1 wei + 2 gas x 3 wei"
 				},
 				...
 			},
 			"queued": {
 				"0x67890": {
-					"2": "0x12345789: 1 wei + 2 gas x 3 wei"
+					2: "0x12345789: 1 wei + 2 gas x 3 wei"
 				},
 				...
 			}
 		}
 	*/
-	TxPoolInspect(ctx context.Context) (map[string]map[common.Address]map[string]string, error)
+	TxPoolInspect(ctx context.Context) (map[string]map[common.Address]map[uint64]string, error)
 }
 
 type Writer interface {
@@ -180,8 +180,8 @@ func (c *ExtendedEthClient) SubscribeFilterLogs(
 
 func (c *ExtendedEthClient) TxPoolContentFrom(
 	ctx context.Context, address common.Address,
-) (map[string]map[string]*ethcoretypes.Transaction, error) {
-	var result map[string]map[string]*ethcoretypes.Transaction
+) (map[string]map[uint64]*ethcoretypes.Transaction, error) {
+	var result map[string]map[uint64]*ethcoretypes.Transaction
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
 	defer cancel()
 	if err := c.Client.Client().CallContext(
@@ -194,8 +194,8 @@ func (c *ExtendedEthClient) TxPoolContentFrom(
 
 func (c *ExtendedEthClient) TxPoolInspect(
 	ctx context.Context,
-) (map[string]map[common.Address]map[string]string, error) {
-	var result map[string]map[common.Address]map[string]string
+) (map[string]map[common.Address]map[uint64]string, error) {
+	var result map[string]map[common.Address]map[uint64]string
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
 	defer cancel()
 	if err := c.Client.Client().CallContext(

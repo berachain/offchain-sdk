@@ -2,7 +2,6 @@ package tracker
 
 import (
 	"context"
-	"strconv"
 	"time"
 
 	"github.com/berachain/offchain-sdk/client/eth"
@@ -71,8 +70,13 @@ func (t *Tracker) trackStatus(ctx context.Context, resp *Response) {
 			return
 		default:
 			// Check in the pending mempool again.
-			if t.checkPending(ctx, resp) {
-				return
+			if pendingNonces, err := getPendingNoncesFor(
+				ctx, t.ethClient, t.senderAddr,
+			); err == nil {
+				if _, isPending := pendingNonces[resp.Nonce()]; isPending {
+					t.markPending(ctx, resp)
+					return
+				}
 			}
 
 			// Check for the receipt again.
@@ -87,30 +91,8 @@ func (t *Tracker) trackStatus(ctx context.Context, resp *Response) {
 	}
 }
 
-// checkPending marks the tx if its in the pending set in the mempool. Returns true if found.
-func (t *Tracker) checkPending(ctx context.Context, resp *Response) bool {
-	content, err := t.ethClient.TxPoolContentFrom(ctx, t.senderAddr)
-	if err != nil {
-		return false
-	}
-
-	if senderTxs, ok := content["pending"]; ok {
-		if _, isPending := senderTxs[strconv.FormatUint(resp.Nonce(), 10)]; isPending {
-			t.markPending(ctx, resp)
-			return true
-		}
-	}
-
-	return false
-}
-
 // waitMined waits for a receipt until the transaction is either confirmed or marked stale.
 func (t *Tracker) waitMined(ctx context.Context, resp *Response, isAlreadyPending bool) {
-	// Check if the tx is in the queued set in the mempool, in which case it can be marked stale.
-	if t.checkQueued(ctx, resp) {
-		return
-	}
-
 	var (
 		txHash  = resp.Hash()
 		receipt *coretypes.Receipt
@@ -142,24 +124,6 @@ func (t *Tracker) waitMined(ctx context.Context, resp *Response, isAlreadyPendin
 			time.Sleep(retryBackoff)
 		}
 	}
-}
-
-// checkQueued marks the tx if its in the queued set in the mempool. Returns true if found.
-func (t *Tracker) checkQueued(ctx context.Context, resp *Response) bool {
-	content, err := t.ethClient.TxPoolContentFrom(ctx, t.senderAddr)
-	if err != nil {
-		return false
-	}
-
-	if senderTxs, ok := content["queued"]; ok {
-		if _, isQueued := senderTxs[strconv.FormatUint(resp.Nonce(), 10)]; isQueued {
-			// mark the transaction as expired, but it does exist in the mempool.
-			t.markExpired(resp, false)
-			return true
-		}
-	}
-
-	return false
 }
 
 // markPending marks the transaction as pending. The transaction is sitting in the "pending" set of
