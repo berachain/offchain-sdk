@@ -11,7 +11,7 @@ import (
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
-const retryBackoff = 500 * time.Millisecond
+const retryBackoff = 1 * time.Second
 
 // Tracker is a component that keeps track of the transactions that are already sent to the chain.
 type Tracker struct {
@@ -51,9 +51,9 @@ func (t *Tracker) Track(ctx context.Context, resp *Response) {
 // and updates the in-flight list.
 func (t *Tracker) trackStatus(ctx context.Context, resp *Response) {
 	var (
-		txHash           = resp.Hash()
-		timer            = time.NewTimer(t.waitingTimeout)
-		isAlreadyPending bool
+		txHash    = resp.Hash()
+		timer     = time.NewTimer(t.waitingTimeout)
+		isPending bool
 	)
 	defer timer.Stop()
 
@@ -66,30 +66,30 @@ func (t *Tracker) trackStatus(ctx context.Context, resp *Response) {
 			return
 		case <-timer.C:
 			// Not found after waitingTimeout, mark it stale.
-			t.markExpired(resp, isAlreadyPending)
+			t.markExpired(resp, isPending)
 			return
 		default:
-			// Check in the pending mempool again.
-			if !isAlreadyPending {
+			// Wait for a backoff before trying again.
+			time.Sleep(retryBackoff)
+
+			// Check in the pending mempool, only if we know it's not already pending.
+			if !isPending {
 				if pendingNonces, err := getPendingNoncesFor(
 					ctx, t.ethClient, t.senderAddr,
 				); err == nil {
-					if _, isAlreadyPending := pendingNonces[resp.Nonce()]; isAlreadyPending {
+					if _, isPending = pendingNonces[resp.Nonce()]; isPending {
 						// Remove from the noncer inFlight set since we know the tx has reached
-						// the mempool as executable/pending.
+						// the mempool as executable/pending. Now waiting for confirmation.
 						t.noncer.RemoveInFlight(resp.Nonce())
 					}
 				}
 			}
 
-			// Check for the receipt again.
+			// Check for the receipt.
 			if receipt, err := t.ethClient.TransactionReceipt(ctx, txHash); err == nil {
 				t.markConfirmed(resp, receipt)
 				return
 			}
-
-			// If not found anywhere, wait for a backoff and try again.
-			time.Sleep(retryBackoff)
 		}
 	}
 }
