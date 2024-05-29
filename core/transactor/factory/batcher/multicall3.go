@@ -39,7 +39,9 @@ func NewMulticall3(address common.Address) *Multicall3 {
 }
 
 // BatchRequests creates a batched transaction request for the given call requests.
-func (mc *Multicall3) BatchRequests(callReqs ...*ethereum.CallMsg) *types.Request {
+func (mc *Multicall3) BatchRequests(
+	requireSuccess bool, callReqs ...*ethereum.CallMsg,
+) *types.Request {
 	var (
 		calls       = make([]bindings.Multicall3Call, len(callReqs))
 		totalValue  = big.NewInt(0)
@@ -73,7 +75,7 @@ func (mc *Multicall3) BatchRequests(callReqs ...*ethereum.CallMsg) *types.Reques
 
 	txRequest, _ := mc.packer.CreateRequest(
 		"", mc.contractAddress, totalValue, gasTipCap, gasFeeCap, gasLimit,
-		tryAggregate, false, calls,
+		tryAggregate, requireSuccess, calls,
 	)
 	return txRequest
 }
@@ -81,12 +83,12 @@ func (mc *Multicall3) BatchRequests(callReqs ...*ethereum.CallMsg) *types.Reques
 // BatchCallRequests uses the Multicall3 contract to create a batched call request for the given
 // call messages and return the batched call result data for each call, as a `[]Multicall3Result`.
 func (mc *Multicall3) BatchCallRequests(
-	ctx context.Context, from common.Address, callReqs ...*ethereum.CallMsg,
+	ctx context.Context, from common.Address, requireSuccess bool, callReqs ...*ethereum.CallMsg,
 ) (any, error) {
 	sCtx := sdk.UnwrapContext(ctx)
 
 	// get the batched tx (call) requests
-	batchedCall := mc.BatchRequests(callReqs...)
+	batchedCall := mc.BatchRequests(requireSuccess, callReqs...)
 	batchedCall.From = from
 
 	// call the multicall3 contract with the batched call request

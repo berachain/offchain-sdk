@@ -46,7 +46,7 @@ func TestMulticall3(t *testing.T) {
 	}
 
 	// batch and send the calls to the chain
-	resp, err := multicaller.BatchCallRequests(sCtx, empty, call1.CallMsg, call2.CallMsg)
+	resp, err := multicaller.BatchCallRequests(sCtx, empty, false, call1.CallMsg, call2.CallMsg)
 	if err != nil {
 		t.Fatal(err)
 	}

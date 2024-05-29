@@ -17,10 +17,11 @@ import (
 
 // Factory is a transaction factory that builds 1559 transactions with the configured signer.
 type Factory struct {
-	noncer        Noncer
-	signer        kmstypes.TxSigner
-	signTxTimeout time.Duration
-	batcher       Batcher
+	noncer                Noncer
+	signer                kmstypes.TxSigner
+	signTxTimeout         time.Duration
+	batcher               Batcher
+	defaultRequireSuccess bool // require success for all transactions in a batch
 
 	// caches
 	ethClient     eth.Client
@@ -31,13 +32,15 @@ type Factory struct {
 // New creates a new factory instance.
 func New(
 	noncer Noncer, batcher Batcher, signer kmstypes.TxSigner, signTxTimeout time.Duration,
+	defaultRequireSuccess bool,
 ) *Factory {
 	return &Factory{
-		noncer:        noncer,
-		signer:        signer,
-		signTxTimeout: signTxTimeout,
-		batcher:       batcher,
-		signerAddress: signer.Address(),
+		noncer:                noncer,
+		signer:                signer,
+		signTxTimeout:         signTxTimeout,
+		batcher:               batcher,
+		defaultRequireSuccess: defaultRequireSuccess,
+		signerAddress:         signer.Address(),
 	}
 }
 
@@ -57,7 +60,7 @@ func (f *Factory) BuildTransactionFromRequests(
 		return f.buildTransaction(ctx, requests[0], 0)
 	default:
 		// len(txReqs) > 1 then build a multicall transaction.
-		ar := f.batcher.BatchRequests(requests...)
+		ar := f.batcher.BatchRequests(f.defaultRequireSuccess, requests...)
 
 		// Build the transaction to include the calldata.
 		// ar.To should be the Multicall3 contract address

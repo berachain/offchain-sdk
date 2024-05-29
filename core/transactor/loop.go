@@ -21,7 +21,7 @@ func (t *TxrV2) mainLoop(ctx context.Context) {
 			requests := t.retrieveBatch(ctx)
 			if len(requests) == 0 {
 				// We didn't get any transactions, so we wait for more.
-				t.logger.Info("no tx requests to process....")
+				t.logger.Debug("no tx requests to process...")
 				time.Sleep(t.cfg.EmptyQueueDelay)
 				continue
 			}

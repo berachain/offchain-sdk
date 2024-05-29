@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/berachain/offchain-sdk/contracts/bindings"
+	"github.com/berachain/offchain-sdk/core/transactor/factory"
 	"github.com/berachain/offchain-sdk/core/transactor/types"
 	sdk "github.com/berachain/offchain-sdk/types"
 
@@ -16,6 +17,8 @@ import (
 )
 
 const multicall = `multicall`
+
+var _ factory.Batcher = (*Multicall3)(nil)
 
 // Corresponding to the PayableMulticall contract in contracts/lib/transient-goodies/src
 // (https://github.com/berachain/transient-goodies/blob/try-aggregate/src/PayableMulticallable.sol)
@@ -33,7 +36,9 @@ func NewPayableMulticall(address common.Address) *PayableMulticall {
 }
 
 // BatchRequests creates a batched transaction request for the given call requests.
-func (mc *PayableMulticall) BatchRequests(callReqs ...*ethereum.CallMsg) *types.Request {
+func (mc *PayableMulticall) BatchRequests(
+	requireSuccess bool, callReqs ...*ethereum.CallMsg,
+) *types.Request {
 	var (
 		calls       = make([][]byte, len(callReqs))
 		totalValue  = big.NewInt(0)
@@ -65,7 +70,7 @@ func (mc *PayableMulticall) BatchRequests(callReqs ...*ethereum.CallMsg) *types.
 
 	txRequest, _ := mc.packer.CreateRequest(
 		"", mc.contractAddress, totalValue, gasTipCap, gasFeeCap, gasLimit,
-		multicall, false, calls,
+		multicall, requireSuccess, calls,
 	)
 	return txRequest
 }
@@ -73,12 +78,12 @@ func (mc *PayableMulticall) BatchRequests(callReqs ...*ethereum.CallMsg) *types.
 // BatchCallRequests uses the PayableMulticall contract to create a batched call request for the
 // given call messages and return the batched call result data for each call, as a `[][]byte`.
 func (mc *PayableMulticall) BatchCallRequests(
-	ctx context.Context, from common.Address, callReqs ...*ethereum.CallMsg,
+	ctx context.Context, from common.Address, requireSuccess bool, callReqs ...*ethereum.CallMsg,
 ) (any, error) {
 	sCtx := sdk.UnwrapContext(ctx)
 
 	// get the batched tx (call) requests
-	batchedCall := mc.BatchRequests(callReqs...)
+	batchedCall := mc.BatchRequests(requireSuccess, callReqs...)
 	batchedCall.From = from
 
 	// call the multicall3 contract with the batched call request

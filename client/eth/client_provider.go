@@ -261,13 +261,13 @@ Example response:
 
 	{
 		"pending": {
-			"1": {
+			1: {
 				// transaction details...
 			},
 			...
 		},
 		"queued": {
-			"3": {
+			3: {
 				// transaction details...
 			},
 			...
@@ -275,7 +275,7 @@ Example response:
 	}
 */
 func (c *ChainProviderImpl) TxPoolContentFrom(ctx context.Context, address common.Address) (
-	map[string]map[string]*types.Transaction, error,
+	map[string]map[uint64]*types.Transaction, error,
 ) {
 	if client, ok := c.GetHTTP(); ok {
 		ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
@@ -292,20 +292,20 @@ Example response:
 	{
 		"pending": {
 			"0x12345": {
-				"1": "0x12345789: 1 wei + 2 gas x 3 wei"
+				1: "0x12345789: 1 wei + 2 gas x 3 wei"
 			},
 			...
 		},
 		"queued": {
 			"0x67890": {
-				"2": "0x12345789: 1 wei + 2 gas x 3 wei"
+				2: "0x12345789: 1 wei + 2 gas x 3 wei"
 			},
 			...
 		}
 	}
 */
 func (c *ChainProviderImpl) TxPoolInspect(ctx context.Context) (
-	map[string]map[common.Address]map[string]string, error,
+	map[string]map[common.Address]map[uint64]string, error,
 ) {
 	if client, ok := c.GetHTTP(); ok {
 		ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
