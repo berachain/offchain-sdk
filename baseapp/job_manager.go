@@ -2,16 +2,11 @@ package baseapp
 
 import (
 	"context"
-	"crypto/rand"
-	"errors"
 	"fmt"
-	"math/big"
 	"reflect"
 	"sync"
-	"time"
 
 	"github.com/berachain/offchain-sdk/job"
-	workertypes "github.com/berachain/offchain-sdk/job/types"
 	"github.com/berachain/offchain-sdk/log"
 	sdk "github.com/berachain/offchain-sdk/types"
 	"github.com/berachain/offchain-sdk/worker"
@@ -24,11 +19,6 @@ const (
 
 	executorName     = "job-executor"
 	executorPromName = "job_executor"
-
-	maxBackoff   = 2 * time.Minute
-	backoffStart = 1 * time.Second
-	backoffBase  = 2
-	jitterRange  = 1000
 )
 
 // JobManager handles the job and worker lifecycle.
@@ -95,8 +85,7 @@ func (jm *JobManager) Logger(ctx context.Context) log.Logger {
 	return sdk.UnwrapContext(ctx).Logger().With("namespace", "job-manager")
 }
 
-// Start calls `Setup` on the jobs in the registry as well as spins up
-// the worker pools.
+// Start calls `Setup` on the jobs in the registry as well as spins up the worker pools.
 func (jm *JobManager) Start(ctx context.Context) {
 	// We pass in the context in order to handle cancelling the workers. We pass the
 	// standard go context and not an sdk.Context here since the context here is just used
@@ -106,8 +95,7 @@ func (jm *JobManager) Start(ctx context.Context) {
 	jm.jobProducers = worker.NewPool(ctx, logger, jm.producerCfg)
 }
 
-// Stop calls `Teardown` on the jobs in the registry as well as
-// shut's down all the worker pools.
+// Stop calls `Teardown` on the jobs in the registry as well as shut's down all the worker pools.
 func (jm *JobManager) Stop() {
 	var wg sync.WaitGroup
 
@@ -119,7 +107,7 @@ func (jm *JobManager) Stop() {
 		jm.jobProducers = nil
 	}()
 
-	// Shutdown executors and call Teardown().
+	// Shutdown executors and call Teardown() if a job has one.
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -134,29 +122,14 @@ func (jm *JobManager) Stop() {
 		jm.jobExecutors = nil
 	}()
 
-	// Wait for both to finish. (Should we add a timeout?)
+	// Wait for both to finish.
 	wg.Wait()
 }
 
-func (jm *JobManager) runProducer(ctx context.Context, j job.Basic) bool {
-	// Handle migrated jobs.
-	if wrappedJob := job.WrapJob(j); wrappedJob != nil {
-		jm.jobProducers.Submit(
-			func() {
-				if err := wrappedJob.Producer(
-					ctx, jm.jobExecutors,
-				); !errors.Is(err, context.Canceled) && err != nil {
-					jm.Logger(ctx).Error("error in job producer", "err", err)
-				}
-			},
-		)
-		return true
-	}
-	return false
-}
-
 // RunProducers sets up each job and runs its producer.
-func (jm *JobManager) RunProducers(gctx context.Context) { //nolint:gocognit // todo fix.
+func (jm *JobManager) RunProducers(gctx context.Context) {
+	ctx := jm.ctxFactory.NewSDKContext(gctx)
+
 	// Load all jobs in registry in the order they were registered.
 	orderedJobs, err := jm.jobRegistry.IterateInOrder()
 	if err != nil {
@@ -165,108 +138,26 @@ func (jm *JobManager) RunProducers(gctx context.Context) { //nolint:gocognit // 
 
 	for _, jobID := range orderedJobs.Keys() {
 		j := jm.jobRegistry.Get(jobID)
-		ctx := jm.ctxFactory.NewSDKContext(gctx)
+
+		// Run the setup for the job if it has one.
 		if sj, ok := j.(job.HasSetup); ok {
 			if err = sj.Setup(ctx); err != nil {
 				panic(err)
 			}
 		}
 
-		if jm.runProducer(ctx, j) { //nolint:nestif // todo fix.
-			continue
+		// Submit the job to the job producers based on the job's type. Use retries if the job uses
+		// a subscription.
+		if wrappedJob := job.WrapJob(j); wrappedJob != nil {
+			jm.jobProducers.Submit(jm.producerTask(ctx, wrappedJob))
 		} else if subJob, ok := j.(job.Subscribable); ok {
-			jm.jobProducers.Submit(func() {
-				ch := subJob.Subscribe(ctx)
-				for {
-					select {
-					case val := <-ch:
-						jm.jobExecutors.Submit(workertypes.NewPayload(ctx, subJob, val).Execute)
-					case <-ctx.Done():
-						return
-					default:
-						continue
-					}
-				}
-			})
-		} else if ethSubJob, ok := j.(job.EthSubscribable); ok { //nolint:govet // todo fix.
-			jm.jobProducers.Submit(withRetry(func() bool {
-				//nolint:govet // todo fix.
-				sub, ch, err := ethSubJob.Subscribe(ctx)
-				if err != nil {
-					jm.Logger(ctx).Error("error subscribing block header", "err", err)
-					return true
-				}
-				jm.Logger(ctx).Info("(re)subscribed to eth subscription", "job", j.RegistryKey())
-
-				for {
-					select {
-					case <-ctx.Done():
-						ethSubJob.Unsubscribe(ctx)
-						return false
-					case err = <-sub.Err():
-						jm.Logger(ctx).Error("error in subscription", "err", err)
-						ethSubJob.Unsubscribe(ctx)
-						// retry
-						return true
-					case val := <-ch:
-						jm.jobExecutors.Submit(workertypes.NewPayload(ctx, ethSubJob, val).Execute)
-						continue
-					}
-				}
-			}, jm.Logger(ctx)))
-		} else if blockHeaderJob, ok := j.(job.BlockHeaderSub); ok { //nolint:govet // todo fix.
-			//nolint:govet // todo fix.
-			jm.jobProducers.Submit(withRetry(func() bool {
-				sub, ch, err := blockHeaderJob.Subscribe(ctx)
-				if err != nil {
-					jm.Logger(ctx).Error("error subscribing block header", "err", err)
-					return true
-				}
-				jm.Logger(ctx).Info("(re)subscribed to block header sub", "job", j.RegistryKey())
-
-				for {
-					select {
-					case <-ctx.Done():
-						blockHeaderJob.Unsubscribe(ctx)
-						return false
-					case err = <-sub.Err():
-						jm.Logger(ctx).Error("error in subscription", "err", err)
-						blockHeaderJob.Unsubscribe(ctx)
-						return true
-					case val := <-ch:
-						jm.jobExecutors.Submit(workertypes.NewPayload(ctx, blockHeaderJob, val).Execute)
-						continue
-					}
-				}
-			}, jm.Logger(ctx)))
+			jm.jobProducers.Submit(jm.withRetry(jm.retryableSubscriber(ctx, subJob)))
+		} else if ethSubJob, ok := j.(job.EthSubscribable); ok {
+			jm.jobProducers.Submit(jm.withRetry(jm.retryableEthSubscriber(ctx, ethSubJob)))
+		} else if blockHeaderJob, ok := j.(job.BlockHeaderSub); ok {
+			jm.jobProducers.Submit(jm.withRetry(jm.retryableHeaderSubscriber(ctx, blockHeaderJob)))
 		} else {
 			panic(fmt.Sprintf("unknown job type %s", reflect.TypeOf(j)))
-		}
-	}
-}
-
-// withRetry is a wrapper that retries a task with exponential backoff.
-func withRetry(task func() bool, logger log.Logger) func() {
-	return func() {
-		backoff := backoffStart
-
-		for {
-			if retry := task(); retry {
-				// Exponential backoff with jitter.
-				jitter, _ := rand.Int(rand.Reader, big.NewInt(jitterRange))
-				if jitter == nil {
-					jitter = new(big.Int)
-				}
-				sleep := backoff + time.Duration(jitter.Int64())*time.Millisecond
-				logger.Info(fmt.Sprintf("retrying task in %s...", sleep))
-				time.Sleep(sleep)
-				backoff *= backoffBase
-				if backoff > maxBackoff {
-					backoff = maxBackoff
-				}
-				continue
-			}
-			break
 		}
 	}
 }
