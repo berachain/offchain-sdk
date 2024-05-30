@@ -22,20 +22,21 @@ func (jm *JobManager) producerTask(ctx context.Context, wrappedJob job.HasProduc
 }
 
 // retryableSubscriber returns a retryable, execution task for the given Subscribable job.
-func (jm *JobManager) retryableSubscriber(ctx context.Context, subJob job.Subscribable) func() bool {
+func (jm *JobManager) retryableSubscriber(
+	ctx context.Context, subJob job.Subscribable,
+) func() bool {
 	return func() bool {
 		ch := subJob.Subscribe(ctx)
 		jm.Logger(ctx).Info("(re)subscribed to subscription", "job", subJob.RegistryKey())
 
 		// Ensure that the subscription does not drop due to no messages received.
-		staleSubscription := time.NewTimer(subscriptionStaleTimeout)
-		defer staleSubscription.Stop()
+		staleSubscription := time.After(subscriptionStaleTimeout)
 
 		for {
 			select {
 			case <-ctx.Done():
 				return false // no need to retry
-			case staleTime := <-staleSubscription.C:
+			case staleTime := <-staleSubscription:
 				jm.Logger(ctx).Warn(
 					"subscription went stale, reconnecting...",
 					"time", staleTime, "job", subJob.RegistryKey(),
@@ -43,7 +44,7 @@ func (jm *JobManager) retryableSubscriber(ctx context.Context, subJob job.Subscr
 				return true // should retry again
 			case val := <-ch:
 				jm.jobExecutors.Submit(workertypes.NewPayload(ctx, subJob, val).Execute)
-				staleSubscription.Reset(subscriptionStaleTimeout)
+				staleSubscription = time.After(subscriptionStaleTimeout)
 			}
 		}
 	}
@@ -65,8 +66,7 @@ func (jm *JobManager) retryableEthSubscriber(
 		jm.Logger(ctx).Info("(re)subscribed to eth subscription", "job", ethSubJob.RegistryKey())
 
 		// Ensure that the subscription does not drop due to no messages received.
-		staleSubscription := time.NewTimer(subscriptionStaleTimeout)
-		defer staleSubscription.Stop()
+		staleSubscription := time.After(subscriptionStaleTimeout)
 
 		for {
 			select {
@@ -80,7 +80,7 @@ func (jm *JobManager) retryableEthSubscriber(
 				)
 				ethSubJob.Unsubscribe(ctx)
 				return true // should retry again
-			case staleTime := <-staleSubscription.C:
+			case staleTime := <-staleSubscription:
 				jm.Logger(ctx).Warn(
 					"subscription went stale, reconnecting...",
 					"time", staleTime, "job", ethSubJob.RegistryKey(),
@@ -88,7 +88,7 @@ func (jm *JobManager) retryableEthSubscriber(
 				return true // should retry again
 			case val := <-ch:
 				jm.jobExecutors.Submit(workertypes.NewPayload(ctx, ethSubJob, val).Execute)
-				staleSubscription.Reset(subscriptionStaleTimeout)
+				staleSubscription = time.After(subscriptionStaleTimeout)
 			}
 		}
 	}
@@ -112,8 +112,7 @@ func (jm *JobManager) retryableHeaderSubscriber(
 		)
 
 		// Ensure that the subscription does not drop due to no messages received.
-		staleSubscription := time.NewTimer(subscriptionStaleTimeout)
-		defer staleSubscription.Stop()
+		staleSubscription := time.After(subscriptionStaleTimeout)
 
 		for {
 			select {
@@ -127,7 +126,7 @@ func (jm *JobManager) retryableHeaderSubscriber(
 				)
 				blockHeaderJob.Unsubscribe(ctx)
 				return true // should retry again
-			case staleTime := <-staleSubscription.C:
+			case staleTime := <-staleSubscription:
 				jm.Logger(ctx).Warn(
 					"subscription went stale, reconnecting...",
 					"time", staleTime, "job", blockHeaderJob.RegistryKey(),
@@ -135,7 +134,7 @@ func (jm *JobManager) retryableHeaderSubscriber(
 				return true // should retry again
 			case val := <-ch:
 				jm.jobExecutors.Submit(workertypes.NewPayload(ctx, blockHeaderJob, val).Execute)
-				staleSubscription.Reset(subscriptionStaleTimeout)
+				staleSubscription = time.After(subscriptionStaleTimeout)
 			}
 		}
 	}
