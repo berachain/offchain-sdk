@@ -12,6 +12,8 @@ import (
 	"github.com/berachain/offchain-sdk/worker"
 )
 
+// REMOVE: Tag issue #93
+
 const (
 	producerName           = "job-producer"
 	producerPromName       = "job_producer"
