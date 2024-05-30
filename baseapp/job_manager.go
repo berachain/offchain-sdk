@@ -39,6 +39,8 @@ type JobManager struct {
 	// are fed jobs by the job producers.
 	executorCfg  *worker.PoolConfig
 	jobExecutors *worker.Pool
+
+	// TODO: introduce telemetry.Metrics to this struct and the BaseApp.
 }
 
 // NewManager creates a new manager.
