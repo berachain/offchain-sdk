@@ -51,6 +51,10 @@ func (jm *JobManager) retryableSubscriber(
 }
 
 // retryableEthSubscriber returns a retryable, execution task for the given EthSubscribable job.
+//
+// TODO: cleanup the job types interfaces to avoid overlap using generics.
+//
+//nolint:dupl // refer to TODO above.
 func (jm *JobManager) retryableEthSubscriber(
 	ctx context.Context, ethSubJob job.EthSubscribable,
 ) func() bool {
@@ -95,6 +99,10 @@ func (jm *JobManager) retryableEthSubscriber(
 }
 
 // retryableEthSubscriber returns a retryable, execution task for the given BlockHeaderSub job.
+//
+// TODO: cleanup the job types interfaces to avoid overlap using generics.
+//
+//nolint:dupl // refer to TODO above.
 func (jm *JobManager) retryableHeaderSubscriber(
 	ctx context.Context, blockHeaderJob job.BlockHeaderSub,
 ) func() bool {

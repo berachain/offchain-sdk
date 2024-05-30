@@ -152,9 +152,9 @@ func (jm *JobManager) RunProducers(gctx context.Context) {
 			jm.jobProducers.Submit(jm.producerTask(ctx, wrappedJob))
 		} else if subJob, ok := j.(job.Subscribable); ok {
 			jm.jobProducers.Submit(jm.withRetry(jm.retryableSubscriber(ctx, subJob)))
-		} else if ethSubJob, ok := j.(job.EthSubscribable); ok {
+		} else if ethSubJob, ok := j.(job.EthSubscribable); ok { //nolint:govet // todo fix.
 			jm.jobProducers.Submit(jm.withRetry(jm.retryableEthSubscriber(ctx, ethSubJob)))
-		} else if blockHeaderJob, ok := j.(job.BlockHeaderSub); ok {
+		} else if blockHeaderJob, ok := j.(job.BlockHeaderSub); ok { //nolint:govet // todo fix.
 			jm.jobProducers.Submit(jm.withRetry(jm.retryableHeaderSubscriber(ctx, blockHeaderJob)))
 		} else {
 			panic(fmt.Sprintf("unknown job type %s", reflect.TypeOf(j)))
