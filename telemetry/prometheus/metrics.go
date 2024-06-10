@@ -155,7 +155,7 @@ func (p *metrics) IncMonotonic(name string, tags []string) {
 
 // Error implements the Error method of the Metrics interface using CounterVec.
 func (p *metrics) Error(errName string) {
-	p.IncMonotonic("stats.errors", []string{fmt.Sprintf("type:%s", errName)})
+	p.IncMonotonic("errors", []string{fmt.Sprintf("type:%s", errName)})
 }
 
 // Histogram implements the Histogram method of the Metrics interface using HistogramVec.
