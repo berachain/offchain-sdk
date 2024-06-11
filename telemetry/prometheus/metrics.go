@@ -207,7 +207,7 @@ func (p *metrics) Time(name string, value time.Duration, tags []string) {
 
 	// Convert time.Duration to seconds since Prometheus prefers base units
 	// see https://prometheus.io/docs/practices/naming/#base-units
-	histogramVec.WithLabelValues(labelValues...).Observe(float64(value.Seconds()))
+	histogramVec.WithLabelValues(labelValues...).Observe(value.Seconds())
 }
 
 // Latency is a helper function to measure the latency of a routine.
