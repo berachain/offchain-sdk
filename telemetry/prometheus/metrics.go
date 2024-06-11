@@ -255,7 +255,7 @@ func forceValidName(name string) string {
 	return string(runes)
 }
 
-// Set default values if not provided
+// Set default values if not provided.
 func setDefaultCfg(cfg *Config) {
 	if cfg.HistogramBucketCount <= 0 {
 		cfg.HistogramBucketCount = DefaultBucketCount
