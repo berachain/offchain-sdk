@@ -256,10 +256,10 @@ func forceValidName(name string) string {
 
 func setDefaultCfg(cfg *Config) {
 	// Set default values if not provided
-	if cfg.HistogramBucketCount == 0 {
+	if cfg.HistogramBucketCount <= 0 {
 		cfg.HistogramBucketCount = DefaultBucketCount
 	}
-	if cfg.TimeBucketCount == 0 {
+	if cfg.TimeBucketCount <= 0 {
 		cfg.TimeBucketCount = DefaultBucketCount
 	}
 }
