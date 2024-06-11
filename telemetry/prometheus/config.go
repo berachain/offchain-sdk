@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	// Default bucket count 1000 can satisfy the precision of p99 for most histogram stats
+	// Default bucket count 1000 can satisfy the precision of p99 for most histogram stats.
 	DefaultBucketCount = 1000
 )
 
@@ -16,7 +16,7 @@ type Config struct {
 	Subsystem            string // optional
 	HistogramBucketCount int    // Number of buckets for histogram, default to 1000
 	// Number of buckets for time buckets, default to 1000.
-	// The bucket size is 10ms, so the maximum covered time range is 10ms * TimeBucketCount
+	// The bucket size is 10ms, so the maximum covered time range is 10ms * TimeBucketCount.
 	TimeBucketCount int
 }
 
