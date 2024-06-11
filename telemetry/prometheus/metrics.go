@@ -24,6 +24,7 @@ type metrics struct {
 
 // NewMetrics initializes a new instance of Prometheus metrics.
 func NewMetrics(cfg *Config) (*metrics, error) { //nolint:revive // only used as Metrics interface.
+	setDefaultCfg(cfg)
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
@@ -173,7 +174,8 @@ func (p *metrics) Histogram(name string, value float64, tags []string, rate floa
 			Namespace: p.cfg.Namespace,
 			Subsystem: p.cfg.Subsystem,
 			Help:      name + " histogram",
-			Buckets:   prometheus.LinearBuckets(0, rate, 10), // Adjust bucketing as necessary
+			// The maximum covered stats range is rate * HistogramBucketCount
+			Buckets: prometheus.LinearBuckets(0, rate, p.cfg.HistogramBucketCount),
 		}, labels)
 		prometheus.MustRegister(histogramVec)
 		p.histogramVecs[name] = histogramVec
@@ -196,13 +198,15 @@ func (p *metrics) Time(name string, value time.Duration, tags []string) {
 			Namespace: p.cfg.Namespace,
 			Subsystem: p.cfg.Subsystem,
 			Help:      name + " timing histogram",
-			Buckets:   prometheus.LinearBuckets(0, 1, 10), // Adjust bucketing as necessary
+			// Given bucket=0.01s(10ms), the maximum covered time range is 10ms * TimeBucketCount
+			Buckets: prometheus.LinearBuckets(0, 0.01, p.cfg.TimeBucketCount),
 		}, labels)
 		prometheus.MustRegister(histogramVec)
 		p.histogramVecs[name] = histogramVec
 	}
 
 	// Convert time.Duration to seconds since Prometheus prefers base units
+	// see https://prometheus.io/docs/practices/naming/#base-units
 	histogramVec.WithLabelValues(labelValues...).Observe(value.Seconds())
 }
 
@@ -249,4 +253,14 @@ func forceValidName(name string) string {
 	}
 
 	return string(runes)
+}
+
+// Set default values if not provided.
+func setDefaultCfg(cfg *Config) {
+	if cfg.HistogramBucketCount <= 0 {
+		cfg.HistogramBucketCount = DefaultBucketCount
+	}
+	if cfg.TimeBucketCount <= 0 {
+		cfg.TimeBucketCount = DefaultBucketCount
+	}
 }
