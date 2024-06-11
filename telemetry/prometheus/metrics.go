@@ -206,6 +206,7 @@ func (p *metrics) Time(name string, value time.Duration, tags []string) {
 	}
 
 	// Convert time.Duration to seconds since Prometheus prefers base units
+	// see https://prometheus.io/docs/practices/naming/#base-units
 	histogramVec.WithLabelValues(labelValues...).Observe(float64(value.Seconds()))
 }
 
@@ -254,8 +255,8 @@ func forceValidName(name string) string {
 	return string(runes)
 }
 
+// Set default values if not provided
 func setDefaultCfg(cfg *Config) {
-	// Set default values if not provided
 	if cfg.HistogramBucketCount <= 0 {
 		cfg.HistogramBucketCount = DefaultBucketCount
 	}
