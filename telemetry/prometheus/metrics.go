@@ -198,15 +198,15 @@ func (p *metrics) Time(name string, value time.Duration, tags []string) {
 			Namespace: p.cfg.Namespace,
 			Subsystem: p.cfg.Subsystem,
 			Help:      name + " timing histogram",
-			// Given bucket=10ms, the maximum covered time range is 10ms * TimeBucketCount
-			Buckets: prometheus.LinearBuckets(0, 10, p.cfg.TimeBucketCount),
+			// Given bucket=0.01s(10ms), the maximum covered time range is 10ms * TimeBucketCount
+			Buckets: prometheus.LinearBuckets(0, 0.01, p.cfg.TimeBucketCount),
 		}, labels)
 		prometheus.MustRegister(histogramVec)
 		p.histogramVecs[name] = histogramVec
 	}
 
 	// Convert time.Duration to seconds since Prometheus prefers base units
-	histogramVec.WithLabelValues(labelValues...).Observe(float64(value.Milliseconds()))
+	histogramVec.WithLabelValues(labelValues...).Observe(float64(value.Seconds()))
 }
 
 // Latency is a helper function to measure the latency of a routine.
