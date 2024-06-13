@@ -29,14 +29,6 @@ func (rw *telemetryRespWriter) WriteHeader(code int) {
 	rw.ResponseWriter.WriteHeader(code)
 }
 
-func (rw *telemetryRespWriter) Write(b []byte) (int, error) {
-	if rw.statusCode == http.StatusOK && len(b) > 0 {
-		// When Write is called without WriteHeader, infer the status code
-		rw.statusCode = http.StatusOK
-	}
-	return rw.ResponseWriter.Write(b)
-}
-
 // WrapHTTPHandler wraps a HTTP server with the given Metrics instance.
 // to collect telemetry for every request/response.
 func WrapHTTPHandler(m Metrics, log log.Logger) func(http.Handler) http.Handler {
