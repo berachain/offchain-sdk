@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/berachain/offchain-sdk/log"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 )
 
 type telemetryRespWriter struct {
@@ -68,7 +69,13 @@ func GetHandlerWrapper(m Metrics, log log.Logger) func(http.Handler) http.Handle
 }
 
 func getRequestTags(req *http.Request) []string {
+	// if the request is a gRPC-gateway request, use the gRPC method as the endpoint
+	// i.e. "/package.service/method"
+	rpcMethod, ok := runtime.RPCMethod(req.Context())
+	if !ok {
+		rpcMethod = req.URL.Path
+	}
 	return []string{
-		fmt.Sprintf("endpoint:%s", req.URL.Path), fmt.Sprintf("method:%s", req.Method),
+		fmt.Sprintf("endpoint:%s", rpcMethod), fmt.Sprintf("method:%s", req.Method),
 	}
 }
