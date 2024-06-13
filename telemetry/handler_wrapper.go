@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/berachain/offchain-sdk/log"
-	"github.com/gogo/status"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"go-micro.dev/v4/server"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // telemetryRespWriter is a wrapper around http.ResponseWriter that captures the status code.

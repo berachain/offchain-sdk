@@ -12,7 +12,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.28.2
 	github.com/berachain/go-utils v0.0.0-20240108175945-0bf7199282f7
 	github.com/ethereum/go-ethereum v1.13.4
-	github.com/gogo/status v1.1.0
 	github.com/golangci/golangci-lint v1.54.1
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.20.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
@@ -111,7 +110,6 @@ require (
 	github.com/go-xmlfmt/xmlfmt v1.1.2 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gofrs/flock v0.8.1 // indirect
-	github.com/gogo/googleapis v0.0.0-20180223154316-0cd9801be74a // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/golang/snappy v0.0.5-0.20220116011046-fa5810519dcb // indirect
