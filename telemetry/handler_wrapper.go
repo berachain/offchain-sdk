@@ -36,6 +36,7 @@ func (rw *telemetryRespWriter) Write(b []byte) (int, error) {
 func GetHandlerWrapper(m Metrics, log log.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			log.Debug("Request received", "method", r.Method, "path", r.URL.Path)
 			customWriter := newTelemetryRespWriter(w)
 			metricsTags := getRequestTags(r)
 
