@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	// Default bucket count for histogram metrics
+	// Default bucket count for histogram metrics.
 	DefaultBucketCount = 10
 )
 
