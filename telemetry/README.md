@@ -34,7 +34,7 @@ provided by the Datadog `statsd` client.
 ### Configuration
 
 The first step is to add a section in your config file. The source code defining these configs can
-be found in  [config.go](./prometheus/config.go).
+be found in [config.go](./prometheus/config.go).
 
 #### Prometheus Configs
 
