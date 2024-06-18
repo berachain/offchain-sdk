@@ -12,6 +12,16 @@ import (
 const (
 	initialVecCapacity = 32
 	tagSlices          = 2
+
+	// Constant for Summary (quantile) metrics.
+	quantile50 = 0.5
+	quantile90 = 0.9
+	quantile99 = 0.99
+	// Usually the allowed relative error margin is 10%, and the absolute error margin is computed
+	// using (1 - quantile) * 10%. For example for p90, error margin is (1 - 90%) * 10% = 1% = 0.01.
+	errorMargin50 = 0.05
+	errorMargin90 = 0.01
+	errorMargin99 = 0.001
 )
 
 type metrics struct {
@@ -20,6 +30,7 @@ type metrics struct {
 	gaugeVecs     map[string]*prometheus.GaugeVec
 	counterVecs   map[string]*prometheus.CounterVec
 	histogramVecs map[string]*prometheus.HistogramVec
+	summaryVecs   map[string]*prometheus.SummaryVec
 }
 
 // NewMetrics initializes a new instance of Prometheus metrics.
@@ -37,6 +48,7 @@ func NewMetrics(cfg *Config) (*metrics, error) { //nolint:revive // only used as
 	p.gaugeVecs = make(map[string]*prometheus.GaugeVec, initialVecCapacity)
 	p.counterVecs = make(map[string]*prometheus.CounterVec, initialVecCapacity)
 	p.histogramVecs = make(map[string]*prometheus.HistogramVec, initialVecCapacity)
+	p.summaryVecs = make(map[string]*prometheus.SummaryVec, initialVecCapacity)
 	return p, nil
 }
 
@@ -45,7 +57,7 @@ func (p *metrics) Close() error {
 }
 
 // Gauge implements the Gauge method of the Metrics interface using GaugeVec.
-func (p *metrics) Gauge(name string, value float64, tags []string, _ float64) {
+func (p *metrics) Gauge(name string, value float64, _ float64, tags ...string) {
 	if !p.cfg.Enabled {
 		return
 	}
@@ -67,7 +79,7 @@ func (p *metrics) Gauge(name string, value float64, tags []string, _ float64) {
 }
 
 // Incr implements the Incr method of the Metrics interface using GaugeVec.
-func (p *metrics) Incr(name string, tags []string) {
+func (p *metrics) Incr(name string, tags ...string) {
 	if !p.cfg.Enabled {
 		return
 	}
@@ -89,7 +101,7 @@ func (p *metrics) Incr(name string, tags []string) {
 }
 
 // Decr implements the Decr method of the Metrics interface using GaugeVec.
-func (p *metrics) Decr(name string, tags []string) {
+func (p *metrics) Decr(name string, tags ...string) {
 	if !p.cfg.Enabled {
 		return
 	}
@@ -111,7 +123,7 @@ func (p *metrics) Decr(name string, tags []string) {
 }
 
 // Count implements the Count method of the Metrics interface using CounterVec.
-func (p *metrics) Count(name string, value int64, tags []string) {
+func (p *metrics) Count(name string, value int64, tags ...string) {
 	if !p.cfg.Enabled {
 		return
 	}
@@ -133,7 +145,7 @@ func (p *metrics) Count(name string, value int64, tags []string) {
 }
 
 // IncMonotonic implements the IncMonotonic method of the Metrics interface using CounterVec.
-func (p *metrics) IncMonotonic(name string, tags []string) {
+func (p *metrics) IncMonotonic(name string, tags ...string) {
 	if !p.cfg.Enabled {
 		return
 	}
@@ -156,11 +168,13 @@ func (p *metrics) IncMonotonic(name string, tags []string) {
 
 // Error implements the Error method of the Metrics interface using CounterVec.
 func (p *metrics) Error(errName string) {
-	p.IncMonotonic("errors", []string{fmt.Sprintf("type:%s", errName)})
+	p.IncMonotonic("errors", fmt.Sprintf("type:%s", errName))
 }
 
-// Histogram implements the Histogram method of the Metrics interface using HistogramVec.
-func (p *metrics) Histogram(name string, value float64, tags []string, rate float64) {
+// Histogram implements the Histogram method of the Metrics interface using HistogramVec with
+// linear buckets.
+// TODO: Support different types of buckets beyond linear buckets in future implementations.
+func (p *metrics) Histogram(name string, value float64, rate float64, tags ...string) {
 	if !p.cfg.Enabled {
 		return
 	}
@@ -183,36 +197,40 @@ func (p *metrics) Histogram(name string, value float64, tags []string, rate floa
 	histogramVec.WithLabelValues(labelValues...).Observe(value)
 }
 
-// Time implements the Time method of the Metrics interface using GaugeVec.
-func (p *metrics) Time(name string, value time.Duration, tags []string) {
+// Time implements the Time method of the Metrics interface using SummaryVec.
+// Currently the p50/p90/p99 quantiles are recorded.
+func (p *metrics) Time(name string, value time.Duration, tags ...string) {
 	if !p.cfg.Enabled {
 		return
 	}
 
 	name = forceValidName(name)
 	labels, labelValues := parseTagsToLabelPairs(tags)
-	histogramVec, exists := p.histogramVecs[name]
+	summaryVec, exists := p.summaryVecs[name]
 	if !exists {
-		histogramVec = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		summaryVec = prometheus.NewSummaryVec(prometheus.SummaryOpts{
 			Name:      name,
 			Namespace: p.cfg.Namespace,
 			Subsystem: p.cfg.Subsystem,
-			Help:      name + " timing histogram",
-			// Given bucket=0.01s(10ms), the maximum covered time range is 10ms * TimeBucketCount
-			Buckets: prometheus.LinearBuckets(0, 0.01, p.cfg.TimeBucketCount),
+			Help:      name + " timing summary",
+			Objectives: map[float64]float64{
+				quantile50: errorMargin50,
+				quantile90: errorMargin90,
+				quantile99: errorMargin99,
+			},
 		}, labels)
-		prometheus.MustRegister(histogramVec)
-		p.histogramVecs[name] = histogramVec
+		prometheus.MustRegister(summaryVec)
+		p.summaryVecs[name] = summaryVec
 	}
 
 	// Convert time.Duration to seconds since Prometheus prefers base units
 	// see https://prometheus.io/docs/practices/naming/#base-units
-	histogramVec.WithLabelValues(labelValues...).Observe(value.Seconds())
+	summaryVec.WithLabelValues(labelValues...).Observe(value.Seconds())
 }
 
 // Latency is a helper function to measure the latency of a routine.
 func (p *metrics) Latency(jobName string, start time.Time, tags ...string) {
-	p.Time(fmt.Sprintf("%s.latency", jobName), time.Since(start), tags)
+	p.Time(fmt.Sprintf("%s.latency", jobName), time.Since(start), tags...)
 }
 
 // parseTagsToLabelPairs converts a slice of tags in "key:value" format to two slices:
@@ -259,8 +277,5 @@ func forceValidName(name string) string {
 func setDefaultCfg(cfg *Config) {
 	if cfg.HistogramBucketCount <= 0 {
 		cfg.HistogramBucketCount = DefaultBucketCount
-	}
-	if cfg.TimeBucketCount <= 0 {
-		cfg.TimeBucketCount = DefaultBucketCount
 	}
 }
