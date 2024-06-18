@@ -14,9 +14,11 @@ const (
 	tagSlices          = 2
 
 	// Constant for Summary (quantile) metrics.
-	quantile50    = 0.5
-	quantile90    = 0.9
-	quantile99    = 0.99
+	quantile50 = 0.5
+	quantile90 = 0.9
+	quantile99 = 0.99
+	// Usually the allowed relative error margin is 10%, and the absolute error margin is computed
+	// using (1 - quantile) * 10%. For example for p90, error margin is (1 - 90%) * 10% = 1% = 0.01.
 	errorMargin50 = 0.05
 	errorMargin90 = 0.01
 	errorMargin99 = 0.001
@@ -170,7 +172,7 @@ func (p *metrics) Error(errName string) {
 }
 
 // Histogram implements the Histogram method of the Metrics interface using HistogramVec with
-// linear buckets
+// linear buckets.
 func (p *metrics) Histogram(name string, value float64, rate float64, tags ...string) {
 	if !p.cfg.Enabled {
 		return
@@ -195,7 +197,7 @@ func (p *metrics) Histogram(name string, value float64, rate float64, tags ...st
 }
 
 // Time implements the Time method of the Metrics interface using SummaryVec.
-// Currently the p50/p90/p99 quantile are recorded.
+// Currently the p50/p90/p99 quantiles are recorded.
 func (p *metrics) Time(name string, value time.Duration, tags ...string) {
 	if !p.cfg.Enabled {
 		return
