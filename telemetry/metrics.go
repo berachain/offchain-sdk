@@ -42,48 +42,48 @@ type metrics struct {
 	prometheus Metrics
 }
 
-func (m *metrics) Gauge(name string, value float64, tags []string, rate float64) {
+func (m *metrics) Gauge(name string, value float64, rate float64, tags ...string) {
 	if m.datadog != nil {
-		m.datadog.Gauge(name, value, tags, rate)
+		m.datadog.Gauge(name, value, rate, tags...)
 	}
 	if m.prometheus != nil {
-		m.prometheus.Gauge(name, value, tags, rate)
+		m.prometheus.Gauge(name, value, rate, tags...)
 	}
 }
 
-func (m *metrics) Incr(name string, tags []string) {
+func (m *metrics) Incr(name string, tags ...string) {
 	if m.datadog != nil {
-		m.datadog.Incr(name, tags)
+		m.datadog.Incr(name, tags...)
 	}
 	if m.prometheus != nil {
-		m.prometheus.Incr(name, tags)
+		m.prometheus.Incr(name, tags...)
 	}
 }
 
-func (m *metrics) Decr(name string, tags []string) {
+func (m *metrics) Decr(name string, tags ...string) {
 	if m.datadog != nil {
-		m.datadog.Decr(name, tags)
+		m.datadog.Decr(name, tags...)
 	}
 	if m.prometheus != nil {
-		m.prometheus.Decr(name, tags)
+		m.prometheus.Decr(name, tags...)
 	}
 }
 
-func (m *metrics) Count(name string, value int64, tags []string) {
+func (m *metrics) Count(name string, value int64, tags ...string) {
 	if m.datadog != nil {
-		m.datadog.Count(name, value, tags)
+		m.datadog.Count(name, value, tags...)
 	}
 	if m.prometheus != nil {
-		m.prometheus.Count(name, value, tags)
+		m.prometheus.Count(name, value, tags...)
 	}
 }
 
-func (m *metrics) IncMonotonic(name string, tags []string) {
+func (m *metrics) IncMonotonic(name string, tags ...string) {
 	if m.datadog != nil {
-		m.datadog.IncMonotonic(name, tags)
+		m.datadog.IncMonotonic(name, tags...)
 	}
 	if m.prometheus != nil {
-		m.prometheus.IncMonotonic(name, tags)
+		m.prometheus.IncMonotonic(name, tags...)
 	}
 }
 
@@ -96,21 +96,21 @@ func (m *metrics) Error(errName string) {
 	}
 }
 
-func (m *metrics) Histogram(name string, value float64, tags []string, rate float64) {
+func (m *metrics) Histogram(name string, value float64, rate float64, tags ...string) {
 	if m.datadog != nil {
-		m.datadog.Histogram(name, value, tags, rate)
+		m.datadog.Histogram(name, value, rate, tags...)
 	}
 	if m.prometheus != nil {
-		m.prometheus.Histogram(name, value, tags, rate)
+		m.prometheus.Histogram(name, value, rate, tags...)
 	}
 }
 
-func (m *metrics) Time(name string, value time.Duration, tags []string) {
+func (m *metrics) Time(name string, value time.Duration, tags ...string) {
 	if m.datadog != nil {
-		m.datadog.Time(name, value, tags)
+		m.datadog.Time(name, value, tags...)
 	}
 	if m.prometheus != nil {
-		m.prometheus.Time(name, value, tags)
+		m.prometheus.Time(name, value, tags...)
 	}
 }
 

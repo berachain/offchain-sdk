@@ -45,7 +45,7 @@ func (p *metrics) Close() error {
 }
 
 // Gauge implements the Gauge method of the Metrics interface using GaugeVec.
-func (p *metrics) Gauge(name string, value float64, tags []string, _ float64) {
+func (p *metrics) Gauge(name string, value float64, _ float64, tags ...string) {
 	if !p.cfg.Enabled {
 		return
 	}
@@ -67,7 +67,7 @@ func (p *metrics) Gauge(name string, value float64, tags []string, _ float64) {
 }
 
 // Incr implements the Incr method of the Metrics interface using GaugeVec.
-func (p *metrics) Incr(name string, tags []string) {
+func (p *metrics) Incr(name string, tags ...string) {
 	if !p.cfg.Enabled {
 		return
 	}
@@ -89,7 +89,7 @@ func (p *metrics) Incr(name string, tags []string) {
 }
 
 // Decr implements the Decr method of the Metrics interface using GaugeVec.
-func (p *metrics) Decr(name string, tags []string) {
+func (p *metrics) Decr(name string, tags ...string) {
 	if !p.cfg.Enabled {
 		return
 	}
@@ -111,7 +111,7 @@ func (p *metrics) Decr(name string, tags []string) {
 }
 
 // Count implements the Count method of the Metrics interface using CounterVec.
-func (p *metrics) Count(name string, value int64, tags []string) {
+func (p *metrics) Count(name string, value int64, tags ...string) {
 	if !p.cfg.Enabled {
 		return
 	}
@@ -133,7 +133,7 @@ func (p *metrics) Count(name string, value int64, tags []string) {
 }
 
 // IncMonotonic implements the IncMonotonic method of the Metrics interface using CounterVec.
-func (p *metrics) IncMonotonic(name string, tags []string) {
+func (p *metrics) IncMonotonic(name string, tags ...string) {
 	if !p.cfg.Enabled {
 		return
 	}
@@ -156,11 +156,11 @@ func (p *metrics) IncMonotonic(name string, tags []string) {
 
 // Error implements the Error method of the Metrics interface using CounterVec.
 func (p *metrics) Error(errName string) {
-	p.IncMonotonic("errors", []string{fmt.Sprintf("type:%s", errName)})
+	p.IncMonotonic("errors", fmt.Sprintf("type:%s", errName))
 }
 
 // Histogram implements the Histogram method of the Metrics interface using HistogramVec.
-func (p *metrics) Histogram(name string, value float64, tags []string, rate float64) {
+func (p *metrics) Histogram(name string, value float64, rate float64, tags ...string) {
 	if !p.cfg.Enabled {
 		return
 	}
@@ -184,7 +184,7 @@ func (p *metrics) Histogram(name string, value float64, tags []string, rate floa
 }
 
 // Time implements the Time method of the Metrics interface using GaugeVec.
-func (p *metrics) Time(name string, value time.Duration, tags []string) {
+func (p *metrics) Time(name string, value time.Duration, tags ...string) {
 	if !p.cfg.Enabled {
 		return
 	}
@@ -212,7 +212,7 @@ func (p *metrics) Time(name string, value time.Duration, tags []string) {
 
 // Latency is a helper function to measure the latency of a routine.
 func (p *metrics) Latency(jobName string, start time.Time, tags ...string) {
-	p.Time(fmt.Sprintf("%s.latency", jobName), time.Since(start), tags)
+	p.Time(fmt.Sprintf("%s.latency", jobName), time.Since(start), tags...)
 }
 
 // parseTagsToLabelPairs converts a slice of tags in "key:value" format to two slices:

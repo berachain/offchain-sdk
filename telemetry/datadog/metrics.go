@@ -38,7 +38,7 @@ func (m *metrics) Close() error {
 	return m.client.Close()
 }
 
-func (m *metrics) Gauge(name string, value float64, tags []string, rate float64) {
+func (m *metrics) Gauge(name string, value float64, rate float64, tags ...string) {
 	if !m.enabled {
 		return
 	}
@@ -46,7 +46,7 @@ func (m *metrics) Gauge(name string, value float64, tags []string, rate float64)
 	m.client.Gauge(name, value, tags, rate) //nolint:errcheck // handled by m.client.Gauge()
 }
 
-func (m *metrics) Count(name string, value int64, tags []string) {
+func (m *metrics) Count(name string, value int64, tags ...string) {
 	if !m.enabled {
 		return
 	}
@@ -54,11 +54,11 @@ func (m *metrics) Count(name string, value int64, tags []string) {
 	m.client.Count(name, value, tags, 1) //nolint:errcheck // handled by m.client.Count()
 }
 
-func (m *metrics) IncMonotonic(name string, tags []string) {
-	m.Incr(name, tags)
+func (m *metrics) IncMonotonic(name string, tags ...string) {
+	m.Incr(name, tags...)
 }
 
-func (m *metrics) Incr(name string, tags []string) {
+func (m *metrics) Incr(name string, tags ...string) {
 	if !m.enabled {
 		return
 	}
@@ -66,7 +66,7 @@ func (m *metrics) Incr(name string, tags []string) {
 	m.client.Incr(name, tags, 1) //nolint:errcheck // handled by m.client.Incr()
 }
 
-func (m *metrics) Decr(name string, tags []string) {
+func (m *metrics) Decr(name string, tags ...string) {
 	if !m.enabled {
 		return
 	}
@@ -74,7 +74,7 @@ func (m *metrics) Decr(name string, tags []string) {
 	m.client.Decr(name, tags, 1) //nolint:errcheck // handled by m.client.Decr()
 }
 
-func (m *metrics) Set(name string, value string, tags []string) {
+func (m *metrics) Set(name string, value string, tags ...string) {
 	if !m.enabled {
 		return
 	}
@@ -82,7 +82,7 @@ func (m *metrics) Set(name string, value string, tags []string) {
 	m.client.Set(name, value, tags, 1) //nolint:errcheck // handled by m.client.Set()
 }
 
-func (m *metrics) Histogram(name string, value float64, tags []string, rate float64) {
+func (m *metrics) Histogram(name string, value float64, rate float64, tags ...string) {
 	if !m.enabled {
 		return
 	}
@@ -90,7 +90,7 @@ func (m *metrics) Histogram(name string, value float64, tags []string, rate floa
 	m.client.Histogram(name, value, tags, rate) //nolint:errcheck // handled by m.client.Histogram()
 }
 
-func (m *metrics) Time(name string, value time.Duration, tags []string) {
+func (m *metrics) Time(name string, value time.Duration, tags ...string) {
 	if !m.enabled {
 		return
 	}
@@ -99,10 +99,10 @@ func (m *metrics) Time(name string, value time.Duration, tags []string) {
 }
 
 func (m *metrics) Error(errName string) {
-	m.Incr("stats.errors", []string{fmt.Sprintf("type:%s", errName)})
+	m.Incr("stats.errors", fmt.Sprintf("type:%s", errName))
 }
 
 // Latency is a helper function to measure the latency of a routine.
 func (m *metrics) Latency(jobName string, start time.Time, tags ...string) {
-	m.Time("stats.latency", time.Since(start), append(tags, fmt.Sprintf("job:%s", jobName)))
+	m.Time("stats.latency", time.Since(start), append(tags, fmt.Sprintf("job:%s", jobName))...)
 }

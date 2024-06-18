@@ -39,13 +39,13 @@ func WrapHTTPHandler(m Metrics, log log.Logger) func(http.Handler) http.Handler 
 			metricsTags := getHTTPRequestTags(r)
 
 			// Increment request count metric under `request.count`
-			m.IncMonotonic("request.count", metricsTags)
+			m.IncMonotonic("request.count", metricsTags...)
 
 			start := time.Now()
 			next.ServeHTTP(customWriter, r)
 
 			// Record latency metric under `response.latency`
-			m.Time("request.latency", time.Since(start), metricsTags)
+			m.Time("request.latency", time.Since(start), metricsTags...)
 
 			// Separately record errors under `request.errors`
 			if customWriter.statusCode >= http.StatusBadRequest {
@@ -59,7 +59,7 @@ func WrapHTTPHandler(m Metrics, log log.Logger) func(http.Handler) http.Handler 
 				}
 
 				metricsTags = append(metricsTags, fmt.Sprintf("code:%d", customWriter.statusCode))
-				m.IncMonotonic("request.errors", metricsTags)
+				m.IncMonotonic("request.errors", metricsTags...)
 			}
 		})
 	}
@@ -73,13 +73,13 @@ func WrapMicroServerHandler(m Metrics, log log.Logger) server.HandlerWrapper {
 			metricsTags := getMicroRequestTags(req)
 
 			// Increment request count metric under `request.count`
-			m.IncMonotonic("request.count", metricsTags)
+			m.IncMonotonic("request.count", metricsTags...)
 
 			start := time.Now()
 			err := next(c, req, rsp)
 
 			// Record latency metric under `response.latency`
-			m.Time("request.latency", time.Since(start), metricsTags)
+			m.Time("request.latency", time.Since(start), metricsTags...)
 
 			// Separately record errors under `request.errors`
 			if err != nil {
@@ -89,7 +89,7 @@ func WrapMicroServerHandler(m Metrics, log log.Logger) server.HandlerWrapper {
 				}
 
 				metricsTags = append(metricsTags, fmt.Sprintf("code:%s", code.String()))
-				m.IncMonotonic("request.errors", metricsTags)
+				m.IncMonotonic("request.errors", metricsTags...)
 			}
 
 			return err
