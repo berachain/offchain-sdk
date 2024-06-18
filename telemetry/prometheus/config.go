@@ -6,18 +6,15 @@ import (
 )
 
 const (
-	// Default bucket count 1000 can satisfy the precision of p99 for most histogram stats.
-	DefaultBucketCount = 1000
+	// Default bucket count for histogram metrics
+	DefaultBucketCount = 10
 )
 
 type Config struct {
 	Enabled              bool
 	Namespace            string // optional
 	Subsystem            string // optional
-	HistogramBucketCount int    // Number of buckets for histogram, default to 1000
-	// Number of buckets for time buckets, default to 1000.
-	// The bucket size is 0.01s(10ms), so the maximum covered time range is 10ms * TimeBucketCount.
-	TimeBucketCount int
+	HistogramBucketCount int    // Number of linear buckets for histogram, default to 10
 }
 
 func (c *Config) Validate() error {

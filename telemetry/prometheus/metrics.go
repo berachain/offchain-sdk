@@ -12,6 +12,14 @@ import (
 const (
 	initialVecCapacity = 32
 	tagSlices          = 2
+
+	// Constant for Summary (Percentile) metrics.
+	quantile50    = 0.5
+	quantile90    = 0.9
+	quantile99    = 0.99
+	errorMargin50 = 0.05
+	errorMargin90 = 0.01
+	errorMargin99 = 0.001
 )
 
 type metrics struct {
@@ -186,6 +194,7 @@ func (p *metrics) Histogram(name string, value float64, rate float64, tags ...st
 }
 
 // Time implements the Time method of the Metrics interface using SummaryVec.
+// Currently the p50/p90/p99 percentile are recorded.
 func (p *metrics) Time(name string, value time.Duration, tags ...string) {
 	if !p.cfg.Enabled {
 		return
@@ -196,11 +205,15 @@ func (p *metrics) Time(name string, value time.Duration, tags ...string) {
 	summaryVec, exists := p.summaryVecs[name]
 	if !exists {
 		summaryVec = prometheus.NewSummaryVec(prometheus.SummaryOpts{
-			Name:       name,
-			Namespace:  p.cfg.Namespace,
-			Subsystem:  p.cfg.Subsystem,
-			Help:       name + " timing summary",
-			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
+			Name:      name,
+			Namespace: p.cfg.Namespace,
+			Subsystem: p.cfg.Subsystem,
+			Help:      name + " timing summary",
+			Objectives: map[float64]float64{
+				quantile50: errorMargin50,
+				quantile90: errorMargin90,
+				quantile99: errorMargin99,
+			},
 		}, labels)
 		prometheus.MustRegister(summaryVec)
 		p.summaryVecs[name] = summaryVec
@@ -260,8 +273,5 @@ func forceValidName(name string) string {
 func setDefaultCfg(cfg *Config) {
 	if cfg.HistogramBucketCount <= 0 {
 		cfg.HistogramBucketCount = DefaultBucketCount
-	}
-	if cfg.TimeBucketCount <= 0 {
-		cfg.TimeBucketCount = DefaultBucketCount
 	}
 }
