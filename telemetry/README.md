@@ -1,8 +1,8 @@
-# telemetry
+# Telemetry
 
 The metrics utility for offchain-sdk.
 
-[type.go](./type.go) defines the interface for the supported metrics methods.
+[types.go](./types.go) defines the interface for the supported metrics methods.
 
 By specifying the configuration, the metrics can be emitted via Datadog and/or Prometheus.
 Please see the following subsections for detailed configurations.
