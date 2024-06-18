@@ -13,7 +13,7 @@ const (
 	initialVecCapacity = 32
 	tagSlices          = 2
 
-	// Constant for Summary (Percentile) metrics.
+	// Constant for Summary (quantile) metrics.
 	quantile50    = 0.5
 	quantile90    = 0.9
 	quantile99    = 0.99
@@ -194,7 +194,7 @@ func (p *metrics) Histogram(name string, value float64, rate float64, tags ...st
 }
 
 // Time implements the Time method of the Metrics interface using SummaryVec.
-// Currently the p50/p90/p99 percentile are recorded.
+// Currently the p50/p90/p99 quantile are recorded.
 func (p *metrics) Time(name string, value time.Duration, tags ...string) {
 	if !p.cfg.Enabled {
 		return
