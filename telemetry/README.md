@@ -45,8 +45,8 @@ For example, if `Namespace` is `app` and `Subsystem` is `api`, then the full met
 `request_success` will be `app_api_request_success`.
 
 * `HistogramBucketCount`: The number of buckets used for Histogram typed metrics. Default is 10.
-  * Note: Each bucket is an observation that needs to scrape in Prometheus, thus the recommended
-    bucket count should be of scale of tens.
+  * Note: Each bucket represents an observation that Prometheus scrapes. Therefore, it's recommended
+    to keep the number of buckets within a manageable scale, typically in the tens.
 
 ### Prometheus Methods
 
@@ -67,8 +67,9 @@ restart, `Count` will reset to 0. This is by design in Prometheus.
 * `IncMonotonic` and `Error`: Implemented using the `Count` metrics of Prometheus.
 
 * `Histogram`: This method wraps the `Histogram` metrics of Prometheus with linear buckets.
-  * Note: the maximum covered value is BucketCount * rate, where rate is passed as a parameter.
-  * TODO: In addition to linear bucket, support different types of buckets in future
+  * Note: The maximum value covered is determined by the product of BucketCount and the rate
+    parameter.
+  * TODO: Support different types of buckets beyond linear buckets in future implementations.
 
 * `Time` and `Latency`: Implemented using the `Summary` metrics of Prometheus, with pre-defined
 quantile observations: p50, p90, and p99.

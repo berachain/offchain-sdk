@@ -173,6 +173,7 @@ func (p *metrics) Error(errName string) {
 
 // Histogram implements the Histogram method of the Metrics interface using HistogramVec with
 // linear buckets.
+// TODO: Support different types of buckets beyond linear buckets in future implementations.
 func (p *metrics) Histogram(name string, value float64, rate float64, tags ...string) {
 	if !p.cfg.Enabled {
 		return
