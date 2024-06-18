@@ -26,8 +26,8 @@ emitted from Datadog.
 ### Datadog Methods
 
 [metrics.go](./datadog/metrics.go) implements the Datadog version of the supported metrics methods
-defined in [type.go](./type.go). All implementations are simple wrappers around the native methods
-in Datadog.
+defined in [types.go](./types.go). All implementations are simple wrappers around the native methods
+provided by the Datadog `statsd` client.
 
 ## Prometheus
 
