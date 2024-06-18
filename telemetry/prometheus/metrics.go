@@ -20,6 +20,7 @@ type metrics struct {
 	gaugeVecs     map[string]*prometheus.GaugeVec
 	counterVecs   map[string]*prometheus.CounterVec
 	histogramVecs map[string]*prometheus.HistogramVec
+	summaryVecs   map[string]*prometheus.SummaryVec
 }
 
 // NewMetrics initializes a new instance of Prometheus metrics.
@@ -37,6 +38,7 @@ func NewMetrics(cfg *Config) (*metrics, error) { //nolint:revive // only used as
 	p.gaugeVecs = make(map[string]*prometheus.GaugeVec, initialVecCapacity)
 	p.counterVecs = make(map[string]*prometheus.CounterVec, initialVecCapacity)
 	p.histogramVecs = make(map[string]*prometheus.HistogramVec, initialVecCapacity)
+	p.summaryVecs = make(map[string]*prometheus.SummaryVec, initialVecCapacity)
 	return p, nil
 }
 
@@ -183,7 +185,7 @@ func (p *metrics) Histogram(name string, value float64, rate float64, tags ...st
 	histogramVec.WithLabelValues(labelValues...).Observe(value)
 }
 
-// Time implements the Time method of the Metrics interface using GaugeVec.
+// Time implements the Time method of the Metrics interface using SummaryVec.
 func (p *metrics) Time(name string, value time.Duration, tags ...string) {
 	if !p.cfg.Enabled {
 		return
@@ -191,23 +193,22 @@ func (p *metrics) Time(name string, value time.Duration, tags ...string) {
 
 	name = forceValidName(name)
 	labels, labelValues := parseTagsToLabelPairs(tags)
-	histogramVec, exists := p.histogramVecs[name]
+	summaryVec, exists := p.summaryVecs[name]
 	if !exists {
-		histogramVec = prometheus.NewHistogramVec(prometheus.HistogramOpts{
-			Name:      name,
-			Namespace: p.cfg.Namespace,
-			Subsystem: p.cfg.Subsystem,
-			Help:      name + " timing histogram",
-			// Given bucket=0.01s(10ms), the maximum covered time range is 10ms * TimeBucketCount
-			Buckets: prometheus.LinearBuckets(0, 0.01, p.cfg.TimeBucketCount),
+		summaryVec = prometheus.NewSummaryVec(prometheus.SummaryOpts{
+			Name:       name,
+			Namespace:  p.cfg.Namespace,
+			Subsystem:  p.cfg.Subsystem,
+			Help:       name + " timing summary",
+			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 		}, labels)
-		prometheus.MustRegister(histogramVec)
-		p.histogramVecs[name] = histogramVec
+		prometheus.MustRegister(summaryVec)
+		p.summaryVecs[name] = summaryVec
 	}
 
 	// Convert time.Duration to seconds since Prometheus prefers base units
 	// see https://prometheus.io/docs/practices/naming/#base-units
-	histogramVec.WithLabelValues(labelValues...).Observe(value.Seconds())
+	summaryVec.WithLabelValues(labelValues...).Observe(value.Seconds())
 }
 
 // Latency is a helper function to measure the latency of a routine.
