@@ -37,6 +37,11 @@ func NewMetrics(cfg *Config) (Metrics, error) {
 	return m, nil
 }
 
+// NewNoopMetrics returns a new Metrics instance with no-op implementations.
+func NewNoopMetrics() Metrics {
+	return &metrics{}
+}
+
 type metrics struct {
 	datadog    Metrics
 	prometheus Metrics

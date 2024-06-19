@@ -28,6 +28,7 @@ func NewAppBuilder(appName string) *AppBuilder {
 	return &AppBuilder{
 		appName: appName,
 		jobs:    []job.Basic{},
+		metrics: telemetry.NewNoopMetrics(),
 	}
 }
 
