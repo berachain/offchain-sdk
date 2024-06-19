@@ -36,6 +36,6 @@ func setUp(t *testing.T) *sdk.Context {
 	}
 	return sdk.NewContext(
 		ctx, eth.NewExtendedEthClient(chain, 5*time.Second),
-		log.NewLogger(os.Stdout, "test-runner"), nil,
+		log.NewLogger(os.Stdout, "test-runner"), nil, nil,
 	)
 }

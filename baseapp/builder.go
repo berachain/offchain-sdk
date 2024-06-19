@@ -7,6 +7,7 @@ import (
 	"github.com/berachain/offchain-sdk/job"
 	"github.com/berachain/offchain-sdk/log"
 	"github.com/berachain/offchain-sdk/server"
+	"github.com/berachain/offchain-sdk/telemetry"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	ethdb "github.com/ethereum/go-ethereum/ethdb"
@@ -19,6 +20,7 @@ type AppBuilder struct {
 	db        ethdb.KeyValueStore
 	ethClient eth.Client
 	svr       *server.Server
+	metrics   telemetry.Metrics
 }
 
 // NewAppBuilder creates a new app builder.
@@ -42,6 +44,13 @@ func (ab *AppBuilder) RegisterJob(job job.Basic) {
 // RegisterDB registers the db.
 func (ab *AppBuilder) RegisterDB(db ethdb.KeyValueStore) {
 	ab.db = db
+}
+
+// RegisterMetrics registers the metrics.
+func (ab *AppBuilder) RegisterMetrics(cfg *telemetry.Config) error {
+	var err error
+	ab.metrics, err = telemetry.NewMetrics(cfg)
+	return err
 }
 
 // RegisterHTTPServer registers the http server.
@@ -95,5 +104,6 @@ func (ab *AppBuilder) BuildApp(
 		ab.jobs,
 		ab.db,
 		ab.svr,
+		ab.metrics,
 	)
 }
