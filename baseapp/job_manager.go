@@ -126,6 +126,11 @@ func (jm *JobManager) Stop() {
 
 	// Wait for both to finish.
 	wg.Wait()
+
+	// Close the metrics.
+	if err := jm.ctxFactory.metrics.Close(); err != nil {
+		jm.ctxFactory.logger.Error("failed to close metrics", "err", err)
+	}
 }
 
 // RunProducers sets up each job and runs its producer.
