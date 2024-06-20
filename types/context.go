@@ -5,6 +5,7 @@ import (
 
 	"github.com/berachain/offchain-sdk/client/eth"
 	"github.com/berachain/offchain-sdk/log"
+	"github.com/berachain/offchain-sdk/telemetry"
 
 	"github.com/ethereum/go-ethereum/ethdb"
 )
@@ -15,9 +16,10 @@ type CancellableContext interface {
 
 type Context struct {
 	context.Context
-	chain  eth.Client
-	logger log.Logger
-	db     ethdb.KeyValueStore
+	chain   eth.Client
+	logger  log.Logger
+	db      ethdb.KeyValueStore
+	metrics telemetry.Metrics
 }
 
 // UnwrapContext unwraps the sdk context.
@@ -30,13 +32,18 @@ func UnwrapContext(ctx context.Context) *Context {
 }
 
 func NewContext(
-	ctx context.Context, ethClient eth.Client, logger log.Logger, db ethdb.KeyValueStore,
+	ctx context.Context,
+	ethClient eth.Client,
+	logger log.Logger,
+	db ethdb.KeyValueStore,
+	metrics telemetry.Metrics,
 ) *Context {
 	return &Context{
 		Context: ctx,
 		chain:   ethClient,
 		logger:  logger,
 		db:      db,
+		metrics: metrics,
 	}
 }
 
@@ -50,4 +57,8 @@ func (c *Context) Logger() log.Logger {
 
 func (c *Context) DB() ethdb.KeyValueStore {
 	return c.db
+}
+
+func (c *Context) Metrics() telemetry.Metrics {
+	return c.metrics
 }

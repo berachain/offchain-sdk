@@ -7,6 +7,7 @@ import (
 	"github.com/berachain/offchain-sdk/job"
 	"github.com/berachain/offchain-sdk/log"
 	"github.com/berachain/offchain-sdk/server"
+	"github.com/berachain/offchain-sdk/telemetry"
 
 	ethdb "github.com/ethereum/go-ethereum/ethdb"
 )
@@ -34,6 +35,7 @@ func New(
 	jobs []job.Basic,
 	db ethdb.KeyValueStore,
 	svr *server.Server,
+	metrics telemetry.Metrics,
 ) *BaseApp {
 	return &BaseApp{
 		name:   name,
@@ -44,6 +46,7 @@ func New(
 				connPool: ethClient,
 				logger:   logger,
 				db:       db,
+				metrics:  metrics,
 			},
 		),
 		svr: svr,
