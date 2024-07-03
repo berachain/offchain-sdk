@@ -1,4 +1,4 @@
-package rwmap
+package rwstore
 
 import (
 	"sync"
