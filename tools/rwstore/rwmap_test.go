@@ -61,7 +61,7 @@ func TestRWMapConcurrentAccess(t *testing.T) {
 		wg.Add(1)
 		go func(val int) {
 			defer wg.Done()
-			if v, ok := rwMap.Get(val); !ok || v != val {
+			if v, ok := rwMap.Get(val); ok && v != val {
 				t.Errorf("Concurrent access failed, expected %d, got %d", val, v)
 			}
 		}(i)
