@@ -1,5 +1,3 @@
-//go:generate mockery --name ConnectionPool
-
 package eth
 
 import (
@@ -12,6 +10,7 @@ import (
 	lru "github.com/hashicorp/golang-lru/v2"
 )
 
+//go:generate mockery --name ConnectionPool
 type ConnectionPool interface {
 	GetHTTP() (Client, bool)
 	GetWS() (Client, bool)

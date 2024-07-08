@@ -1,5 +1,3 @@
-//go:generate mockery --name Client
-
 package eth
 
 import (
@@ -14,6 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
+//go:generate mockery --name Client
 type Client interface {
 	DialContext(ctx context.Context, rawurl string) error
 	Close() error
