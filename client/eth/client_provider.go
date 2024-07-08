@@ -6,12 +6,12 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/berachain/offchain-sdk/telemetry"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
-
-	"github.com/berachain/offchain-sdk/telemetry"
 )
 
 // ErrClientNotFound is an error that is returned when a client is not found.
@@ -27,12 +27,12 @@ type ChainProviderImpl struct {
 }
 
 // NewChainProviderImpl creates a new ChainProviderImpl with the given ConnectionPool.
-func NewChainProviderImpl(pool ConnectionPool, cfg ConnectionPoolConfig) (Client, error) {
+func NewChainProviderImpl(pool ConnectionPool, cfg ConnectionPoolConfig) Client {
 	c := &ChainProviderImpl{ConnectionPool: pool, rpcTimeout: cfg.DefaultTimeout}
 	if c.rpcTimeout == 0 {
 		c.rpcTimeout = defaultRPCTimeout
 	}
-	return c, nil
+	return c
 }
 
 func (c *ChainProviderImpl) EnableMetrics(m telemetry.Metrics) {
@@ -47,8 +47,9 @@ func (c *ChainProviderImpl) recordRPCMethod(
 	if c.m == nil {
 		return
 	}
-	tagsMap := map[string]string{"rpc_id": rpcID, "rpc_method": method}
-	tags := formatTags(tagsMap)
+	tagNames := []string{"rpc_id", "method"}
+	tagValues := []string{rpcID, method}
+	tags := telemetry.ParseLabelPairsToTags(tagNames, tagValues)
 
 	c.m.IncMonotonic("rpc.request.count", tags...)
 	c.m.Time("rpc.request.duration", time.Since(start), tags...)
@@ -70,7 +71,7 @@ func (c *ChainProviderImpl) BlockByNumber(
 		defer cancel()
 
 		var err error
-		defer c.recordRPCMethod(client.ClientID, "eth_getBlockByNumber", time.Now(), err)
+		defer c.recordRPCMethod(client.ClientID(), "eth_getBlockByNumber", time.Now(), err)
 		result, err := client.BlockByNumber(ctxWithTimeout, num)
 		return result, err
 	}
@@ -85,7 +86,7 @@ func (c *ChainProviderImpl) BlockReceipts(
 		defer cancel()
 
 		var err error
-		defer c.recordRPCMethod(client.ClientID, "eth_getBlockReceipts", time.Now(), err)
+		defer c.recordRPCMethod(client.ClientID(), "eth_getBlockReceipts", time.Now(), err)
 		result, err := client.BlockReceipts(ctxWithTimeout, blockNrOrHash)
 		return result, err
 	}
@@ -100,7 +101,7 @@ func (c *ChainProviderImpl) TransactionReceipt(
 		defer cancel()
 
 		var err error
-		defer c.recordRPCMethod(client.ClientID, "eth_getTransactionReceipt", time.Now(), err)
+		defer c.recordRPCMethod(client.ClientID(), "eth_getTransactionReceipt", time.Now(), err)
 		result, err := client.TransactionReceipt(ctxWithTimeout, txHash)
 		return result, err
 	}
@@ -115,7 +116,7 @@ func (c *ChainProviderImpl) SubscribeNewHead(
 		defer cancel()
 
 		var err error
-		defer c.recordRPCMethod(client.ClientID, "eth_subscribe", time.Now(), err)
+		defer c.recordRPCMethod(client.ClientID(), "eth_subscribe", time.Now(), err)
 		header, sub, err := client.SubscribeNewHead(ctxWithTimeout)
 		return header, sub, err
 	}
@@ -129,7 +130,7 @@ func (c *ChainProviderImpl) BlockNumber(ctx context.Context) (uint64, error) {
 		defer cancel()
 
 		var err error
-		defer c.recordRPCMethod(client.ClientID, "eth_blockNumber", time.Now(), err)
+		defer c.recordRPCMethod(client.ClientID(), "eth_blockNumber", time.Now(), err)
 		result, err := client.BlockNumber(ctxWithTimeout)
 		return result, err
 	}
@@ -143,7 +144,7 @@ func (c *ChainProviderImpl) ChainID(ctx context.Context) (*big.Int, error) {
 		defer cancel()
 
 		var err error
-		defer c.recordRPCMethod(client.ClientID, "eth_chainId", time.Now(), err)
+		defer c.recordRPCMethod(client.ClientID(), "eth_chainId", time.Now(), err)
 		result, err := client.ChainID(ctxWithTimeout)
 		return result, err
 	}
@@ -158,7 +159,7 @@ func (c *ChainProviderImpl) BalanceAt(
 		defer cancel()
 
 		var err error
-		defer c.recordRPCMethod(client.ClientID, "eth_getBalance", time.Now(), err)
+		defer c.recordRPCMethod(client.ClientID(), "eth_getBalance", time.Now(), err)
 		result, err := client.BalanceAt(ctxWithTimeout, address, blockNumber)
 		return result, err
 	}
@@ -173,7 +174,7 @@ func (c *ChainProviderImpl) CodeAt(
 		defer cancel()
 
 		var err error
-		defer c.recordRPCMethod(client.ClientID, "eth_getCode", time.Now(), err)
+		defer c.recordRPCMethod(client.ClientID(), "eth_getCode", time.Now(), err)
 		result, err := client.CodeAt(ctxWithTimeout, account, blockNumber)
 		return result, err
 	}
@@ -199,7 +200,7 @@ func (c *ChainProviderImpl) FilterLogs(
 		defer cancel()
 
 		var err error
-		defer c.recordRPCMethod(client.ClientID, "eth_getLogs", time.Now(), err)
+		defer c.recordRPCMethod(client.ClientID(), "eth_getLogs", time.Now(), err)
 		result, err := client.FilterLogs(ctxWithTimeout, q)
 		return result, err
 	}
@@ -214,7 +215,7 @@ func (c *ChainProviderImpl) HeaderByNumber(
 		defer cancel()
 
 		var err error
-		defer c.recordRPCMethod(client.ClientID, "eth_getBlockByNumber", time.Now(), err)
+		defer c.recordRPCMethod(client.ClientID(), "eth_getBlockByNumber", time.Now(), err)
 		result, err := client.HeaderByNumber(ctxWithTimeout, number)
 		return result, err
 	}
@@ -229,7 +230,7 @@ func (c *ChainProviderImpl) PendingCodeAt(
 		defer cancel()
 
 		var err error
-		defer c.recordRPCMethod(client.ClientID, "eth_getCode", time.Now(), err)
+		defer c.recordRPCMethod(client.ClientID(), "eth_getCode", time.Now(), err)
 		result, err := client.PendingCodeAt(ctxWithTimeout, account)
 		return result, err
 	}
@@ -244,7 +245,7 @@ func (c *ChainProviderImpl) PendingNonceAt(
 		defer cancel()
 
 		var err error
-		defer c.recordRPCMethod(client.ClientID, "eth_getTransactionCount", time.Now(), err)
+		defer c.recordRPCMethod(client.ClientID(), "eth_getTransactionCount", time.Now(), err)
 		result, err := client.PendingNonceAt(ctxWithTimeout, account)
 		return result, err
 	}
@@ -259,7 +260,7 @@ func (c *ChainProviderImpl) NonceAt(
 		defer cancel()
 
 		var err error
-		defer c.recordRPCMethod(client.ClientID, "eth_getTransactionCount", time.Now(), err)
+		defer c.recordRPCMethod(client.ClientID(), "eth_getTransactionCount", time.Now(), err)
 		result, err := client.NonceAt(ctxWithTimeout, account, bn)
 		return result, err
 	}
@@ -274,7 +275,7 @@ func (c *ChainProviderImpl) SendTransaction(
 		defer cancel()
 
 		var err error
-		defer c.recordRPCMethod(client.ClientID, "eth_sendTransaction", time.Now(), err)
+		defer c.recordRPCMethod(client.ClientID(), "eth_sendTransaction", time.Now(), err)
 		err = client.SendTransaction(ctxWithTimeout, tx)
 		return err
 	}
@@ -290,7 +291,7 @@ func (c *ChainProviderImpl) SubscribeFilterLogs(
 		defer cancel()
 
 		var err error
-		defer c.recordRPCMethod(client.ClientID, "eth_subscribe", time.Now(), err)
+		defer c.recordRPCMethod(client.ClientID(), "eth_subscribe", time.Now(), err)
 		result, err := client.SubscribeFilterLogs(ctxWithTimeout, q, ch)
 		return result, err
 	}
@@ -304,7 +305,7 @@ func (c *ChainProviderImpl) SuggestGasPrice(ctx context.Context) (*big.Int, erro
 		defer cancel()
 
 		var err error
-		defer c.recordRPCMethod(client.ClientID, "eth_gasPrice", time.Now(), err)
+		defer c.recordRPCMethod(client.ClientID(), "eth_gasPrice", time.Now(), err)
 		result, err := client.SuggestGasPrice(ctxWithTimeout)
 		return result, err
 	}
@@ -320,7 +321,7 @@ func (c *ChainProviderImpl) CallContract(
 		defer cancel()
 
 		var err error
-		defer c.recordRPCMethod(client.ClientID, "eth_call", time.Now(), err)
+		defer c.recordRPCMethod(client.ClientID(), "eth_call", time.Now(), err)
 		result, err := client.CallContract(ctxWithTimeout, msg, blockNumber)
 		return result, err
 	}
@@ -334,7 +335,7 @@ func (c *ChainProviderImpl) SuggestGasTipCap(ctx context.Context) (*big.Int, err
 		defer cancel()
 
 		var err error
-		defer c.recordRPCMethod(client.ClientID, "eth_gasTipCap", time.Now(), err)
+		defer c.recordRPCMethod(client.ClientID(), "eth_gasTipCap", time.Now(), err)
 		result, err := client.SuggestGasTipCap(ctxWithTimeout)
 		return result, err
 	}
@@ -350,7 +351,7 @@ func (c *ChainProviderImpl) TransactionByHash(
 		defer cancel()
 
 		var err error
-		defer c.recordRPCMethod(client.ClientID, "eth_getTransactionByHash", time.Now(), err)
+		defer c.recordRPCMethod(client.ClientID(), "eth_getTransactionByHash", time.Now(), err)
 		tx, pending, err := client.TransactionByHash(ctxWithTimeout, hash)
 		return tx, pending, err
 	}
@@ -384,7 +385,7 @@ func (c *ChainProviderImpl) TxPoolContentFrom(ctx context.Context, address commo
 		defer cancel()
 
 		var err error
-		defer c.recordRPCMethod(client.ClientID, "txpool_content", time.Now(), err)
+		defer c.recordRPCMethod(client.ClientID(), "txpool_content", time.Now(), err)
 		result, err := client.TxPoolContentFrom(ctxWithTimeout, address)
 		return result, err
 	}
@@ -418,7 +419,7 @@ func (c *ChainProviderImpl) TxPoolInspect(ctx context.Context) (
 		defer cancel()
 
 		var err error
-		defer c.recordRPCMethod(client.ClientID, "txpool_inspect", time.Now(), err)
+		defer c.recordRPCMethod(client.ClientID(), "txpool_inspect", time.Now(), err)
 		result, err := client.TxPoolInspect(ctxWithTimeout)
 		return result, err
 	}
@@ -428,10 +429,17 @@ func (c *ChainProviderImpl) TxPoolInspect(ctx context.Context) (
 func (c *ChainProviderImpl) Health() bool {
 	httpOk, wsOk := false, false
 	if client, ok := c.GetHTTP(); ok {
-		httpOk = client.Healthy()
+		httpOk = client.Health()
 	}
 	if client, ok := c.GetWS(); ok {
-		wsOk = client.Healthy()
+		wsOk = client.Health()
 	}
 	return httpOk && wsOk
+}
+
+func (c *ChainProviderImpl) ClientID() string {
+	if client, ok := c.GetHTTP(); ok {
+		return client.ClientID()
+	}
+	return ""
 }

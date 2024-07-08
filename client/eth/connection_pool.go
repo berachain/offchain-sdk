@@ -1,3 +1,5 @@
+//go:generate mockery --name ConnectionPool
+
 package eth
 
 import (
@@ -11,8 +13,8 @@ import (
 )
 
 type ConnectionPool interface {
-	GetHTTP() (*HealthCheckedClient, bool)
-	GetWS() (*HealthCheckedClient, bool)
+	GetHTTP() (Client, bool)
+	GetWS() (Client, bool)
 	RemoveChainClient(string) error
 	Close() error
 	Dial(string) error
@@ -35,7 +37,7 @@ func NewConnectionPoolImpl(cfg ConnectionPoolConfig, logger log.Logger) (Connect
 		cfg.HealthCheckInterval = defaultHealthCheckInterval
 	}
 
-	cache, err := lru.NewWithEvict[string, *HealthCheckedClient](
+	cache, err := lru.NewWithEvict(
 		len(cfg.EthHTTPURLs), func(_ string, v *HealthCheckedClient) {
 			defer v.Close()
 			// The timeout is added so that any in progress
@@ -45,7 +47,7 @@ func NewConnectionPoolImpl(cfg ConnectionPoolConfig, logger log.Logger) (Connect
 	if err != nil {
 		return nil, err
 	}
-	wsCache, err := lru.NewWithEvict[string, *HealthCheckedClient](
+	wsCache, err := lru.NewWithEvict(
 		len(cfg.EthHTTPURLs), func(_ string, v *HealthCheckedClient) {
 			defer v.Close()
 			// The timeout is added so that any in progress
@@ -82,14 +84,14 @@ func (c *ConnectionPoolImpl) Dial(string) error {
 func (c *ConnectionPoolImpl) DialContext(ctx context.Context, _ string) error {
 	for _, url := range c.config.EthHTTPURLs {
 		client := NewHealthCheckedClient(c.config.HealthCheckInterval, c.logger)
-		if err := client.DialContext(ctx, url, c.config.DefaultTimeout); err != nil {
+		if err := client.DialContextWithTimeout(ctx, url, c.config.DefaultTimeout); err != nil {
 			return err
 		}
 		c.cache.Add(url, client)
 	}
 	for _, url := range c.config.EthWSURLs {
 		client := NewHealthCheckedClient(c.config.HealthCheckInterval, c.logger)
-		if err := client.DialContext(ctx, url, c.config.DefaultTimeout); err != nil {
+		if err := client.DialContextWithTimeout(ctx, url, c.config.DefaultTimeout); err != nil {
 			return err
 		}
 		c.wsCache.Add(url, client)
@@ -97,23 +99,23 @@ func (c *ConnectionPoolImpl) DialContext(ctx context.Context, _ string) error {
 	return nil
 }
 
-func (c *ConnectionPoolImpl) GetHTTP() (*HealthCheckedClient, bool) {
+func (c *ConnectionPoolImpl) GetHTTP() (Client, bool) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 retry:
 	_, client, ok := c.cache.GetOldest()
-	if !client.Healthy() {
+	if !client.Health() {
 		goto retry
 	}
 	return client, ok
 }
 
-func (c *ConnectionPoolImpl) GetWS() (*HealthCheckedClient, bool) {
+func (c *ConnectionPoolImpl) GetWS() (Client, bool) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 retry:
 	_, client, ok := c.wsCache.GetOldest()
-	if !client.Healthy() {
+	if !client.Health() {
 		goto retry
 	}
 	return client, ok

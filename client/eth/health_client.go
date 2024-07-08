@@ -17,7 +17,7 @@ type HealthCheckedClient struct {
 	healthy             bool
 	healthCheckInterval time.Duration
 	mu                  sync.Mutex
-	ClientID            string
+	clientID            string
 }
 
 func NewHealthCheckedClient(
@@ -29,7 +29,7 @@ func NewHealthCheckedClient(
 	}
 }
 
-func (c *HealthCheckedClient) DialContext(
+func (c *HealthCheckedClient) DialContextWithTimeout(
 	ctx context.Context, rawurl string, rpcTimeout time.Duration,
 ) error {
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, c.healthCheckInterval)
@@ -41,14 +41,18 @@ func (c *HealthCheckedClient) DialContext(
 
 	c.ExtendedEthClient = NewExtendedEthClient(ethClient, rpcTimeout)
 	c.dialurl = rawurl
-	c.ClientID = trimProtocolAndPort(rawurl)
+	c.clientID = trimProtocolAndPort(rawurl)
 
 	go c.StartHealthCheck(ctx)
 
 	return nil
 }
 
-func (c *HealthCheckedClient) Healthy() bool {
+func (c *HealthCheckedClient) ClientID() string {
+	return c.clientID
+}
+
+func (c *HealthCheckedClient) Health() bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.healthy

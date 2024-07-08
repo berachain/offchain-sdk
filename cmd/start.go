@@ -82,10 +82,7 @@ func StartCmdWithOptions[C any](
 				return err
 			}
 
-			cpi, err := eth.NewChainProviderImpl(cp, cfg.ConnectionPool)
-			if err != nil {
-				return err
-			}
+			cpi := eth.NewChainProviderImpl(cp, cfg.ConnectionPool)
 
 			if err = cpi.DialContext(ctx, ""); err != nil {
 				return err

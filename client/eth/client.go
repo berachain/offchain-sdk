@@ -1,3 +1,5 @@
+//go:generate mockery --name Client
+
 package eth
 
 import (
@@ -16,6 +18,7 @@ type Client interface {
 	DialContext(ctx context.Context, rawurl string) error
 	Close() error
 	Health() bool
+	ClientID() string
 	Reader
 	Writer
 }
@@ -99,6 +102,7 @@ type Writer interface {
 type ExtendedEthClient struct {
 	*ethclient.Client
 	rpcTimeout time.Duration
+	clientID   string
 }
 
 func NewExtendedEthClient(c *ethclient.Client, rpcTimeout time.Duration) *ExtendedEthClient {
@@ -120,6 +124,7 @@ func (c *ExtendedEthClient) DialContext(ctx context.Context, rawurl string) erro
 	var err error
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
 	c.Client, err = ethclient.DialContext(ctxWithTimeout, rawurl)
+	c.clientID = trimProtocolAndPort(rawurl)
 	cancel()
 	return err
 }
@@ -138,6 +143,10 @@ func (c *ExtendedEthClient) Health() bool {
 	_, err := c.ChainID(ctxWithTimeout)
 	cancel()
 	return err == nil
+}
+
+func (c *ExtendedEthClient) ClientID() string {
+	return c.clientID
 }
 
 // ==================================================================

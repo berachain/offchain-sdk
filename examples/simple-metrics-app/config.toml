@@ -1,0 +1,14 @@
+[App.Metrics.Prometheus]
+Enabled = true
+Namespace = "example"
+Subsystem = "listener_app"
+
+# For Prometheus to run, must also expose the HTTP server endpoint.
+[Server.HTTP]
+Port = 8080
+
+[ConnectionPool]
+EthHTTPURLs = ["https://boldest-muddy-general.bera-artio.quiknode.pro/1300226c9ed650c1066abf7b6e88e25c8169fbb7"]
+EthWSURLs = ["wss://boldest-muddy-general.bera-artio.quiknode.pro/1300226c9ed650c1066abf7b6e88e25c8169fbb7"]
+DefaultTimeout = "5s"
+HealthCheckInterval = "5s"
