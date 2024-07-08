@@ -28,7 +28,7 @@ func BuildRootCommand(name, short string, args cobra.PositionalArgs) *cobra.Comm
 		Use:   name,
 		Short: short,
 		Args:  args,
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(cmd *cobra.Command, _ []string) {
 			if err := cmd.Help(); err != nil {
 				os.Exit(1)
 			}

@@ -27,8 +27,6 @@ func StartCmd[C any](app coreapp.App[C], defaultAppHome string) *cobra.Command {
 }
 
 // StartCmdWithOptions runs the service passed in.
-//
-//nolint:gocognit // okay for now.
 func StartCmdWithOptions[C any](
 	app coreapp.App[C], defaultAppHome string, _ StartCmdOptions,
 ) *cobra.Command {
@@ -36,7 +34,7 @@ func StartCmdWithOptions[C any](
 		Use:   "start",
 		Short: "Run the service",
 		Long:  `Run the service`,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			// Create a context that will be cancelled when the user presses Ctrl+C
 			// (process receives termination signal).
 			ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
@@ -82,10 +80,7 @@ func StartCmdWithOptions[C any](
 				return err
 			}
 
-			cpi, err := eth.NewChainProviderImpl(cp, cfg.ConnectionPool)
-			if err != nil {
-				return err
-			}
+			cpi := eth.NewChainProviderImpl(cp, cfg.ConnectionPool)
 
 			if err = cpi.DialContext(ctx, ""); err != nil {
 				return err

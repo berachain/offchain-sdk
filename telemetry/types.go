@@ -1,3 +1,5 @@
+//go:generate mockery --name Metrics
+
 package telemetry
 
 import "time"

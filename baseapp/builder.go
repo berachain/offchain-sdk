@@ -51,7 +51,16 @@ func (ab *AppBuilder) RegisterDB(db ethdb.KeyValueStore) {
 func (ab *AppBuilder) RegisterMetrics(cfg *telemetry.Config) error {
 	var err error
 	ab.metrics, err = telemetry.NewMetrics(cfg)
-	return err
+	if err != nil {
+		return err
+	}
+
+	// Enable metrics on eth client only if it is an instance of ChainProviderImpl.
+	chainProvider, ok := ab.ethClient.(*eth.ChainProviderImpl)
+	if ok {
+		chainProvider.EnableMetrics(ab.metrics)
+	}
+	return nil
 }
 
 // RegisterHTTPServer registers the http server.
