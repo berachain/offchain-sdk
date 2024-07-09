@@ -38,8 +38,9 @@ lint: |
 	go run github.com/golangci/golangci-lint/cmd/golangci-lint run
 
 # Test
+# TODO - Remove the GOEXPERIMENT=rangefunc once Go 1.23 is released
 test: |
-	go test -v ./...
+	GOEXPERIMENT=rangefunc go test -v ./...
 
 # Format
 format: |
