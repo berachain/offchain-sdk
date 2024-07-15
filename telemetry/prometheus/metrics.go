@@ -4,10 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"sync"
 	"time"
 	"unicode"
 
+	"github.com/berachain/offchain-sdk/tools/rwstore"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -30,9 +30,9 @@ type metrics struct {
 	cfg *Config
 
 	gaugeVecs     map[string]*prometheus.GaugeVec
-	counterVecs   sync.Map
+	counterVecs   *rwstore.RWMap[string, *prometheus.CounterVec]
 	histogramVecs map[string]*prometheus.HistogramVec
-	summaryVecs   sync.Map
+	summaryVecs   *rwstore.RWMap[string, *prometheus.SummaryVec]
 }
 
 // NewMetrics initializes a new instance of Prometheus metrics.
@@ -48,7 +48,9 @@ func NewMetrics(cfg *Config) (*metrics, error) { //nolint:revive // only used as
 	}
 
 	p.gaugeVecs = make(map[string]*prometheus.GaugeVec, initialVecCapacity)
+	p.counterVecs = rwstore.NewRWMap[string, *prometheus.CounterVec]()
 	p.histogramVecs = make(map[string]*prometheus.HistogramVec, initialVecCapacity)
+	p.summaryVecs = rwstore.NewRWMap[string, *prometheus.SummaryVec]()
 	return p, nil
 }
 
@@ -131,14 +133,13 @@ func (p *metrics) Count(name string, value int64, tags ...string) {
 	name = forceValidName(name)
 	labels, labelValues := parseTagsToLabelPairs(tags)
 
-	counterVecInterface, ok := p.counterVecs.Load(name)
+	counterVec, ok := p.counterVecs.Get(name)
 	if ok {
-		counterVec := counterVecInterface.(*prometheus.CounterVec) //nolint:errcheck // OK
 		counterVec.WithLabelValues(labels...).Add(float64(value))
 		return
 	}
 
-	counterVec := prometheus.NewCounterVec(prometheus.CounterOpts{
+	counterVec = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name:      name,
 		Namespace: p.cfg.Namespace,
 		Subsystem: p.cfg.Subsystem,
@@ -155,7 +156,7 @@ func (p *metrics) Count(name string, value int64, tags ...string) {
 			panic(err)
 		}
 	} else {
-		p.counterVecs.Store(name, counterVec)
+		p.counterVecs.Set(name, counterVec)
 	}
 	counterVec.WithLabelValues(labelValues...).Add(float64(value))
 }
@@ -169,14 +170,13 @@ func (p *metrics) IncMonotonic(name string, tags ...string) {
 	name = forceValidName(name)
 	labels, labelValues := parseTagsToLabelPairs(tags)
 
-	value, ok := p.counterVecs.Load(name)
+	counterVec, ok := p.counterVecs.Get(name)
 	if ok {
-		counterVec := value.(*prometheus.CounterVec) //nolint:errcheck // OK
 		counterVec.WithLabelValues(labels...).Inc()
 		return
 	}
 
-	counterVec := prometheus.NewCounterVec(prometheus.CounterOpts{
+	counterVec = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name:      name,
 		Namespace: p.cfg.Namespace,
 		Subsystem: p.cfg.Subsystem,
@@ -193,7 +193,7 @@ func (p *metrics) IncMonotonic(name string, tags ...string) {
 			panic(err)
 		}
 	} else {
-		p.counterVecs.Store(name, counterVec)
+		p.counterVecs.Set(name, counterVec)
 	}
 	counterVec.WithLabelValues(labelValues...).Inc()
 }
@@ -238,14 +238,13 @@ func (p *metrics) Time(name string, value time.Duration, tags ...string) {
 
 	name = forceValidName(name)
 	labels, labelValues := parseTagsToLabelPairs(tags)
-	summaryVecInterface, ok := p.counterVecs.Load(name)
+	summaryVec, ok := p.summaryVecs.Get(name)
 	if ok {
-		counterVec := summaryVecInterface.(*prometheus.SummaryVec) //nolint:errcheck // OK
-		counterVec.WithLabelValues(labels...).Observe(value.Seconds())
+		summaryVec.WithLabelValues(labels...).Observe(value.Seconds())
 		return
 	}
 
-	summaryVec := prometheus.NewSummaryVec(prometheus.SummaryOpts{
+	summaryVec = prometheus.NewSummaryVec(prometheus.SummaryOpts{
 		Name:      name,
 		Namespace: p.cfg.Namespace,
 		Subsystem: p.cfg.Subsystem,
@@ -267,7 +266,7 @@ func (p *metrics) Time(name string, value time.Duration, tags ...string) {
 			panic(err)
 		}
 	} else {
-		p.summaryVecs.Store(name, summaryVec)
+		p.summaryVecs.Set(name, summaryVec)
 	}
 	// Convert time.Duration to seconds since Prometheus prefers base units
 	// see https://prometheus.io/docs/practices/naming/#base-units
