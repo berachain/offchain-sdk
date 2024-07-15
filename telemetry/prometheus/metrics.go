@@ -7,6 +7,8 @@ import (
 	"unicode"
 
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/berachain/offchain-sdk/tools/rwstore"
 )
 
 const (
@@ -28,9 +30,9 @@ type metrics struct {
 	cfg *Config
 
 	gaugeVecs     map[string]*prometheus.GaugeVec
-	counterVecs   map[string]*prometheus.CounterVec
+	counterVecs   *rwstore.RWMap[string, *prometheus.CounterVec]
 	histogramVecs map[string]*prometheus.HistogramVec
-	summaryVecs   map[string]*prometheus.SummaryVec
+	summaryVecs   *rwstore.RWMap[string, *prometheus.SummaryVec]
 }
 
 // NewMetrics initializes a new instance of Prometheus metrics.
@@ -46,9 +48,9 @@ func NewMetrics(cfg *Config) (*metrics, error) { //nolint:revive // only used as
 	}
 
 	p.gaugeVecs = make(map[string]*prometheus.GaugeVec, initialVecCapacity)
-	p.counterVecs = make(map[string]*prometheus.CounterVec, initialVecCapacity)
+	p.counterVecs = rwstore.NewRWMap[string, *prometheus.CounterVec]()
 	p.histogramVecs = make(map[string]*prometheus.HistogramVec, initialVecCapacity)
-	p.summaryVecs = make(map[string]*prometheus.SummaryVec, initialVecCapacity)
+	p.summaryVecs = rwstore.NewRWMap[string, *prometheus.SummaryVec]()
 	return p, nil
 }
 
@@ -130,7 +132,7 @@ func (p *metrics) Count(name string, value int64, tags ...string) {
 
 	name = forceValidName(name)
 	labels, labelValues := parseTagsToLabelPairs(tags)
-	counterVec, exists := p.counterVecs[name]
+	counterVec, exists := p.counterVecs.Get(name)
 	if !exists {
 		counterVec = prometheus.NewCounterVec(prometheus.CounterOpts{
 			Name:      name,
@@ -139,7 +141,7 @@ func (p *metrics) Count(name string, value int64, tags ...string) {
 			Help:      name + " counter",
 		}, labels)
 		prometheus.MustRegister(counterVec)
-		p.counterVecs[name] = counterVec
+		p.counterVecs.Set(name, counterVec)
 	}
 	counterVec.WithLabelValues(labelValues...).Add(float64(value))
 }
@@ -152,16 +154,26 @@ func (p *metrics) IncMonotonic(name string, tags ...string) {
 
 	name = forceValidName(name)
 	labels, labelValues := parseTagsToLabelPairs(tags)
-	counterVec, exists := p.counterVecs[name]
-	if !exists {
-		counterVec = prometheus.NewCounterVec(prometheus.CounterOpts{
-			Name:      name,
-			Namespace: p.cfg.Namespace,
-			Subsystem: p.cfg.Subsystem,
-			Help:      name + " counter",
-		}, labels)
-		prometheus.MustRegister(counterVec)
-		p.counterVecs[name] = counterVec
+	if counterVec, exists := p.counterVecs.Get(name); exists {
+		counterVec.WithLabelValues(labelValues...).Inc()
+	}
+
+	counterVec := prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name:      name,
+		Namespace: p.cfg.Namespace,
+		Subsystem: p.cfg.Subsystem,
+		Help:      name + " counter",
+	}, labels)
+	if err := prometheus.Register(counterVec); err != nil {
+		// In case of concurrent registration, get the one that has already registered
+		if existingCollector, ok := err.(prometheus.AlreadyRegisteredError); ok {
+			counterVec = existingCollector.ExistingCollector.(*prometheus.CounterVec)
+		} else {
+			// Otherwise we should panic to fail fast
+			panic(err)
+		}
+	} else {
+		p.counterVecs.Set(name, counterVec)
 	}
 	counterVec.WithLabelValues(labelValues...).Inc()
 }
@@ -206,23 +218,34 @@ func (p *metrics) Time(name string, value time.Duration, tags ...string) {
 
 	name = forceValidName(name)
 	labels, labelValues := parseTagsToLabelPairs(tags)
-	summaryVec, exists := p.summaryVecs[name]
-	if !exists {
-		summaryVec = prometheus.NewSummaryVec(prometheus.SummaryOpts{
-			Name:      name,
-			Namespace: p.cfg.Namespace,
-			Subsystem: p.cfg.Subsystem,
-			Help:      name + " timing summary",
-			Objectives: map[float64]float64{
-				quantile50: errorMargin50,
-				quantile90: errorMargin90,
-				quantile99: errorMargin99,
-			},
-		}, labels)
-		prometheus.MustRegister(summaryVec)
-		p.summaryVecs[name] = summaryVec
+	if summaryVec, exists := p.summaryVecs.Get(name); exists {
+		// Convert time.Duration to seconds since Prometheus prefers base units
+		// see https://prometheus.io/docs/practices/naming/#base-units
+		summaryVec.WithLabelValues(labelValues...).Observe(value.Seconds())
 	}
 
+	summaryVec := prometheus.NewSummaryVec(prometheus.SummaryOpts{
+		Name:      name,
+		Namespace: p.cfg.Namespace,
+		Subsystem: p.cfg.Subsystem,
+		Help:      name + " timing summary",
+		Objectives: map[float64]float64{
+			quantile50: errorMargin50,
+			quantile90: errorMargin90,
+			quantile99: errorMargin99,
+		},
+	}, labels)
+	if err := prometheus.Register(summaryVec); err != nil {
+		// In case of concurrent registration, get the one that has already registered
+		if existingCollector, ok := err.(prometheus.AlreadyRegisteredError); ok {
+			summaryVec = existingCollector.ExistingCollector.(*prometheus.SummaryVec)
+		} else {
+			// Otherwise we should panic to fail fast
+			panic(err)
+		}
+	} else {
+		p.summaryVecs.Set(name, summaryVec)
+	}
 	// Convert time.Duration to seconds since Prometheus prefers base units
 	// see https://prometheus.io/docs/practices/naming/#base-units
 	summaryVec.WithLabelValues(labelValues...).Observe(value.Seconds())
