@@ -29,9 +29,9 @@ const (
 type metrics struct {
 	cfg *Config
 
-	gaugeVecs     map[string]*prometheus.GaugeVec
+	gaugeVecs     *rwstore.RWMap[string, *prometheus.GaugeVec]
 	counterVecs   *rwstore.RWMap[string, *prometheus.CounterVec]
-	histogramVecs map[string]*prometheus.HistogramVec
+	histogramVecs *rwstore.RWMap[string, *prometheus.HistogramVec]
 	summaryVecs   *rwstore.RWMap[string, *prometheus.SummaryVec]
 }
 
@@ -47,9 +47,9 @@ func NewMetrics(cfg *Config) (*metrics, error) { //nolint:revive // only used as
 		return p, nil
 	}
 
-	p.gaugeVecs = make(map[string]*prometheus.GaugeVec, initialVecCapacity)
+	p.gaugeVecs = rwstore.NewRWMap[string, *prometheus.GaugeVec]()
 	p.counterVecs = rwstore.NewRWMap[string, *prometheus.CounterVec]()
-	p.histogramVecs = make(map[string]*prometheus.HistogramVec, initialVecCapacity)
+	p.histogramVecs = rwstore.NewRWMap[string, *prometheus.HistogramVec]()
 	p.summaryVecs = rwstore.NewRWMap[string, *prometheus.SummaryVec]()
 	return p, nil
 }
@@ -66,17 +66,33 @@ func (p *metrics) Gauge(name string, value float64, _ float64, tags ...string) {
 
 	name = forceValidName(name)
 	labels, labelValues := parseTagsToLabelPairs(tags)
-	gaugeVec, exists := p.gaugeVecs[name]
-	if !exists {
-		gaugeVec = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-			Name:      name,
-			Namespace: p.cfg.Namespace,
-			Subsystem: p.cfg.Subsystem,
-			Help:      name + " gauge",
-		}, labels)
-		prometheus.MustRegister(gaugeVec)
-		p.gaugeVecs[name] = gaugeVec
+
+	if gaugeVec, exists := p.gaugeVecs.Get(name); exists {
+		gaugeVec.WithLabelValues(labelValues...).Set(value)
+		return
 	}
+
+	gaugeVec := prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name:      name,
+		Namespace: p.cfg.Namespace,
+		Subsystem: p.cfg.Subsystem,
+		Help:      name + " gauge",
+	}, labels)
+
+	if err := prometheus.Register(gaugeVec); err != nil {
+		// In case of concurrent registration, get the one that has already registered
+		var alreadyRegisteredError prometheus.AlreadyRegisteredError
+		if errors.As(err, &alreadyRegisteredError) {
+			//nolint:errcheck // OK
+			gaugeVec = alreadyRegisteredError.ExistingCollector.(*prometheus.GaugeVec)
+		} else {
+			// Otherwise we should panic to fail fast
+			panic(err)
+		}
+	} else {
+		p.gaugeVecs.Set(name, gaugeVec)
+	}
+
 	gaugeVec.WithLabelValues(labelValues...).Set(value)
 }
 
@@ -88,17 +104,33 @@ func (p *metrics) Incr(name string, tags ...string) {
 
 	name = forceValidName(name)
 	labels, labelValues := parseTagsToLabelPairs(tags)
-	gaugeVec, exists := p.gaugeVecs[name]
-	if !exists {
-		gaugeVec = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-			Name:      name,
-			Namespace: p.cfg.Namespace,
-			Subsystem: p.cfg.Subsystem,
-			Help:      name + " incr/decr gauge",
-		}, labels)
-		prometheus.MustRegister(gaugeVec)
-		p.gaugeVecs[name] = gaugeVec
+
+	if gaugeVec, exists := p.gaugeVecs.Get(name); exists {
+		gaugeVec.WithLabelValues(labelValues...).Inc()
+		return
 	}
+
+	gaugeVec := prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name:      name,
+		Namespace: p.cfg.Namespace,
+		Subsystem: p.cfg.Subsystem,
+		Help:      name + " incr/decr gauge",
+	}, labels)
+
+	if err := prometheus.Register(gaugeVec); err != nil {
+		// In case of concurrent registration, get the one that has already registered
+		var alreadyRegisteredError prometheus.AlreadyRegisteredError
+		if errors.As(err, &alreadyRegisteredError) {
+			//nolint:errcheck // OK
+			gaugeVec = alreadyRegisteredError.ExistingCollector.(*prometheus.GaugeVec)
+		} else {
+			// Otherwise we should panic to fail fast
+			panic(err)
+		}
+	} else {
+		p.gaugeVecs.Set(name, gaugeVec)
+	}
+
 	gaugeVec.WithLabelValues(labelValues...).Inc()
 }
 
@@ -110,16 +142,31 @@ func (p *metrics) Decr(name string, tags ...string) {
 
 	name = forceValidName(name)
 	labels, labelValues := parseTagsToLabelPairs(tags)
-	gaugeVec, exists := p.gaugeVecs[name]
-	if !exists {
-		gaugeVec = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-			Name:      name,
-			Namespace: p.cfg.Namespace,
-			Subsystem: p.cfg.Subsystem,
-			Help:      name + " incr/decr gauge",
-		}, labels)
-		prometheus.MustRegister(gaugeVec)
-		p.gaugeVecs[name] = gaugeVec
+
+	if gaugeVec, exists := p.gaugeVecs.Get(name); exists {
+		gaugeVec.WithLabelValues(labelValues...).Dec()
+		return
+	}
+
+	gaugeVec := prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name:      name,
+		Namespace: p.cfg.Namespace,
+		Subsystem: p.cfg.Subsystem,
+		Help:      name + " incr/decr gauge",
+	}, labels)
+
+	if err := prometheus.Register(gaugeVec); err != nil {
+		// In case of concurrent registration, get the one that has already registered
+		var alreadyRegisteredError prometheus.AlreadyRegisteredError
+		if errors.As(err, &alreadyRegisteredError) {
+			//nolint:errcheck // OK
+			gaugeVec = alreadyRegisteredError.ExistingCollector.(*prometheus.GaugeVec)
+		} else {
+			// Otherwise we should panic to fail fast
+			panic(err)
+		}
+	} else {
+		p.gaugeVecs.Set(name, gaugeVec)
 	}
 	gaugeVec.WithLabelValues(labelValues...).Dec()
 }
@@ -133,13 +180,12 @@ func (p *metrics) Count(name string, value int64, tags ...string) {
 	name = forceValidName(name)
 	labels, labelValues := parseTagsToLabelPairs(tags)
 
-	counterVec, ok := p.counterVecs.Get(name)
-	if ok {
+	if counterVec, exists := p.counterVecs.Get(name); exists {
 		counterVec.WithLabelValues(labels...).Add(float64(value))
 		return
 	}
 
-	counterVec = prometheus.NewCounterVec(prometheus.CounterOpts{
+	counterVec := prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name:      name,
 		Namespace: p.cfg.Namespace,
 		Subsystem: p.cfg.Subsystem,
@@ -158,6 +204,7 @@ func (p *metrics) Count(name string, value int64, tags ...string) {
 	} else {
 		p.counterVecs.Set(name, counterVec)
 	}
+
 	counterVec.WithLabelValues(labelValues...).Add(float64(value))
 }
 
@@ -170,13 +217,12 @@ func (p *metrics) IncMonotonic(name string, tags ...string) {
 	name = forceValidName(name)
 	labels, labelValues := parseTagsToLabelPairs(tags)
 
-	counterVec, ok := p.counterVecs.Get(name)
-	if ok {
+	if counterVec, exists := p.counterVecs.Get(name); exists {
 		counterVec.WithLabelValues(labels...).Inc()
 		return
 	}
 
-	counterVec = prometheus.NewCounterVec(prometheus.CounterOpts{
+	counterVec := prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name:      name,
 		Namespace: p.cfg.Namespace,
 		Subsystem: p.cfg.Subsystem,
@@ -195,6 +241,7 @@ func (p *metrics) IncMonotonic(name string, tags ...string) {
 	} else {
 		p.counterVecs.Set(name, counterVec)
 	}
+
 	counterVec.WithLabelValues(labelValues...).Inc()
 }
 
@@ -213,19 +260,35 @@ func (p *metrics) Histogram(name string, value float64, rate float64, tags ...st
 
 	name = forceValidName(name)
 	labels, labelValues := parseTagsToLabelPairs(tags)
-	histogramVec, exists := p.histogramVecs[name]
-	if !exists {
-		histogramVec = prometheus.NewHistogramVec(prometheus.HistogramOpts{
-			Name:      name,
-			Namespace: p.cfg.Namespace,
-			Subsystem: p.cfg.Subsystem,
-			Help:      name + " histogram",
-			// The maximum covered stats range is rate * HistogramBucketCount
-			Buckets: prometheus.LinearBuckets(0, rate, p.cfg.HistogramBucketCount),
-		}, labels)
-		prometheus.MustRegister(histogramVec)
-		p.histogramVecs[name] = histogramVec
+
+	if histogramVec, exists := p.histogramVecs.Get(name); exists {
+		histogramVec.WithLabelValues(labelValues...).Observe(value)
+		return
 	}
+
+	histogramVec := prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Name:      name,
+		Namespace: p.cfg.Namespace,
+		Subsystem: p.cfg.Subsystem,
+		Help:      name + " histogram",
+		// The maximum covered stats range is rate * HistogramBucketCount
+		Buckets: prometheus.LinearBuckets(0, rate, p.cfg.HistogramBucketCount),
+	}, labels)
+
+	if err := prometheus.Register(histogramVec); err != nil {
+		// In case of concurrent registration, get the one that has already registered
+		var alreadyRegisteredError prometheus.AlreadyRegisteredError
+		if errors.As(err, &alreadyRegisteredError) {
+			//nolint:errcheck // OK
+			histogramVec = alreadyRegisteredError.ExistingCollector.(*prometheus.HistogramVec)
+		} else {
+			// Otherwise we should panic to fail fast
+			panic(err)
+		}
+	} else {
+		p.histogramVecs.Set(name, histogramVec)
+	}
+
 	histogramVec.WithLabelValues(labelValues...).Observe(value)
 }
 
