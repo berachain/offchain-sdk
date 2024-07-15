@@ -1,6 +1,7 @@
 package prometheus
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -145,10 +146,10 @@ func (p *metrics) Count(name string, value int64, tags ...string) {
 	}, labels)
 	if err := prometheus.Register(counterVec); err != nil {
 		// In case of concurrent registration, get the one that has already registered
-		var existingCollector prometheus.AlreadyRegisteredError
-		if existingCollector.Error() == err.Error() {
+		var alreadyRegisteredError prometheus.AlreadyRegisteredError
+		if errors.As(err, &alreadyRegisteredError) {
 			//nolint:errcheck // OK
-			counterVec = existingCollector.ExistingCollector.(*prometheus.CounterVec)
+			counterVec = alreadyRegisteredError.ExistingCollector.(*prometheus.CounterVec)
 		} else {
 			// Otherwise we should panic to fail fast
 			panic(err)
@@ -183,10 +184,10 @@ func (p *metrics) IncMonotonic(name string, tags ...string) {
 	}, labels)
 	if err := prometheus.Register(counterVec); err != nil {
 		// In case of concurrent registration, get the one that has already registered
-		var existingCollector prometheus.AlreadyRegisteredError
-		if existingCollector.Error() == err.Error() {
+		var alreadyRegisteredError prometheus.AlreadyRegisteredError
+		if errors.As(err, &alreadyRegisteredError) {
 			//nolint:errcheck // OK
-			counterVec = existingCollector.ExistingCollector.(*prometheus.CounterVec)
+			counterVec = alreadyRegisteredError.ExistingCollector.(*prometheus.CounterVec)
 		} else {
 			// Otherwise we should panic to fail fast
 			panic(err)
@@ -257,10 +258,10 @@ func (p *metrics) Time(name string, value time.Duration, tags ...string) {
 	}, labels)
 	if err := prometheus.Register(summaryVec); err != nil {
 		// In case of concurrent registration, get the one that has already registered
-		var existingCollector prometheus.AlreadyRegisteredError
-		if existingCollector.Error() == err.Error() {
+		var alreadyRegisteredError prometheus.AlreadyRegisteredError
+		if errors.As(err, &alreadyRegisteredError) {
 			//nolint:errcheck // OK
-			summaryVec = existingCollector.ExistingCollector.(*prometheus.SummaryVec)
+			summaryVec = alreadyRegisteredError.ExistingCollector.(*prometheus.SummaryVec)
 		} else {
 			// Otherwise we should panic to fail fast
 			panic(err)
