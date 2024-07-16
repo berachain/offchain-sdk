@@ -67,32 +67,7 @@ func (p *metrics) Gauge(name string, value float64, _ float64, tags ...string) {
 	name = forceValidName(name)
 	labels, labelValues := parseTagsToLabelPairs(tags)
 
-	if gaugeVec, exists := p.gaugeVecs.Get(name); exists {
-		gaugeVec.WithLabelValues(labelValues...).Set(value)
-		return
-	}
-
-	gaugeVec := prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name:      name,
-		Namespace: p.cfg.Namespace,
-		Subsystem: p.cfg.Subsystem,
-		Help:      name + " gauge",
-	}, labels)
-
-	if err := prometheus.Register(gaugeVec); err != nil {
-		// In case of concurrent registration, get the one that has already registered
-		var alreadyRegisteredError prometheus.AlreadyRegisteredError
-		if errors.As(err, &alreadyRegisteredError) {
-			//nolint:errcheck // OK
-			gaugeVec = alreadyRegisteredError.ExistingCollector.(*prometheus.GaugeVec)
-		} else {
-			// Otherwise we should panic to fail fast
-			panic(err)
-		}
-	} else {
-		p.gaugeVecs.Set(name, gaugeVec)
-	}
-
+	gaugeVec := p.mustGetOrCreateGaugeVec(name, labels)
 	gaugeVec.WithLabelValues(labelValues...).Set(value)
 }
 
@@ -110,27 +85,7 @@ func (p *metrics) Incr(name string, tags ...string) {
 		return
 	}
 
-	gaugeVec := prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name:      name,
-		Namespace: p.cfg.Namespace,
-		Subsystem: p.cfg.Subsystem,
-		Help:      name + " incr/decr gauge",
-	}, labels)
-
-	if err := prometheus.Register(gaugeVec); err != nil {
-		// In case of concurrent registration, get the one that has already registered
-		var alreadyRegisteredError prometheus.AlreadyRegisteredError
-		if errors.As(err, &alreadyRegisteredError) {
-			//nolint:errcheck // OK
-			gaugeVec = alreadyRegisteredError.ExistingCollector.(*prometheus.GaugeVec)
-		} else {
-			// Otherwise we should panic to fail fast
-			panic(err)
-		}
-	} else {
-		p.gaugeVecs.Set(name, gaugeVec)
-	}
-
+	gaugeVec := p.mustGetOrCreateGaugeVec(name, labels)
 	gaugeVec.WithLabelValues(labelValues...).Inc()
 }
 
@@ -143,31 +98,7 @@ func (p *metrics) Decr(name string, tags ...string) {
 	name = forceValidName(name)
 	labels, labelValues := parseTagsToLabelPairs(tags)
 
-	if gaugeVec, exists := p.gaugeVecs.Get(name); exists {
-		gaugeVec.WithLabelValues(labelValues...).Dec()
-		return
-	}
-
-	gaugeVec := prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name:      name,
-		Namespace: p.cfg.Namespace,
-		Subsystem: p.cfg.Subsystem,
-		Help:      name + " incr/decr gauge",
-	}, labels)
-
-	if err := prometheus.Register(gaugeVec); err != nil {
-		// In case of concurrent registration, get the one that has already registered
-		var alreadyRegisteredError prometheus.AlreadyRegisteredError
-		if errors.As(err, &alreadyRegisteredError) {
-			//nolint:errcheck // OK
-			gaugeVec = alreadyRegisteredError.ExistingCollector.(*prometheus.GaugeVec)
-		} else {
-			// Otherwise we should panic to fail fast
-			panic(err)
-		}
-	} else {
-		p.gaugeVecs.Set(name, gaugeVec)
-	}
+	gaugeVec := p.mustGetOrCreateGaugeVec(name, labels)
 	gaugeVec.WithLabelValues(labelValues...).Dec()
 }
 
@@ -180,31 +111,7 @@ func (p *metrics) Count(name string, value int64, tags ...string) {
 	name = forceValidName(name)
 	labels, labelValues := parseTagsToLabelPairs(tags)
 
-	if counterVec, exists := p.counterVecs.Get(name); exists {
-		counterVec.WithLabelValues(labels...).Add(float64(value))
-		return
-	}
-
-	counterVec := prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name:      name,
-		Namespace: p.cfg.Namespace,
-		Subsystem: p.cfg.Subsystem,
-		Help:      name + " counter",
-	}, labels)
-	if err := prometheus.Register(counterVec); err != nil {
-		// In case of concurrent registration, get the one that has already registered
-		var alreadyRegisteredError prometheus.AlreadyRegisteredError
-		if errors.As(err, &alreadyRegisteredError) {
-			//nolint:errcheck // OK
-			counterVec = alreadyRegisteredError.ExistingCollector.(*prometheus.CounterVec)
-		} else {
-			// Otherwise we should panic to fail fast
-			panic(err)
-		}
-	} else {
-		p.counterVecs.Set(name, counterVec)
-	}
-
+	counterVec := p.mustGetOrCreateCounterVec(name, labels)
 	counterVec.WithLabelValues(labelValues...).Add(float64(value))
 }
 
@@ -217,31 +124,7 @@ func (p *metrics) IncMonotonic(name string, tags ...string) {
 	name = forceValidName(name)
 	labels, labelValues := parseTagsToLabelPairs(tags)
 
-	if counterVec, exists := p.counterVecs.Get(name); exists {
-		counterVec.WithLabelValues(labels...).Inc()
-		return
-	}
-
-	counterVec := prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name:      name,
-		Namespace: p.cfg.Namespace,
-		Subsystem: p.cfg.Subsystem,
-		Help:      name + " counter",
-	}, labels)
-	if err := prometheus.Register(counterVec); err != nil {
-		// In case of concurrent registration, get the one that has already registered
-		var alreadyRegisteredError prometheus.AlreadyRegisteredError
-		if errors.As(err, &alreadyRegisteredError) {
-			//nolint:errcheck // OK
-			counterVec = alreadyRegisteredError.ExistingCollector.(*prometheus.CounterVec)
-		} else {
-			// Otherwise we should panic to fail fast
-			panic(err)
-		}
-	} else {
-		p.counterVecs.Set(name, counterVec)
-	}
-
+	counterVec := p.mustGetOrCreateCounterVec(name, labels)
 	counterVec.WithLabelValues(labelValues...).Inc()
 }
 
@@ -386,4 +269,59 @@ func setDefaultCfg(cfg *Config) {
 	if cfg.HistogramBucketCount <= 0 {
 		cfg.HistogramBucketCount = DefaultBucketCount
 	}
+}
+
+// Helper method to get or create a GaugeVec.
+func (p *metrics) mustGetOrCreateGaugeVec(name string, labels []string) *prometheus.GaugeVec {
+	// Attempt to read from the RWMap without locking.
+	if gaugeVec, exists := p.gaugeVecs.Get(name); exists {
+		return gaugeVec
+	}
+
+	// Create a new GaugeVec.
+	gaugeVec := prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name:      name,
+		Namespace: p.cfg.Namespace,
+		Subsystem: p.cfg.Subsystem,
+		Help:      name + " gauge",
+	}, labels)
+
+	// Register the GaugeVec or get the already registered one.
+	if err := prometheus.Register(gaugeVec); err != nil {
+		var alreadyRegisteredError prometheus.AlreadyRegisteredError
+		if errors.As(err, &alreadyRegisteredError) {
+			return alreadyRegisteredError.ExistingCollector.(*prometheus.GaugeVec)
+		}
+		panic(err) // Otherwise we should panic to fail fast
+	}
+
+	p.gaugeVecs.Set(name, gaugeVec)
+	return gaugeVec
+}
+
+func (p *metrics) mustGetOrCreateCounterVec(name string, labels []string) *prometheus.CounterVec {
+	// Attempt to read from the RWMap without locking.
+	if counterVec, exists := p.counterVecs.Get(name); exists {
+		return counterVec
+	}
+
+	// Create a new CounterVec.
+	counterVec := prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name:      name,
+		Namespace: p.cfg.Namespace,
+		Subsystem: p.cfg.Subsystem,
+		Help:      name + " counter",
+	}, labels)
+
+	// Register the CounterVec or get the already registered one.
+	if err := prometheus.Register(counterVec); err != nil {
+		var alreadyRegisteredError prometheus.AlreadyRegisteredError
+		if errors.As(err, &alreadyRegisteredError) {
+			return alreadyRegisteredError.ExistingCollector.(*prometheus.CounterVec)
+		}
+		panic(err) // Otherwise we should panic to fail fast
+	}
+
+	p.counterVecs.Set(name, counterVec)
+	return counterVec
 }
