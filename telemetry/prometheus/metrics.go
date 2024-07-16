@@ -83,11 +83,6 @@ func (p *metrics) Incr(name string, tags ...string) {
 	name = forceValidName(name)
 	labels, labelValues := parseTagsToLabelPairs(tags)
 
-	if gaugeVec, exists := p.gaugeVecs.Get(name); exists {
-		gaugeVec.WithLabelValues(labelValues...).Inc()
-		return
-	}
-
 	gaugeVec := p.getOrCreateGaugeVec(name, labels)
 	gaugeVec.WithLabelValues(labelValues...).Inc()
 }
@@ -155,7 +150,7 @@ func (p *metrics) Histogram(name string, value float64, rate float64, tags ...st
 	p.metricsRegistrationLock.Lock()
 	defer p.metricsRegistrationLock.Unlock()
 
-	// Double-check in case it was created while waiting for the lock.
+	// Double-check in case metrics was registered while waiting for the lock.
 	if histogramVec, exists := p.histogramVecs.Get(name); exists {
 		histogramVec.WithLabelValues(labelValues...).Observe(value)
 		return
@@ -196,7 +191,7 @@ func (p *metrics) Time(name string, value time.Duration, tags ...string) {
 	p.metricsRegistrationLock.Lock()
 	defer p.metricsRegistrationLock.Unlock()
 
-	// Double-check in case it was created while waiting for the lock.
+	// Double-check in case metrics was registered while waiting for the lock.
 	if summaryVec, exists := p.summaryVecs.Get(name); exists {
 		summaryVec.WithLabelValues(labels...).Observe(value.Seconds())
 		return
@@ -274,7 +269,7 @@ func setDefaultCfg(cfg *Config) {
 
 // Helper method to get or create a GaugeVec.
 func (p *metrics) getOrCreateGaugeVec(name string, labels []string) *prometheus.GaugeVec {
-	// Attempt to read from the RWMap without locking.
+	// Attempt to read from the RWMap without metricsRegistrationLock.
 	if gaugeVec, exists := p.gaugeVecs.Get(name); exists {
 		return gaugeVec
 	}
@@ -301,7 +296,7 @@ func (p *metrics) getOrCreateGaugeVec(name string, labels []string) *prometheus.
 }
 
 func (p *metrics) getOrCreateCounterVec(name string, labels []string) *prometheus.CounterVec {
-	// Attempt to read from the RWMap without locking.
+	// Attempt to read from the RWMap without metricsRegistrationLock.
 	if counterVec, exists := p.counterVecs.Get(name); exists {
 		return counterVec
 	}
