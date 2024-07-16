@@ -1,9 +1,9 @@
 package prometheus
 
 import (
-	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 
@@ -33,6 +33,9 @@ type metrics struct {
 	counterVecs   *rwstore.RWMap[string, *prometheus.CounterVec]
 	histogramVecs *rwstore.RWMap[string, *prometheus.HistogramVec]
 	summaryVecs   *rwstore.RWMap[string, *prometheus.SummaryVec]
+
+	// Ensures thread-safe registration of metric vectors.
+	metricsRegistrationLock sync.Mutex
 }
 
 // NewMetrics initializes a new instance of Prometheus metrics.
@@ -67,7 +70,7 @@ func (p *metrics) Gauge(name string, value float64, _ float64, tags ...string) {
 	name = forceValidName(name)
 	labels, labelValues := parseTagsToLabelPairs(tags)
 
-	gaugeVec := p.mustGetOrCreateGaugeVec(name, labels)
+	gaugeVec := p.getOrCreateGaugeVec(name, labels)
 	gaugeVec.WithLabelValues(labelValues...).Set(value)
 }
 
@@ -85,7 +88,7 @@ func (p *metrics) Incr(name string, tags ...string) {
 		return
 	}
 
-	gaugeVec := p.mustGetOrCreateGaugeVec(name, labels)
+	gaugeVec := p.getOrCreateGaugeVec(name, labels)
 	gaugeVec.WithLabelValues(labelValues...).Inc()
 }
 
@@ -98,7 +101,7 @@ func (p *metrics) Decr(name string, tags ...string) {
 	name = forceValidName(name)
 	labels, labelValues := parseTagsToLabelPairs(tags)
 
-	gaugeVec := p.mustGetOrCreateGaugeVec(name, labels)
+	gaugeVec := p.getOrCreateGaugeVec(name, labels)
 	gaugeVec.WithLabelValues(labelValues...).Dec()
 }
 
@@ -111,7 +114,7 @@ func (p *metrics) Count(name string, value int64, tags ...string) {
 	name = forceValidName(name)
 	labels, labelValues := parseTagsToLabelPairs(tags)
 
-	counterVec := p.mustGetOrCreateCounterVec(name, labels)
+	counterVec := p.getOrCreateCounterVec(name, labels)
 	counterVec.WithLabelValues(labelValues...).Add(float64(value))
 }
 
@@ -124,7 +127,7 @@ func (p *metrics) IncMonotonic(name string, tags ...string) {
 	name = forceValidName(name)
 	labels, labelValues := parseTagsToLabelPairs(tags)
 
-	counterVec := p.mustGetOrCreateCounterVec(name, labels)
+	counterVec := p.getOrCreateCounterVec(name, labels)
 	counterVec.WithLabelValues(labelValues...).Inc()
 }
 
@@ -149,6 +152,15 @@ func (p *metrics) Histogram(name string, value float64, rate float64, tags ...st
 		return
 	}
 
+	p.metricsRegistrationLock.Lock()
+	defer p.metricsRegistrationLock.Unlock()
+
+	// Double-check in case it was created while waiting for the lock.
+	if histogramVec, exists := p.histogramVecs.Get(name); exists {
+		histogramVec.WithLabelValues(labelValues...).Observe(value)
+		return
+	}
+
 	histogramVec := prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Name:      name,
 		Namespace: p.cfg.Namespace,
@@ -158,19 +170,8 @@ func (p *metrics) Histogram(name string, value float64, rate float64, tags ...st
 		Buckets: prometheus.LinearBuckets(0, rate, p.cfg.HistogramBucketCount),
 	}, labels)
 
-	if err := prometheus.Register(histogramVec); err != nil {
-		// In case of concurrent registration, get the one that has already registered
-		var alreadyRegisteredError prometheus.AlreadyRegisteredError
-		if errors.As(err, &alreadyRegisteredError) {
-			//nolint:errcheck // OK
-			histogramVec = alreadyRegisteredError.ExistingCollector.(*prometheus.HistogramVec)
-		} else {
-			// Otherwise we should panic to fail fast
-			panic(err)
-		}
-	} else {
-		p.histogramVecs.Set(name, histogramVec)
-	}
+	prometheus.MustRegister(histogramVec)
+	p.histogramVecs.Set(name, histogramVec)
 
 	histogramVec.WithLabelValues(labelValues...).Observe(value)
 }
@@ -184,13 +185,24 @@ func (p *metrics) Time(name string, value time.Duration, tags ...string) {
 
 	name = forceValidName(name)
 	labels, labelValues := parseTagsToLabelPairs(tags)
-	summaryVec, ok := p.summaryVecs.Get(name)
-	if ok {
+
+	if summaryVec, exists := p.summaryVecs.Get(name); exists {
+		// Convert time.Duration to seconds since Prometheus prefers base units
+		// see https://prometheus.io/docs/practices/naming/#base-units
 		summaryVec.WithLabelValues(labels...).Observe(value.Seconds())
 		return
 	}
 
-	summaryVec = prometheus.NewSummaryVec(prometheus.SummaryOpts{
+	p.metricsRegistrationLock.Lock()
+	defer p.metricsRegistrationLock.Unlock()
+
+	// Double-check in case it was created while waiting for the lock.
+	if summaryVec, exists := p.summaryVecs.Get(name); exists {
+		summaryVec.WithLabelValues(labels...).Observe(value.Seconds())
+		return
+	}
+
+	summaryVec := prometheus.NewSummaryVec(prometheus.SummaryOpts{
 		Name:      name,
 		Namespace: p.cfg.Namespace,
 		Subsystem: p.cfg.Subsystem,
@@ -201,21 +213,10 @@ func (p *metrics) Time(name string, value time.Duration, tags ...string) {
 			quantile99: errorMargin99,
 		},
 	}, labels)
-	if err := prometheus.Register(summaryVec); err != nil {
-		// In case of concurrent registration, get the one that has already registered
-		var alreadyRegisteredError prometheus.AlreadyRegisteredError
-		if errors.As(err, &alreadyRegisteredError) {
-			//nolint:errcheck // OK
-			summaryVec = alreadyRegisteredError.ExistingCollector.(*prometheus.SummaryVec)
-		} else {
-			// Otherwise we should panic to fail fast
-			panic(err)
-		}
-	} else {
-		p.summaryVecs.Set(name, summaryVec)
-	}
-	// Convert time.Duration to seconds since Prometheus prefers base units
-	// see https://prometheus.io/docs/practices/naming/#base-units
+
+	prometheus.MustRegister(summaryVec)
+	p.summaryVecs.Set(name, summaryVec)
+
 	summaryVec.WithLabelValues(labelValues...).Observe(value.Seconds())
 }
 
@@ -272,13 +273,21 @@ func setDefaultCfg(cfg *Config) {
 }
 
 // Helper method to get or create a GaugeVec.
-func (p *metrics) mustGetOrCreateGaugeVec(name string, labels []string) *prometheus.GaugeVec {
+func (p *metrics) getOrCreateGaugeVec(name string, labels []string) *prometheus.GaugeVec {
 	// Attempt to read from the RWMap without locking.
 	if gaugeVec, exists := p.gaugeVecs.Get(name); exists {
 		return gaugeVec
 	}
 
-	// Create a new GaugeVec.
+	p.metricsRegistrationLock.Lock()
+	defer p.metricsRegistrationLock.Unlock()
+
+	// Double-check in case it was created while waiting for the lock.
+	if gaugeVec, exists := p.gaugeVecs.Get(name); exists {
+		return gaugeVec
+	}
+
+	// Create a new GaugeVec and register it
 	gaugeVec := prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name:      name,
 		Namespace: p.cfg.Namespace,
@@ -286,26 +295,26 @@ func (p *metrics) mustGetOrCreateGaugeVec(name string, labels []string) *prometh
 		Help:      name + " gauge",
 	}, labels)
 
-	// Register the GaugeVec or get the already registered one.
-	if err := prometheus.Register(gaugeVec); err != nil {
-		var alreadyRegisteredError prometheus.AlreadyRegisteredError
-		if errors.As(err, &alreadyRegisteredError) {
-			return alreadyRegisteredError.ExistingCollector.(*prometheus.GaugeVec)
-		}
-		panic(err) // Otherwise we should panic to fail fast
-	}
-
+	prometheus.MustRegister(gaugeVec)
 	p.gaugeVecs.Set(name, gaugeVec)
 	return gaugeVec
 }
 
-func (p *metrics) mustGetOrCreateCounterVec(name string, labels []string) *prometheus.CounterVec {
+func (p *metrics) getOrCreateCounterVec(name string, labels []string) *prometheus.CounterVec {
 	// Attempt to read from the RWMap without locking.
 	if counterVec, exists := p.counterVecs.Get(name); exists {
 		return counterVec
 	}
 
-	// Create a new CounterVec.
+	p.metricsRegistrationLock.Lock()
+	defer p.metricsRegistrationLock.Unlock()
+
+	// Double-check in case it was created while waiting for the lock.
+	if counterVec, exists := p.counterVecs.Get(name); exists {
+		return counterVec
+	}
+
+	// Create a new CounterVec and register it
 	counterVec := prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name:      name,
 		Namespace: p.cfg.Namespace,
@@ -314,14 +323,7 @@ func (p *metrics) mustGetOrCreateCounterVec(name string, labels []string) *prome
 	}, labels)
 
 	// Register the CounterVec or get the already registered one.
-	if err := prometheus.Register(counterVec); err != nil {
-		var alreadyRegisteredError prometheus.AlreadyRegisteredError
-		if errors.As(err, &alreadyRegisteredError) {
-			return alreadyRegisteredError.ExistingCollector.(*prometheus.CounterVec)
-		}
-		panic(err) // Otherwise we should panic to fail fast
-	}
-
+	prometheus.MustRegister(counterVec)
 	p.counterVecs.Set(name, counterVec)
 	return counterVec
 }
