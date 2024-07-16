@@ -70,7 +70,7 @@ func (p *metrics) Gauge(name string, value float64, _ float64, tags ...string) {
 	name = forceValidName(name)
 	labels, labelValues := parseTagsToLabelPairs(tags)
 
-	gaugeVec := p.getRegisteredGaugeVec(name, labels)
+	gaugeVec := p.getOrRegisterNewGagueVec(name, labels)
 	gaugeVec.WithLabelValues(labelValues...).Set(value)
 }
 
@@ -83,7 +83,7 @@ func (p *metrics) Incr(name string, tags ...string) {
 	name = forceValidName(name)
 	labels, labelValues := parseTagsToLabelPairs(tags)
 
-	gaugeVec := p.getRegisteredGaugeVec(name, labels)
+	gaugeVec := p.getOrRegisterNewGagueVec(name, labels)
 	gaugeVec.WithLabelValues(labelValues...).Inc()
 }
 
@@ -96,7 +96,7 @@ func (p *metrics) Decr(name string, tags ...string) {
 	name = forceValidName(name)
 	labels, labelValues := parseTagsToLabelPairs(tags)
 
-	gaugeVec := p.getRegisteredGaugeVec(name, labels)
+	gaugeVec := p.getOrRegisterNewGagueVec(name, labels)
 	gaugeVec.WithLabelValues(labelValues...).Dec()
 }
 
@@ -109,7 +109,7 @@ func (p *metrics) Count(name string, value int64, tags ...string) {
 	name = forceValidName(name)
 	labels, labelValues := parseTagsToLabelPairs(tags)
 
-	counterVec := p.getRegisteredCounterVec(name, labels)
+	counterVec := p.getOrRegisterNewCounterVec(name, labels)
 	counterVec.WithLabelValues(labelValues...).Add(float64(value))
 }
 
@@ -122,7 +122,7 @@ func (p *metrics) IncMonotonic(name string, tags ...string) {
 	name = forceValidName(name)
 	labels, labelValues := parseTagsToLabelPairs(tags)
 
-	counterVec := p.getRegisteredCounterVec(name, labels)
+	counterVec := p.getOrRegisterNewCounterVec(name, labels)
 	counterVec.WithLabelValues(labelValues...).Inc()
 }
 
@@ -267,8 +267,8 @@ func setDefaultCfg(cfg *Config) {
 	}
 }
 
-// Helper method to get or create a GaugeVec.
-func (p *metrics) getRegisteredGaugeVec(name string, labels []string) *prometheus.GaugeVec {
+// Helper method to get or register a GaugeVec.
+func (p *metrics) getOrRegisterNewGagueVec(name string, labels []string) *prometheus.GaugeVec {
 	// Attempt to read from the RWMap without metricsRegistrationLock.
 	if gaugeVec, exists := p.gaugeVecs.Get(name); exists {
 		return gaugeVec
@@ -295,7 +295,8 @@ func (p *metrics) getRegisteredGaugeVec(name string, labels []string) *prometheu
 	return gaugeVec
 }
 
-func (p *metrics) getRegisteredCounterVec(name string, labels []string) *prometheus.CounterVec {
+// Helper method to get or register a CountVec.
+func (p *metrics) getOrRegisterNewCounterVec(name string, labels []string) *prometheus.CounterVec {
 	// Attempt to read from the RWMap without metricsRegistrationLock.
 	if counterVec, exists := p.counterVecs.Get(name); exists {
 		return counterVec
