@@ -295,7 +295,7 @@ func (p *metrics) getOrRegisterNewGagueVec(name string, labels []string) *promet
 	return gaugeVec
 }
 
-// Helper method to get or register a CountVec.
+// Helper method to get or register a CounterVec.
 func (p *metrics) getOrRegisterNewCounterVec(name string, labels []string) *prometheus.CounterVec {
 	// Attempt to read from the RWMap without metricsRegistrationLock.
 	if counterVec, exists := p.counterVecs.Get(name); exists {
