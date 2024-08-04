@@ -52,7 +52,7 @@ For example, if `Namespace` is `app` and `Subsystem` is `api`, then the full met
 
 Different from Datadog, Prometheus only provides
 [4 basic metrics type](https://prometheus.io/docs/concepts/metric_types/). As a result,
-[metrics.go](./prometheus/metrics.go) implements the metrics methods defined in [type.go](./type.go)
+[metrics.go](./prometheus/metrics.go) implements the metrics methods defined in [types.go](./types.go)
 using these four basic Prometheus metrics. The following subsection documents the methods with
 implementation notes. For more information on the four basic Prometheus metrics, please see
 [here](https://prometheus.io/docs/tutorials/understanding_metric_types/).
