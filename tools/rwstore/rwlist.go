@@ -40,3 +40,13 @@ func (rw *RWList[V]) Copy() []V {
 	defer rw.RUnlock()
 	return append([]V(nil), rw.a...)
 }
+
+func (rw *RWList[V]) Iterate() func(yield func(int, V) bool) {
+	return func(yield func(int, V) bool) {
+		rw.RLock()
+		defer rw.RUnlock()
+		for i, v := range rw.a {
+			yield(i, v)
+		}
+	}
+}

@@ -28,25 +28,26 @@ endif
 ########################################################
 
 # Target for building the application in all directories
-build:; go build ./...
+build:; GOEXPERIMENT=rangefunc go build ./...
 
 # Run the example applications
 run-%:; go run ./examples/$*/main.go start
 
 # Format
 lint: |
-	go run github.com/golangci/golangci-lint/cmd/golangci-lint run
+	GOEXPERIMENT=rangefunc go run github.com/golangci/golangci-lint/cmd/golangci-lint run
 
 # Test
+# TODO - Remove the GOEXPERIMENT=rangefunc once Go 1.23 is released
 test: |
-	go test -v ./...
+	GOEXPERIMENT=rangefunc go test -v ./...
 
 # Format
 format: |
-	go run github.com/golangci/golangci-lint/cmd/golangci-lint run --fix
+	GOEXPERIMENT=rangefunc go run github.com/golangci/golangci-lint/cmd/golangci-lint run --fix
 
 generate: |
-	go generate ./...
+	GOEXPERIMENT=rangefunc go generate ./...
 
 tidy: |
 	go mod tidy

@@ -48,12 +48,12 @@ func (rw *RWMap[K, V]) Len() int {
 	return length
 }
 
-func (rw *RWMap[K, V]) Iterate(iter func(K, V) bool) {
-	rw.RLock()
-	defer rw.RUnlock()
-	for k, v := range rw.m {
-		if !iter(k, v) {
-			break
+func (rw *RWMap[K, V]) Iterate() func(yield func(K, V) bool) {
+	return func(yield func(K, V) bool) {
+		rw.RLock()
+		defer rw.RUnlock()
+		for k, v := range rw.m {
+			yield(k, v)
 		}
 	}
 }
