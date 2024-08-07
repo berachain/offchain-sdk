@@ -11,7 +11,7 @@ Please see the following subsections for detailed configurations.
 
 ### Configuration
 
-The first step is adding a section in your config file. See following subsection for details. The
+The first step is adding a section in your config file. See the following subsection for details. The
 source code defining those configs can be found in [config.go](./datadog/config.go).
 
 #### Datadog Configs

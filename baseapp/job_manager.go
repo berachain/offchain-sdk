@@ -35,7 +35,7 @@ type JobManager struct {
 	producerCfg  *worker.PoolConfig
 	jobProducers *worker.Pool
 
-	// Job executors are a pool of workers that execute jobs. These workers
+	// Job executors are a pool of workers who execute jobs. These workers
 	// are fed jobs by the job producers.
 	executorCfg  *worker.PoolConfig
 	jobExecutors *worker.Pool
