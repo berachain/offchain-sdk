@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/berachain/offchain-sdk/log"
+	"github.com/berachain/offchain-sdk/v2/log"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"go-micro.dev/v4/server"
 	"google.golang.org/grpc/codes"

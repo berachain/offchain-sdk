@@ -8,7 +8,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/kms"
-	"github.com/berachain/offchain-sdk/types/kms/types"
+	"github.com/berachain/offchain-sdk/v2/types/kms/types"
 	lru "github.com/hashicorp/golang-lru/v2"
 
 	"github.com/ethereum/go-ethereum/crypto"

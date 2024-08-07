@@ -3,7 +3,7 @@ package app
 import (
 	"context"
 
-	"github.com/berachain/offchain-sdk/log"
+	"github.com/berachain/offchain-sdk/v2/log"
 )
 
 type App[C any] interface {

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/berachain/offchain-sdk/types/queue/types"
+	"github.com/berachain/offchain-sdk/v2/types/queue/types"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"

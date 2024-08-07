@@ -3,10 +3,10 @@ package baseapp
 import (
 	"context"
 
-	"github.com/berachain/offchain-sdk/client/eth"
-	"github.com/berachain/offchain-sdk/log"
-	"github.com/berachain/offchain-sdk/telemetry"
-	sdk "github.com/berachain/offchain-sdk/types"
+	"github.com/berachain/offchain-sdk/v2/client/eth"
+	"github.com/berachain/offchain-sdk/v2/log"
+	"github.com/berachain/offchain-sdk/v2/telemetry"
+	sdk "github.com/berachain/offchain-sdk/v2/types"
 
 	ethdb "github.com/ethereum/go-ethereum/ethdb"
 )

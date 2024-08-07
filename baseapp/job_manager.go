@@ -6,10 +6,10 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/berachain/offchain-sdk/job"
-	"github.com/berachain/offchain-sdk/log"
-	sdk "github.com/berachain/offchain-sdk/types"
-	"github.com/berachain/offchain-sdk/worker"
+	"github.com/berachain/offchain-sdk/v2/job"
+	"github.com/berachain/offchain-sdk/v2/log"
+	sdk "github.com/berachain/offchain-sdk/v2/types"
+	"github.com/berachain/offchain-sdk/v2/worker"
 )
 
 const (

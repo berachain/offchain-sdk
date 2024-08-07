@@ -1,15 +1,15 @@
 package app
 
 import (
-	"github.com/berachain/offchain-sdk/log"
-	"github.com/berachain/offchain-sdk/telemetry"
-	"github.com/berachain/offchain-sdk/tools/limiter"
+	"github.com/berachain/offchain-sdk/v2/log"
+	"github.com/berachain/offchain-sdk/v2/telemetry"
+	"github.com/berachain/offchain-sdk/v2/tools/limiter"
 
-	"github.com/berachain/offchain-sdk/baseapp"
-	coreapp "github.com/berachain/offchain-sdk/core/app"
-	"github.com/berachain/offchain-sdk/examples/listener/config"
-	ljobs "github.com/berachain/offchain-sdk/examples/listener/jobs"
-	jobs "github.com/berachain/offchain-sdk/x/jobs"
+	"github.com/berachain/offchain-sdk/v2/baseapp"
+	coreapp "github.com/berachain/offchain-sdk/v2/core/app"
+	"github.com/berachain/offchain-sdk/v2/examples/listener/config"
+	ljobs "github.com/berachain/offchain-sdk/v2/examples/listener/jobs"
+	jobs "github.com/berachain/offchain-sdk/v2/x/jobs"
 	memdb "github.com/ethereum/go-ethereum/ethdb/memorydb"
 )
 
@@ -45,13 +45,6 @@ func (app *ListenerApp) Setup(
 	if err != nil {
 		logger.Error("error setting up metrics", "error", err)
 		return
-	}
-
-	// Spin up Prometheus HTTP server
-	if config.Metrics.Prometheus.Enabled {
-		if err = ab.RegisterPrometheusTelemetry(); err != nil {
-			panic(err)
-		}
 	}
 
 	// This job is subscribed to the `NumberChanged(uint256)` event.
@@ -94,5 +87,5 @@ func (app *ListenerApp) Setup(
 	}
 
 	// And then we setup everything by calling `BuildApp`.
-	app.BaseApp = ab.BuildApp(logger)
+	app.BaseApp = ab.BuildApp()
 }

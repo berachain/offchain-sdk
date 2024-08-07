@@ -5,7 +5,7 @@ package mocks
 import (
 	context "context"
 
-	eth "github.com/berachain/offchain-sdk/client/eth"
+	eth "github.com/berachain/offchain-sdk/v2/client/eth"
 	mock "github.com/stretchr/testify/mock"
 )
 

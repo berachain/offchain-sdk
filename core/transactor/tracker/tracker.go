@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/berachain/offchain-sdk/client/eth"
-	"github.com/berachain/offchain-sdk/core/transactor/event"
+	"github.com/berachain/offchain-sdk/v2/client/eth"
+	"github.com/berachain/offchain-sdk/v2/core/transactor/event"
 
 	"github.com/ethereum/go-ethereum/common"
 	coretypes "github.com/ethereum/go-ethereum/core/types"

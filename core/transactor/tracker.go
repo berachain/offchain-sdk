@@ -4,9 +4,9 @@ import (
 	"context"
 	"sync"
 
-	"github.com/berachain/offchain-sdk/core/transactor/sender"
-	"github.com/berachain/offchain-sdk/core/transactor/tracker"
-	"github.com/berachain/offchain-sdk/core/transactor/types"
+	"github.com/berachain/offchain-sdk/v2/core/transactor/sender"
+	"github.com/berachain/offchain-sdk/v2/core/transactor/tracker"
+	"github.com/berachain/offchain-sdk/v2/core/transactor/types"
 
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )

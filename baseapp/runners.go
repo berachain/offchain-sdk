@@ -5,8 +5,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/berachain/offchain-sdk/job"
-	workertypes "github.com/berachain/offchain-sdk/job/types"
+	"github.com/berachain/offchain-sdk/v2/job"
+	workertypes "github.com/berachain/offchain-sdk/v2/job/types"
 )
 
 // producerTask returns a execution task for the given HasProducer job.

@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/berachain/offchain-sdk/log"
+	"github.com/berachain/offchain-sdk/v2/log"
 
 	"github.com/ethereum/go-ethereum/ethclient"
 )

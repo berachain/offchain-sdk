@@ -3,11 +3,11 @@ package app
 import (
 	"time"
 
-	"github.com/berachain/offchain-sdk/baseapp"
-	coreapp "github.com/berachain/offchain-sdk/core/app"
-	"github.com/berachain/offchain-sdk/examples/simple-metrics-app/config"
-	"github.com/berachain/offchain-sdk/examples/simple-metrics-app/jobs"
-	"github.com/berachain/offchain-sdk/log"
+	"github.com/berachain/offchain-sdk/v2/baseapp"
+	coreapp "github.com/berachain/offchain-sdk/v2/core/app"
+	"github.com/berachain/offchain-sdk/v2/examples/simple-metrics-app/config"
+	"github.com/berachain/offchain-sdk/v2/examples/simple-metrics-app/jobs"
+	"github.com/berachain/offchain-sdk/v2/log"
 )
 
 // We must conform to the `App` interface.
@@ -38,13 +38,6 @@ func (app *SimpleMetricsApp) Setup(
 		return
 	}
 
-	// Spin up Prometheus HTTP server
-	if config.Metrics.Prometheus.Enabled {
-		if err = ab.RegisterPrometheusTelemetry(); err != nil {
-			panic(err)
-		}
-	}
-
 	// This job is querying the chain on a 1 second time interval.
 	ab.RegisterJob(
 		&jobs.Poller{
@@ -59,5 +52,5 @@ func (app *SimpleMetricsApp) Setup(
 	)
 
 	// And then we setup everything by calling `BuildApp`.
-	app.BaseApp = ab.BuildApp(logger)
+	app.BaseApp = ab.BuildApp()
 }

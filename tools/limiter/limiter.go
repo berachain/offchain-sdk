@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/berachain/offchain-sdk/tools/store"
+	"github.com/berachain/offchain-sdk/v2/tools/store"
 )
 
 type Limiter struct {

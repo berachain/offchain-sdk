@@ -3,7 +3,7 @@ package tracker
 import (
 	"context"
 
-	"github.com/berachain/offchain-sdk/client/eth"
+	"github.com/berachain/offchain-sdk/v2/client/eth"
 
 	"github.com/ethereum/go-ethereum/common"
 )

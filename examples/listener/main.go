@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/berachain/offchain-sdk/cmd"
-	"github.com/berachain/offchain-sdk/examples/listener/app"
-	listenerconfig "github.com/berachain/offchain-sdk/examples/listener/config"
+	"github.com/berachain/offchain-sdk/v2/cmd"
+	"github.com/berachain/offchain-sdk/v2/examples/listener/app"
+	listenerconfig "github.com/berachain/offchain-sdk/v2/examples/listener/config"
 )
 
 func main() {
