@@ -78,7 +78,7 @@ func (c *HealthCheckedClient) StartHealthCheck(ctx context.Context) {
 				c.logger.Error("eth client reporting unhealthy", "err", err, "url", c.dialurl)
 			} else {
 				c.SetHealthy(true)
-				c.logger.Info("eth client reporting healthy", "url", c.dialurl)
+				c.logger.Debug("eth client reporting healthy", "url", c.dialurl)
 			}
 		}
 		time.Sleep(c.healthCheckInterval)
