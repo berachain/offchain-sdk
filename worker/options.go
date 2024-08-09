@@ -3,7 +3,7 @@ package worker
 import (
 	"runtime/debug"
 
-	"github.com/berachain/offchain-sdk/log"
+	"github.com/berachain/offchain-sdk/v2/log"
 )
 
 // PanicHandler builds a panic handler for the worker pool that logs the panic.

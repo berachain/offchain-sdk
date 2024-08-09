@@ -15,6 +15,7 @@ type Config struct {
 	Namespace            string // optional
 	Subsystem            string // optional
 	HistogramBucketCount int    // Number of linear buckets for histogram, default to 10
+	Port                 int    // Port to expose the metrics on
 }
 
 func (c *Config) Validate() error {

@@ -3,7 +3,7 @@ package cmd
 import (
 	"os"
 
-	coreapp "github.com/berachain/offchain-sdk/core/app"
+	coreapp "github.com/berachain/offchain-sdk/v2/core/app"
 	"github.com/spf13/cobra"
 )
 
