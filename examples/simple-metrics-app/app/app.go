@@ -28,14 +28,14 @@ func (app *SimpleMetricsApp) Setup(
 	ab coreapp.Builder,
 	config config.AppConfig,
 	logger log.Logger,
-) {
+) error {
 	var err error
 
 	// Set up metrics instance
 	err = ab.RegisterMetrics(&config.Metrics)
 	if err != nil {
 		logger.Error("error setting up metrics", "error", err)
-		return
+		return err
 	}
 
 	// This job is querying the chain on a 1 second time interval.
@@ -53,4 +53,5 @@ func (app *SimpleMetricsApp) Setup(
 
 	// And then we setup everything by calling `BuildApp`.
 	app.BaseApp = ab.BuildApp()
+	return nil
 }

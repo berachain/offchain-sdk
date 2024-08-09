@@ -8,7 +8,7 @@ import (
 
 type App[C any] interface {
 	Name() string
-	Setup(ab Builder, config C, logger log.Logger)
+	Setup(ab Builder, config C, logger log.Logger) error
 	Start(context.Context) error
 	Stop()
 }
