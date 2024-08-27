@@ -36,6 +36,17 @@ func NewConnectionPoolImpl(cfg ConnectionPoolConfig, logger log.Logger) (Connect
 		cfg.HealthCheckInterval = defaultHealthCheckInterval
 	}
 
+	// The LRU cache needs at least one URL provided for both HTTP and WS.
+	hasEthHttpUrls := len(cfg.EthHTTPURLs) > 0
+	if !hasEthHttpUrls {
+		return nil, fmt.Errorf("ConnectionPool: missing URL for HTTP clients")
+	}
+
+	hasEthWSUrls := len(cfg.EthWSURLs) > 0
+	if !hasEthWSUrls {
+		return nil, fmt.Errorf("ConnectionPool: missing URL for WS clients")
+	}
+
 	cache, err := lru.NewWithEvict(
 		len(cfg.EthHTTPURLs), func(_ string, v *HealthCheckedClient) {
 			defer v.Close()
@@ -46,8 +57,9 @@ func NewConnectionPoolImpl(cfg ConnectionPoolConfig, logger log.Logger) (Connect
 	if err != nil {
 		return nil, err
 	}
+
 	wsCache, err := lru.NewWithEvict(
-		len(cfg.EthHTTPURLs), func(_ string, v *HealthCheckedClient) {
+		len(cfg.EthWSURLs), func(_ string, v *HealthCheckedClient) {
 			defer v.Close()
 			// The timeout is added so that any in progress
 			// requests have a chance to complete before we close.
