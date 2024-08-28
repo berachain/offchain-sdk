@@ -16,20 +16,42 @@ var (
 	WSURL   = os.Getenv("ETH_WS_URL")
 )
 
-// InitConnectionPool initializes a new connection pool.
-func InitConnectionPool(
+/******************************* HELPER FUNCTIONS ***************************************/
+
+// NOTE: requires chain rpc url at env var `ETH_HTTP_URL` and `ETH_WS_URL`.
+func checkEnv(t *testing.T) {
+	ethHTTPRPC := os.Getenv("ETH_HTTP_URL")
+	ethWSRPC := os.Getenv("ETH_WS_URL")
+	if ethHTTPRPC == "" || ethWSRPC == "" {
+		t.Skipf("Skipping test: no eth rpc url provided")
+	}
+}
+
+// initConnectionPool initializes a new connection pool.
+func initConnectionPool(
 	cfg eth.ConnectionPoolConfig, writer io.Writer,
 ) (eth.ConnectionPool, error) {
 	logger := log.NewLogger(writer, "test-runner")
 	return eth.NewConnectionPoolImpl(cfg, logger)
 }
 
+// Use Init function as a setup function for the tests.
+// It means each test will have to call Init function to set up the test.
+func Init(
+	cfg eth.ConnectionPoolConfig, writer io.Writer, t *testing.T,
+) (eth.ConnectionPool, error) {
+	checkEnv(t)
+	return initConnectionPool(cfg, writer)
+}
+
+/******************************* TEST CASES ***************************************/
+
 // TestNewConnectionPoolImpl_MissingURLs tests the case when the URLs are missing.
 func TestNewConnectionPoolImpl_MissingURLs(t *testing.T) {
 	cfg := eth.ConnectionPoolConfig{}
 	var logBuffer bytes.Buffer
 
-	_, err := InitConnectionPool(cfg, &logBuffer)
+	_, err := Init(cfg, &logBuffer, t)
 	require.ErrorContains(t, err, "ConnectionPool: missing URL for HTTP clients")
 }
 
@@ -39,7 +61,7 @@ func TestNewConnectionPoolImpl_MissingWSURLs(t *testing.T) {
 		EthHTTPURLs: []string{HTTPURL},
 	}
 	var logBuffer bytes.Buffer
-	pool, err := InitConnectionPool(cfg, &logBuffer)
+	pool, err := Init(cfg, &logBuffer, t)
 
 	require.NoError(t, err)
 	require.NotNil(t, pool)
@@ -54,7 +76,7 @@ func TestNewConnectionPoolImpl(t *testing.T) {
 		EthWSURLs:   []string{WSURL},
 	}
 	var logBuffer bytes.Buffer
-	pool, err := InitConnectionPool(cfg, &logBuffer)
+	pool, err := Init(cfg, &logBuffer, t)
 
 	require.NoError(t, err)
 	require.NotNil(t, pool)
@@ -68,7 +90,7 @@ func TestGetHTTP(t *testing.T) {
 		EthHTTPURLs: []string{HTTPURL},
 	}
 	var logBuffer bytes.Buffer
-	pool, _ := InitConnectionPool(cfg, &logBuffer)
+	pool, _ := Init(cfg, &logBuffer, t)
 	err := pool.Dial("")
 	require.NoError(t, err)
 
@@ -85,7 +107,7 @@ func TestGetWS(t *testing.T) {
 		EthWSURLs:   []string{WSURL},
 	}
 	var logBuffer bytes.Buffer
-	pool, _ := InitConnectionPool(cfg, &logBuffer)
+	pool, _ := Init(cfg, &logBuffer, t)
 	err := pool.Dial("")
 
 	require.NoError(t, err)
@@ -102,7 +124,7 @@ func TestGetWS_WhenItIsNotSet(t *testing.T) {
 		EthHTTPURLs: []string{HTTPURL},
 	}
 	var logBuffer bytes.Buffer
-	pool, _ := InitConnectionPool(cfg, &logBuffer)
+	pool, _ := Init(cfg, &logBuffer, t)
 	err := pool.Dial("")
 	require.NoError(t, err)
 

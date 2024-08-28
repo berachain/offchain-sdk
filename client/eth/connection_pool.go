@@ -102,6 +102,8 @@ func (c *ConnectionPoolImpl) Dial(string) error {
 }
 
 func (c *ConnectionPoolImpl) DialContext(ctx context.Context, _ string) error {
+	// NOTE: Check the cache for the HTTP URL is not needed because it
+	// is guaranteed to be non-nil when a ConnectionPoolImpl is created.
 	for _, url := range c.config.EthHTTPURLs {
 		client := NewHealthCheckedClient(c.config.HealthCheckInterval, c.logger)
 		if err := client.DialContextWithTimeout(ctx, url, c.config.DefaultTimeout); err != nil {
@@ -109,6 +111,12 @@ func (c *ConnectionPoolImpl) DialContext(ctx context.Context, _ string) error {
 		}
 		c.cache.Add(url, client)
 	}
+
+	// Check is needed because the WS URL is optional.
+	if c.wsCache == nil {
+		return nil
+	}
+
 	for _, url := range c.config.EthWSURLs {
 		client := NewHealthCheckedClient(c.config.HealthCheckInterval, c.logger)
 		if err := client.DialContextWithTimeout(ctx, url, c.config.DefaultTimeout); err != nil {
@@ -119,13 +127,12 @@ func (c *ConnectionPoolImpl) DialContext(ctx context.Context, _ string) error {
 	return nil
 }
 
+// NOTE: this function assumes the cache is non-nil
+// because it is guaranteed to be non-nil when a ConnectionPoolImpl is created.
 func (c *ConnectionPoolImpl) GetHTTP() (Client, bool) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	if c.cache == nil {
-		return nil, false
-	}
 	return c.getClientFrom(c.cache)
 }
 
@@ -140,7 +147,7 @@ func (c *ConnectionPoolImpl) GetWS() (Client, bool) {
 	return c.getClientFrom(c.wsCache)
 }
 
-// NOTE: this function assumes the lock is held and cache is non-nil
+// NOTE: this function assumes the lock is held and cache is non-nil.
 func (c *ConnectionPoolImpl) getClientFrom(
 	cache *lru.Cache[string, *HealthCheckedClient],
 ) (Client, bool) {
