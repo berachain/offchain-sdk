@@ -42,7 +42,7 @@ func NewConnectionPoolImpl(cfg ConnectionPoolConfig, logger log.Logger) (Connect
 		err     error
 	)
 
-	// The LRU cache needs at least one URL provided for both HTTP and WS.
+	// The LRU cache needs at least one URL provided for HTTP.
 	if len(cfg.EthHTTPURLs) == 0 {
 		return nil, fmt.Errorf("ConnectionPool: missing URL for HTTP clients")
 	}
@@ -54,7 +54,6 @@ func NewConnectionPoolImpl(cfg ConnectionPoolConfig, logger log.Logger) (Connect
 			// requests have a chance to complete before we close.
 			time.Sleep(cfg.DefaultTimeout)
 		})
-
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +68,6 @@ func NewConnectionPoolImpl(cfg ConnectionPoolConfig, logger log.Logger) (Connect
 				// requests have a chance to complete before we close.
 				time.Sleep(cfg.DefaultTimeout)
 			})
-
 		if err != nil {
 			return nil, err
 		}
@@ -122,25 +120,30 @@ func (c *ConnectionPoolImpl) DialContext(ctx context.Context, _ string) error {
 }
 
 func (c *ConnectionPoolImpl) GetHTTP() (Client, bool) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
 	if c.cache == nil {
 		return nil, false
 	}
-	return c.getClient(c.cache)
+	return c.getClientFrom(c.cache)
 }
 
 func (c *ConnectionPoolImpl) GetWS() (Client, bool) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
 	// Because the WS URL is optional, we need to check if it's nil.
 	if c.wsCache == nil {
 		return nil, false
 	}
-	return c.getClient(c.wsCache)
+	return c.getClientFrom(c.wsCache)
 }
 
-func (c *ConnectionPoolImpl) getClient(
+// NOTE: this function assumes the lock is held and cache is non-nil
+func (c *ConnectionPoolImpl) getClientFrom(
 	cache *lru.Cache[string, *HealthCheckedClient],
 ) (Client, bool) {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
 retry:
 	_, client, ok := cache.GetOldest()
 	if !client.Health() {
