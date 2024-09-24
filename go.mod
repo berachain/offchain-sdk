@@ -1,6 +1,6 @@
 module github.com/berachain/offchain-sdk
 
-go 1.23
+go 1.23.1
 
 require (
 	cosmossdk.io/log v1.3.0
