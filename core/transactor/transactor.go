@@ -115,7 +115,7 @@ func (t *TxrV2) Execute(context.Context, any) (any, error) {
 		"🧠 system status",
 		"waiting-tx", acquired, "in-flight-tx", inFlight, "pending-requests", t.requests.Len(),
 	)
-	return nil, nil //nolint:nilnil // its okay.
+	return nil, nil //nolint:nilnil // safe to return nil.
 }
 
 // IntervalTime implements job.Polling.

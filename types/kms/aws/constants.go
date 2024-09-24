@@ -22,5 +22,5 @@ var (
 
 	// secp256k1HalfN is a global variable that represents half of the secp256k1N value.
 	secp256k1HalfN = new(big.Int).
-			Div(secp256k1N, big.NewInt(2)) //nolint:gochecknoglobals,gomnd // constant.
+			Div(secp256k1N, big.NewInt(2)) //nolint:gochecknoglobals,mnd // constant.
 )

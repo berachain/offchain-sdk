@@ -34,7 +34,7 @@ func TestRWMap(t *testing.T) {
 	rwMap.Set(2, "two")
 	rwMap.Set(3, "three")
 	visited := make(map[int]bool)
-	for k, _ := range rwMap.Iterate() {
+	for k := range rwMap.Iterate() {
 		visited[k] = true
 	}
 	if len(visited) != 2 || !visited[2] || !visited[3] {

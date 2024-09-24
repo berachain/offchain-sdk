@@ -64,7 +64,9 @@ func (t *TxrV2) retrieveBatch(ctx context.Context) types.Requests {
 			}
 
 			// Get at most txsRemaining tx requests from the queue.
-			msgIDs, txReqs, err := t.requests.ReceiveMany(int32(txsRemaining))
+			msgIDs, txReqs, err := t.requests.ReceiveMany(
+				int32(txsRemaining), //nolint:gosec // safe to convert.
+			)
 			if err != nil {
 				t.logger.Error("failed to receive tx request", "err", err)
 				continue
