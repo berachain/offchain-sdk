@@ -52,7 +52,8 @@ func New(
 				metrics:  metrics,
 			},
 		),
-		svr: svr,
+		svr:   svr,
+		chain: ethClient,
 	}
 }
 
