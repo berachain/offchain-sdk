@@ -27,7 +27,7 @@ func StartCmd[C any](app coreapp.App[C], defaultAppHome string) *cobra.Command {
 }
 
 // StartCmdWithOptions runs the service passed in.
-func StartCmdWithOptions[C any](
+func StartCmdWithOptions[C any]( //nolint:gocognit // TODO: refactor
 	app coreapp.App[C], defaultAppHome string, _ StartCmdOptions,
 ) *cobra.Command {
 	cmd := &cobra.Command{

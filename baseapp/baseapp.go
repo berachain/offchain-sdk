@@ -25,6 +25,9 @@ type BaseApp struct {
 
 	// svr is the server for the baseapp.
 	svr *server.Server
+
+	// chain is the eth client for the baseapp.
+	chain eth.Client
 }
 
 // New creates a new baseapp.
@@ -85,4 +88,9 @@ func (b *BaseApp) Stop() {
 	if b.svr != nil {
 		b.svr.Stop()
 	}
+}
+
+// Chain returns the eth client for the baseapp.
+func (b *BaseApp) Chain() eth.Client {
+	return b.chain
 }
