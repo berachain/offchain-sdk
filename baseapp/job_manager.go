@@ -63,7 +63,7 @@ func NewManager(
 	// TODO: read pool configs from the config file.
 
 	// Setup the producer worker pool.
-	jobCount := uint16(m.jobRegistry.Count())
+	jobCount := uint16(m.jobRegistry.Count()) //nolint:gosec // safe to convert.
 	m.producerCfg = &worker.PoolConfig{
 		Name:             producerName,
 		PrometheusPrefix: producerPromName,
