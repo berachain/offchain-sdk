@@ -10,8 +10,8 @@ import (
 )
 
 var (
-	multiplier = big.NewInt(11500) //nolint:gomnd // its okay.
-	quotient   = big.NewInt(10000) //nolint:gomnd // its okay.
+	multiplier = big.NewInt(11500) //nolint:mnd // its okay.
+	quotient   = big.NewInt(10000) //nolint:mnd // its okay.
 )
 
 // BumpGas bumps the gas on a tx by a 15% increase.
