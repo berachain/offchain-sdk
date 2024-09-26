@@ -111,7 +111,7 @@ func (t *TxrV2) Setup(ctx context.Context) error {
 // Execute implements job.Basic.
 func (t *TxrV2) Execute(context.Context, any) (any, error) {
 	acquired, inFlight := t.noncer.Stats()
-	t.logger.Info(
+	t.logger.Debug(
 		"🧠 system status",
 		"waiting-tx", acquired, "in-flight-tx", inFlight, "pending-requests", t.requests.Len(),
 	)
