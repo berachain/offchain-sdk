@@ -164,7 +164,7 @@ func (jm *JobManager) retryableHeaderSubscriber(
 		// Handle error while subscribing.
 		if shouldRetry = (err != nil); shouldRetry {
 			jm.Logger(ctx).Error(
-				"error subscribing to filter logs, retrying...",
+				"error subscribing to block headers, retrying...",
 				"job", blockHeaderJob.RegistryKey(), "err", err,
 			)
 			return shouldRetry
