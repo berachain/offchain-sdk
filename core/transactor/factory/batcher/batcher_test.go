@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/berachain/offchain-sdk/client/eth"
-	"github.com/berachain/offchain-sdk/log"
-	sdk "github.com/berachain/offchain-sdk/types"
+	"github.com/berachain/offchain-sdk/v2/client/eth"
+	"github.com/berachain/offchain-sdk/v2/log"
+	sdk "github.com/berachain/offchain-sdk/v2/types"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/ethereum/go-ethereum/common"

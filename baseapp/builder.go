@@ -3,12 +3,11 @@ package baseapp
 import (
 	"errors"
 
-	"github.com/berachain/offchain-sdk/client/eth"
-	"github.com/berachain/offchain-sdk/job"
-	"github.com/berachain/offchain-sdk/log"
-	"github.com/berachain/offchain-sdk/server"
-	"github.com/berachain/offchain-sdk/telemetry"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/berachain/offchain-sdk/v2/client/eth"
+	"github.com/berachain/offchain-sdk/v2/job"
+	"github.com/berachain/offchain-sdk/v2/log"
+	"github.com/berachain/offchain-sdk/v2/server"
+	"github.com/berachain/offchain-sdk/v2/telemetry"
 
 	ethdb "github.com/ethereum/go-ethereum/ethdb"
 )
@@ -21,14 +20,16 @@ type AppBuilder struct {
 	ethClient eth.Client
 	svr       *server.Server
 	metrics   telemetry.Metrics
+	logger    log.Logger
 }
 
 // NewAppBuilder creates a new app builder.
-func NewAppBuilder(appName string) *AppBuilder {
+func NewAppBuilder(appName string, logger log.Logger) *AppBuilder {
 	return &AppBuilder{
 		appName: appName,
 		jobs:    []job.Basic{},
 		metrics: telemetry.NewNoopMetrics(),
+		logger:  logger,
 	}
 }
 
@@ -88,15 +89,6 @@ func (ab *AppBuilder) RegisterMiddleware(m server.Middleware) error {
 	return nil
 }
 
-// RegisterPrometheusTelemetry registers a Prometheus metrics HTTP server.
-func (ab *AppBuilder) RegisterPrometheusTelemetry() error {
-	if ab.svr == nil {
-		return errors.New("must enable the HTTP server to register Prometheus")
-	}
-
-	return ab.RegisterHTTPHandler(&server.Handler{Path: "/metrics", Handler: promhttp.Handler()})
-}
-
 // RegisterEthClient registers the eth client.
 // TODO: update this to connection pool on baseapp and context gets one for running
 func (ab *AppBuilder) RegisterEthClient(ethClient eth.Client) {
@@ -104,12 +96,10 @@ func (ab *AppBuilder) RegisterEthClient(ethClient eth.Client) {
 }
 
 // BuildApp builds the app.
-func (ab *AppBuilder) BuildApp(
-	logger log.Logger,
-) *BaseApp {
+func (ab *AppBuilder) BuildApp() *BaseApp {
 	return New(
 		ab.appName,
-		logger,
+		ab.logger,
 		ab.ethClient,
 		ab.jobs,
 		ab.db,

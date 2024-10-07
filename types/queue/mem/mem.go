@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/berachain/go-utils/utils"
-	"github.com/berachain/offchain-sdk/types/queue/types"
+	"github.com/berachain/offchain-sdk/v2/types/queue/types"
 )
 
 // Queue is a thread-safe FIFO queue implementation.

@@ -10,8 +10,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	sqstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
-	awsutils "github.com/berachain/offchain-sdk/types/aws"
-	"github.com/berachain/offchain-sdk/types/queue/types"
+	awsutils "github.com/berachain/offchain-sdk/v2/types/aws"
+	"github.com/berachain/offchain-sdk/v2/types/queue/types"
 )
 
 // awsMaxBatchSize is the max batch size for AWS.

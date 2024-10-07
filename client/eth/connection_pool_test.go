@@ -6,8 +6,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/berachain/offchain-sdk/client/eth"
-	"github.com/berachain/offchain-sdk/log"
+	"github.com/berachain/offchain-sdk/v2/client/eth"
+	"github.com/berachain/offchain-sdk/v2/log"
 	"github.com/stretchr/testify/require"
 )
 

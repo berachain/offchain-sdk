@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/berachain/offchain-sdk/cmd"
-	"github.com/berachain/offchain-sdk/examples/simple-metrics-app/app"
+	"github.com/berachain/offchain-sdk/v2/cmd"
+	"github.com/berachain/offchain-sdk/v2/examples/simple-metrics-app/app"
 )
 
 func main() {

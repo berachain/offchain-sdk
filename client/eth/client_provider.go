@@ -6,7 +6,7 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/berachain/offchain-sdk/telemetry"
+	"github.com/berachain/offchain-sdk/v2/telemetry"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"

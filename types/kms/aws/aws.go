@@ -7,8 +7,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/kms"
 	awskmstype "github.com/aws/aws-sdk-go-v2/service/kms/types"
-	awsutils "github.com/berachain/offchain-sdk/types/aws"
-	"github.com/berachain/offchain-sdk/types/kms/types"
+	awsutils "github.com/berachain/offchain-sdk/v2/types/aws"
+	"github.com/berachain/offchain-sdk/v2/types/kms/types"
 )
 
 // KeyManagementSystem is a wrapper around the AWS KMS client to provide

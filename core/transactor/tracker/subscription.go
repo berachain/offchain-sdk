@@ -3,7 +3,7 @@ package tracker
 import (
 	"context"
 
-	"github.com/berachain/offchain-sdk/log"
+	"github.com/berachain/offchain-sdk/v2/log"
 
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
