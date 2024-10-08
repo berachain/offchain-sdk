@@ -8,23 +8,15 @@ import (
 	"github.com/berachain/offchain-sdk/log"
 	"github.com/berachain/offchain-sdk/server"
 	"github.com/berachain/offchain-sdk/telemetry"
-
 	ethdb "github.com/ethereum/go-ethereum/ethdb"
 )
 
 // BaseApp is the base application.
 type BaseApp struct {
-	// name is the name of the application
-	name string
-
-	// logger is the logger for the baseapp.
-	logger log.Logger
-
-	// jobMgr
-	jobMgr *JobManager
-
-	// svr is the server for the baseapp.
-	svr *server.Server
+	name    string        // name of the application
+	logger  log.Logger    // logger for the baseapp
+	jobMgr  *JobManager   // job manager
+	svr     *server.Server // server for the baseapp
 }
 
 // New creates a new baseapp.
@@ -67,10 +59,10 @@ func (b *BaseApp) Start(ctx context.Context) error {
 	b.jobMgr.Start(ctx)
 	b.jobMgr.RunProducers(ctx)
 
-	if b.svr == nil {
-		b.Logger().Info("no HTTP server registered, skipping")
-	} else {
+	if b.svr != nil {
 		go b.svr.Start(ctx)
+	} else {
+		b.Logger().Info("no HTTP server registered, skipping")
 	}
 
 	return nil
