@@ -13,7 +13,7 @@ import (
 	ethdb "github.com/ethereum/go-ethereum/ethdb"
 )
 
-// AppBuilder is a builder for an app.
+// AppBuilder is used to construct an application with the necessary components.
 type AppBuilder struct {
 	appName   string
 	jobs      []job.Basic
@@ -23,12 +23,12 @@ type AppBuilder struct {
 	metrics   telemetry.Metrics
 }
 
-// NewAppBuilder creates a new app builder.
+// NewAppBuilder creates a new instance of AppBuilder with a given app name.
 func NewAppBuilder(appName string) *AppBuilder {
 	return &AppBuilder{
 		appName: appName,
 		jobs:    []job.Basic{},
-		metrics: telemetry.NewNoopMetrics(),
+		metrics: telemetry.NewNoopMetrics(), // Default to no-op metrics.
 	}
 }
 
@@ -37,17 +37,17 @@ func (ab *AppBuilder) AppName() string {
 	return ab.appName
 }
 
-// AppName sets the name of the app.
+// RegisterJob registers a new job in the app.
 func (ab *AppBuilder) RegisterJob(job job.Basic) {
 	ab.jobs = append(ab.jobs, job)
 }
 
-// RegisterDB registers the db.
+// RegisterDB registers the application's database connection.
 func (ab *AppBuilder) RegisterDB(db ethdb.KeyValueStore) {
 	ab.db = db
 }
 
-// RegisterMetrics registers the metrics.
+// RegisterMetrics configures and registers the app's metrics system.
 func (ab *AppBuilder) RegisterMetrics(cfg *telemetry.Config) error {
 	var err error
 	ab.metrics, err = telemetry.NewMetrics(cfg)
@@ -56,57 +56,59 @@ func (ab *AppBuilder) RegisterMetrics(cfg *telemetry.Config) error {
 	}
 
 	// Enable metrics on eth client only if it is an instance of ChainProviderImpl.
-	chainProvider, ok := ab.ethClient.(*eth.ChainProviderImpl)
-	if ok {
+	if chainProvider, ok := ab.ethClient.(*eth.ChainProviderImpl); ok {
 		chainProvider.EnableMetrics(ab.metrics)
 	}
 	return nil
 }
 
-// RegisterHTTPServer registers the http server.
+// RegisterHTTPServer enables and configures the HTTP server for the app.
 func (ab *AppBuilder) RegisterHTTPServer(svr *server.Server) {
 	ab.svr = svr
 }
 
-// RegisterHTTPHandler registers a HTTP handler.
+// RegisterHTTPHandler registers an HTTP handler to the app's server.
 func (ab *AppBuilder) RegisterHTTPHandler(handler *server.Handler) error {
 	if ab.svr == nil {
-		return errors.New("must enable the HTTP server to register a handler")
+		return errors.New("HTTP server must be enabled before registering a handler")
 	}
 
 	ab.svr.RegisterHandler(handler)
 	return nil
 }
 
-// RegisterMiddleware registers a middleware to the HTTP server.
+// RegisterMiddleware registers a middleware function to the app's HTTP server.
 func (ab *AppBuilder) RegisterMiddleware(m server.Middleware) error {
 	if ab.svr == nil {
-		return errors.New("must enable the HTTP server to register a middleware")
+		return errors.New("HTTP server must be enabled before registering middleware")
 	}
 
 	ab.svr.RegisterMiddleware(m)
 	return nil
 }
 
-// RegisterPrometheusTelemetry registers a Prometheus metrics HTTP server.
+// RegisterPrometheusTelemetry registers a Prometheus-compatible HTTP handler for metrics.
 func (ab *AppBuilder) RegisterPrometheusTelemetry() error {
 	if ab.svr == nil {
-		return errors.New("must enable the HTTP server to register Prometheus")
+		return errors.New("HTTP server must be enabled before registering Prometheus telemetry")
 	}
 
-	return ab.RegisterHTTPHandler(&server.Handler{Path: "/metrics", Handler: promhttp.Handler()})
+	// Register the Prometheus metrics handler at the "/metrics" endpoint.
+	return ab.RegisterHTTPHandler(&server.Handler{
+		Path:    "/metrics",
+		Handler: promhttp.Handler(),
+	})
 }
 
-// RegisterEthClient registers the eth client.
-// TODO: update this to connection pool on baseapp and context gets one for running
+// RegisterEthClient registers the Ethereum client to be used by the app.
+// TODO: Update this to utilize a connection pool for the Ethereum client, and ensure context management 
+// allows for requesting a specific connection for each operation.
 func (ab *AppBuilder) RegisterEthClient(ethClient eth.Client) {
 	ab.ethClient = ethClient
 }
 
-// BuildApp builds the app.
-func (ab *AppBuilder) BuildApp(
-	logger log.Logger,
-) *BaseApp {
+// BuildApp finalizes the app setup and returns a new instance of the app.
+func (ab *AppBuilder) BuildApp(logger log.Logger) *BaseApp {
 	return New(
 		ab.appName,
 		logger,
