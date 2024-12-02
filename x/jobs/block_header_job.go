@@ -40,8 +40,6 @@ func (w *BlockHeaderWatcher) Subscribe(
 		return nil, nil, err
 	}
 	w.sub = sub
-
-	sCtx.Logger().Info("Subscribed to new block headers")
 	return sub, headerCh, nil
 }
 

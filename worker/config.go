@@ -27,10 +27,10 @@ func DefaultPoolConfig() *PoolConfig {
 	return &PoolConfig{
 		Name:             "default",
 		PrometheusPrefix: "default",
-		MinWorkers:       4,  //nolint:gomnd // it's ok.
-		MaxWorkers:       32, //nolint:gomnd // it's ok.
+		MinWorkers:       4,  //nolint:mnd // it's ok.
+		MaxWorkers:       32, //nolint:mnd // it's ok.
 		ResizingStrategy: "balanced",
-		MaxQueuedJobs:    100, //nolint:gomnd // it's ok.
+		MaxQueuedJobs:    100, //nolint:mnd // it's ok.
 	}
 }
 

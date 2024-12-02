@@ -19,7 +19,7 @@ Enabled = true
 Namespace = "example"
 Subsystem = "listener_app"
 
-[App.ConnectionPool]
+[ConnectionPool]
 EthHTTPURLs = ["http://localhost:10545"]
 EthWSURLs = ["ws://localhost:10546"]
 DefaultTimeout = "5s"

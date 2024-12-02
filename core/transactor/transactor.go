@@ -115,7 +115,7 @@ func (t *TxrV2) Execute(context.Context, any) (any, error) {
 		"🧠 system status",
 		"waiting-tx", acquired, "in-flight-tx", inFlight, "pending-requests", t.requests.Len(),
 	)
-	return nil, nil //nolint:nilnil // its okay.
+	return 1, nil
 }
 
 // IntervalTime implements job.Polling.
@@ -159,16 +159,30 @@ func (t *TxrV2) SendTxRequest(txReq *types.Request) (string, error) {
 // ForceTxRequest immediately (whenever the sender is free from any previous sends) builds and
 // sends the tx request to the chain, after validating it.
 // NOTE: this bypasses the queue and batching even if configured to do so.
-func (t *TxrV2) ForceTxRequest(ctx context.Context, txReq *types.Request) (string, error) {
+func (t *TxrV2) ForceTxRequest(
+	ctx context.Context, txReq *types.Request, async bool,
+) (string, error) {
 	if err := txReq.Validate(); err != nil {
 		return "", err
 	}
 
-	go t.fire(
-		ctx,
-		&tracker.Response{MsgIDs: []string{txReq.MsgID}, InitialTimes: []time.Time{txReq.Time()}},
-		true, txReq.CallMsg,
-	)
+	if async {
+		go t.fire(
+			ctx,
+			&tracker.Response{
+				MsgIDs: []string{txReq.MsgID}, InitialTimes: []time.Time{txReq.Time()},
+			},
+			true, txReq.CallMsg,
+		)
+	} else {
+		t.fire(
+			ctx,
+			&tracker.Response{
+				MsgIDs: []string{txReq.MsgID}, InitialTimes: []time.Time{txReq.Time()},
+			},
+			true, txReq.CallMsg,
+		)
+	}
 	return txReq.MsgID, nil
 }
 
