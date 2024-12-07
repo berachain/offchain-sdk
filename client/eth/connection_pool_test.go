@@ -11,9 +11,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func init() {
-	// Load environment variables before running tests
-	env.Load()
+// setupTest loads environment variables and performs any necessary test setup.
+func setupTest(t *testing.T) {
+	t.Helper()
+	err := env.Load()
+	require.NoError(t, err)
 }
 
 // NOTE: requires chain rpc url at env var `ETH_RPC_URL` and `ETH_WS_URL`.
@@ -69,6 +71,7 @@ func TestNewConnectionPoolImpl_MissingWSURLs(t *testing.T) {
 // TestNewConnectionPoolImpl tests the case when the URLs are provided.
 // It should the expected behavior.
 func TestNewConnectionPoolImpl(t *testing.T) {
+	setupTest(t)
 	cfg := eth.ConnectionPoolConfig{
 		EthHTTPURLs: []string{env.GetEthRPCURL()},
 		EthWSURLs:   []string{env.GetEthWSURL()},
@@ -84,6 +87,7 @@ func TestNewConnectionPoolImpl(t *testing.T) {
 // TestGetHTTP tests the retrieval of the HTTP client when it
 // has been set and the connection has been established.
 func TestGetHTTP(t *testing.T) {
+	setupTest(t)
 	cfg := eth.ConnectionPoolConfig{
 		EthHTTPURLs: []string{env.GetEthRPCURL()},
 	}
@@ -100,6 +104,7 @@ func TestGetHTTP(t *testing.T) {
 // TestGetWS tests the retrieval of the HTTP client when it
 // has been set and the connection has been established.
 func TestGetWS(t *testing.T) {
+	setupTest(t)
 	cfg := eth.ConnectionPoolConfig{
 		EthHTTPURLs: []string{env.GetEthRPCURL()},
 		EthWSURLs:   []string{env.GetEthWSURL()},
@@ -118,6 +123,7 @@ func TestGetWS(t *testing.T) {
 // TestGetWS_WhenItIsNotSet tests the retrieval of the WS client when
 // no WS URLs have been provided.
 func TestGetWS_WhenItIsNotSet(t *testing.T) {
+	setupTest(t)
 	cfg := eth.ConnectionPoolConfig{
 		EthHTTPURLs: []string{env.GetEthRPCURL()},
 	}

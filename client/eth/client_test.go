@@ -29,13 +29,16 @@ const (
 	TestModeEither
 )
 
-func init() {
-	// Load environment variables before running tests
-	env.Load()
+// setupClientTest loads environment variables and performs any necessary test setup.
+func setupClientTest(t *testing.T) {
+	t.Helper()
+	err := env.Load()
+	assert.NoError(t, err)
 }
 
 // NOTE: requires Ethereum chain rpc url at env var `ETH_RPC_URL` or `ETH_RPC_URL_WS`.
 func setUp(testMode int, t *testing.T) (*eth.ExtendedEthClient, error) {
+	setupClientTest(t)
 	rpcTimeout := 5 * time.Second
 	ctxWithTimeout, cancel := context.WithTimeout(context.Background(), rpcTimeout)
 	defer cancel()
