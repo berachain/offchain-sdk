@@ -2,11 +2,11 @@ package eth_test
 
 import (
 	"context"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/berachain/offchain-sdk/client/eth"
+	"github.com/berachain/offchain-sdk/config/env"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/ethereum/go-ethereum"
@@ -29,6 +29,11 @@ const (
 	TestModeEither
 )
 
+func init() {
+	// Load environment variables before running tests
+	env.Load()
+}
+
 // NOTE: requires Ethereum chain rpc url at env var `ETH_RPC_URL` or `ETH_RPC_URL_WS`.
 func setUp(testMode int, t *testing.T) (*eth.ExtendedEthClient, error) {
 	rpcTimeout := 5 * time.Second
@@ -38,12 +43,12 @@ func setUp(testMode int, t *testing.T) (*eth.ExtendedEthClient, error) {
 	var ethRPC string
 	switch testMode {
 	case TestModeWS:
-		ethRPC = os.Getenv("ETH_RPC_URL_WS")
+		ethRPC = env.GetEthWSURL()
 	case TestModeHTTP:
-		ethRPC = os.Getenv("ETH_RPC_URL")
+		ethRPC = env.GetEthRPCURL()
 	case TestModeEither:
-		if ethRPC = os.Getenv("ETH_RPC_URL_WS"); ethRPC == "" {
-			ethRPC = os.Getenv("ETH_RPC_URL")
+		if ethRPC = env.GetEthWSURL(); ethRPC == "" {
+			ethRPC = env.GetEthRPCURL()
 		}
 	default:
 		panic("invalid test mode")
@@ -130,7 +135,7 @@ func TestTxPoolContentFrom(t *testing.T) {
 	assert.NoError(t, err)
 
 	ctx := context.Background()
-	addrStr := os.Getenv("ETH_ADDR")
+	addrStr := env.GetAddressToListen()
 	if addrStr == "" {
 		t.Skipf("Skipping test: no eth address provided")
 	}

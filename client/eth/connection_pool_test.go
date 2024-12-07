@@ -3,26 +3,24 @@ package eth_test
 import (
 	"bytes"
 	"io"
-	"os"
 	"testing"
 
 	"github.com/berachain/offchain-sdk/client/eth"
+	"github.com/berachain/offchain-sdk/config/env"
 	"github.com/berachain/offchain-sdk/log"
 	"github.com/stretchr/testify/require"
 )
 
-var (
-	HTTPURL = os.Getenv("ETH_HTTP_URL")
-	WSURL   = os.Getenv("ETH_WS_URL")
-)
+func init() {
+	// Load environment variables before running tests
+	env.Load()
+}
 
-/******************************* HELPER FUNCTIONS ***************************************/
-
-// NOTE: requires chain rpc url at env var `ETH_HTTP_URL` and `ETH_WS_URL`.
+// NOTE: requires chain rpc url at env var `ETH_RPC_URL` and `ETH_WS_URL`.
 func checkEnv(t *testing.T) {
-	ethHTTPRPC := os.Getenv("ETH_HTTP_URL")
-	ethWSRPC := os.Getenv("ETH_WS_URL")
-	if ethHTTPRPC == "" || ethWSRPC == "" {
+	ethRPC := env.GetEthRPCURL()
+	ethWS := env.GetEthWSURL()
+	if ethRPC == "" || ethWS == "" {
 		t.Skipf("Skipping test: no eth rpc url provided")
 	}
 }
@@ -58,7 +56,7 @@ func TestNewConnectionPoolImpl_MissingURLs(t *testing.T) {
 // TestNewConnectionPoolImpl_MissingWSURLs tests the case when the WS URLs are missing.
 func TestNewConnectionPoolImpl_MissingWSURLs(t *testing.T) {
 	cfg := eth.ConnectionPoolConfig{
-		EthHTTPURLs: []string{HTTPURL},
+		EthHTTPURLs: []string{env.GetEthRPCURL()},
 	}
 	var logBuffer bytes.Buffer
 	pool, err := Init(cfg, &logBuffer, t)
@@ -72,8 +70,8 @@ func TestNewConnectionPoolImpl_MissingWSURLs(t *testing.T) {
 // It should the expected behavior.
 func TestNewConnectionPoolImpl(t *testing.T) {
 	cfg := eth.ConnectionPoolConfig{
-		EthHTTPURLs: []string{HTTPURL},
-		EthWSURLs:   []string{WSURL},
+		EthHTTPURLs: []string{env.GetEthRPCURL()},
+		EthWSURLs:   []string{env.GetEthWSURL()},
 	}
 	var logBuffer bytes.Buffer
 	pool, err := Init(cfg, &logBuffer, t)
@@ -87,7 +85,7 @@ func TestNewConnectionPoolImpl(t *testing.T) {
 // has been set and the connection has been established.
 func TestGetHTTP(t *testing.T) {
 	cfg := eth.ConnectionPoolConfig{
-		EthHTTPURLs: []string{HTTPURL},
+		EthHTTPURLs: []string{env.GetEthRPCURL()},
 	}
 	var logBuffer bytes.Buffer
 	pool, _ := Init(cfg, &logBuffer, t)
@@ -103,8 +101,8 @@ func TestGetHTTP(t *testing.T) {
 // has been set and the connection has been established.
 func TestGetWS(t *testing.T) {
 	cfg := eth.ConnectionPoolConfig{
-		EthHTTPURLs: []string{HTTPURL},
-		EthWSURLs:   []string{WSURL},
+		EthHTTPURLs: []string{env.GetEthRPCURL()},
+		EthWSURLs:   []string{env.GetEthWSURL()},
 	}
 	var logBuffer bytes.Buffer
 	pool, _ := Init(cfg, &logBuffer, t)
@@ -121,7 +119,7 @@ func TestGetWS(t *testing.T) {
 // no WS URLs have been provided.
 func TestGetWS_WhenItIsNotSet(t *testing.T) {
 	cfg := eth.ConnectionPoolConfig{
-		EthHTTPURLs: []string{HTTPURL},
+		EthHTTPURLs: []string{env.GetEthRPCURL()},
 	}
 	var logBuffer bytes.Buffer
 	pool, _ := Init(cfg, &logBuffer, t)
