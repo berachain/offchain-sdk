@@ -45,8 +45,13 @@ type Reader interface {
 		ch chan<- ethcoretypes.Log) (ethereum.Subscription, error)
 	SuggestGasPrice(ctx context.Context) (*big.Int, error)
 	SuggestGasTipCap(ctx context.Context) (*big.Int, error)
+	FeeHistory(ctx context.Context, blockCount uint64, lastBlock *big.Int,
+		rewardPercentiles []float64) (*ethereum.FeeHistory, error)
 	TransactionByHash(ctx context.Context, hash common.Hash,
 	) (tx *ethcoretypes.Transaction, isPending bool, err error)
+	TxPoolContent(ctx context.Context) (
+		map[string]map[uint64]*ethcoretypes.Transaction, error,
+	)
 
 	/*
 		TxPoolContentFrom returns the pending and queued transactions of this address.

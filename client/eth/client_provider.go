@@ -342,6 +342,21 @@ func (c *ChainProviderImpl) SuggestGasTipCap(ctx context.Context) (*big.Int, err
 	return nil, ErrClientNotFound
 }
 
+// FeeHistory returns the fee history for the given block count, last block, and reward percentiles.
+func (c *ChainProviderImpl) FeeHistory(
+	ctx context.Context, blockCount uint64, lastBlock *big.Int,
+	rewardPercentiles []float64) (*ethereum.FeeHistory, error) {
+	if client, ok := c.GetHTTP(); ok {
+		ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
+		defer cancel()
+		var err error
+		defer c.recordRPCMethod(client.ClientID(), "eth_feeHistory", time.Now(), err)
+		result, err := client.FeeHistory(ctxWithTimeout, blockCount, lastBlock, rewardPercentiles)
+		return result, err
+	}
+	return nil, ErrClientNotFound
+}
+
 // TransactionByHash returns the transaction with the given hash.
 func (c *ChainProviderImpl) TransactionByHash(
 	ctx context.Context, hash common.Hash,
@@ -356,6 +371,20 @@ func (c *ChainProviderImpl) TransactionByHash(
 		return tx, pending, err
 	}
 	return nil, false, ErrClientNotFound
+}
+
+func (c *ChainProviderImpl) TxPoolContent(ctx context.Context) (
+	map[string]map[uint64]*types.Transaction, error,
+) {
+	if client, ok := c.GetHTTP(); ok {
+		ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
+		defer cancel()
+		var err error
+		defer c.recordRPCMethod(client.ClientID(), "txpool_content", time.Now(), err)
+		result, err := client.TxPoolContent(ctxWithTimeout)
+		return result, err
+	}
+	return nil, ErrClientNotFound
 }
 
 /*
@@ -385,7 +414,7 @@ func (c *ChainProviderImpl) TxPoolContentFrom(ctx context.Context, address commo
 		defer cancel()
 
 		var err error
-		defer c.recordRPCMethod(client.ClientID(), "txpool_content", time.Now(), err)
+		defer c.recordRPCMethod(client.ClientID(), "txpool_contentFrom", time.Now(), err)
 		result, err := client.TxPoolContentFrom(ctxWithTimeout, address)
 		return result, err
 	}
