@@ -123,6 +123,17 @@ func TestSubscribeFilterLogs(t *testing.T) {
 	assert.NotPanics(t, func() { sub.Unsubscribe() })
 }
 
+func TestFeeHistory(t *testing.T) {
+	eec, err := setUp(TestModeHTTP, t)
+	assert.NoError(t, err)
+
+	ctx := context.Background()
+	result, err := eec.FeeHistory(ctx, 5, nil, []float64{0.75, 0.9})
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	t.Log("result", result)
+}
+
 // NOTE: requires Ethereum chain rpc url at env var `ETH_RPC_URL` AND a wallet to query the
 // txpool for at `ETH_ADDR`.
 func TestTxPoolContentFrom(t *testing.T) {
