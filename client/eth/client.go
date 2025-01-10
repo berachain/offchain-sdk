@@ -45,6 +45,8 @@ type Reader interface {
 		ch chan<- ethcoretypes.Log) (ethereum.Subscription, error)
 	SuggestGasPrice(ctx context.Context) (*big.Int, error)
 	SuggestGasTipCap(ctx context.Context) (*big.Int, error)
+	FeeHistory(ctx context.Context, blockCount uint64, lastBlock *big.Int,
+		rewardPercentiles []float64) (*ethereum.FeeHistory, error)
 	TransactionByHash(ctx context.Context, hash common.Hash,
 	) (tx *ethcoretypes.Transaction, isPending bool, err error)
 

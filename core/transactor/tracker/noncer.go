@@ -14,7 +14,7 @@ import (
 )
 
 // noncesCapacity is the capacity of the in-mempool nonces cache.
-const noncesCapacity = 100
+const noncesCapacity = 10000
 
 // Noncer is a struct that manages nonces for transactions.
 type Noncer struct {

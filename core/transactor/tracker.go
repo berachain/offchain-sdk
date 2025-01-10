@@ -65,7 +65,7 @@ func (t *TxrV2) OnStale(ctx context.Context, resp *tracker.Response, isPending b
 	t.removeStateTracking(resp.MsgIDs...)
 	t.logger.Warn(
 		"🔄 transaction is stale", "tx-hash", resp.Hash(),
-		"nonce", resp.Nonce(), "gas-price", resp.GasPrice(),
+		"nonce", resp.Nonce(), "gas-price", resp.GasPrice(), "pending", isPending,
 	)
 
 	if isPending {
