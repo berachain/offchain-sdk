@@ -373,19 +373,7 @@ func (c *ChainProviderImpl) TransactionByHash(
 	return nil, false, ErrClientNotFound
 }
 
-func (c *ChainProviderImpl) TxPoolContent(ctx context.Context) (
-	map[string]map[uint64]*types.Transaction, error,
-) {
-	if client, ok := c.GetHTTP(); ok {
-		ctxWithTimeout, cancel := context.WithTimeout(ctx, c.rpcTimeout)
-		defer cancel()
-		var err error
-		defer c.recordRPCMethod(client.ClientID(), "txpool_content", time.Now(), err)
-		result, err := client.TxPoolContent(ctxWithTimeout)
-		return result, err
-	}
-	return nil, ErrClientNotFound
-}
+
 
 /*
 TxPoolContentFrom returns the pending and queued transactions of this address.

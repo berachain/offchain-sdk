@@ -49,9 +49,6 @@ type Reader interface {
 		rewardPercentiles []float64) (*ethereum.FeeHistory, error)
 	TransactionByHash(ctx context.Context, hash common.Hash,
 	) (tx *ethcoretypes.Transaction, isPending bool, err error)
-	TxPoolContent(ctx context.Context) (
-		map[string]map[uint64]*ethcoretypes.Transaction, error,
-	)
 
 	/*
 		TxPoolContentFrom returns the pending and queued transactions of this address.
