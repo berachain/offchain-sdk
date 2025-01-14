@@ -18,6 +18,7 @@ require (
 	github.com/holiman/uint256 v1.2.4
 	github.com/huandu/skiplist v1.2.0
 	github.com/jellydator/ttlcache/v2 v2.11.1
+	github.com/joho/godotenv v1.5.1
 	github.com/prometheus/client_golang v1.17.0
 	github.com/redis/go-redis/v9 v9.5.1
 	github.com/rs/zerolog v1.31.0
