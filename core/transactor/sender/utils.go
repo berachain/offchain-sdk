@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	multiplier = big.NewInt(11500) //nolint:mnd // its okay.
+	multiplier = big.NewInt(12000) //nolint:mnd // its okay.
 	quotient   = big.NewInt(10000) //nolint:mnd // its okay.
 )
 
