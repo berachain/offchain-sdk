@@ -3,8 +3,8 @@ package jobs
 import (
 	"context"
 
-	"github.com/berachain/offchain-sdk/job"
-	sdk "github.com/berachain/offchain-sdk/types"
+	"github.com/berachain/offchain-sdk/v2/job"
+	sdk "github.com/berachain/offchain-sdk/v2/types"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"

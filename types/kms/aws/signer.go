@@ -5,7 +5,7 @@ import (
 	"context"
 	"math/big"
 
-	kmstypes "github.com/berachain/offchain-sdk/types/kms/types"
+	kmstypes "github.com/berachain/offchain-sdk/v2/types/kms/types"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"

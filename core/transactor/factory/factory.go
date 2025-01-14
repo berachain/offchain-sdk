@@ -6,9 +6,9 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/berachain/offchain-sdk/client/eth"
-	"github.com/berachain/offchain-sdk/core/transactor/sender"
-	kmstypes "github.com/berachain/offchain-sdk/types/kms/types"
+	"github.com/berachain/offchain-sdk/v2/client/eth"
+	"github.com/berachain/offchain-sdk/v2/core/transactor/sender"
+	kmstypes "github.com/berachain/offchain-sdk/v2/types/kms/types"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"

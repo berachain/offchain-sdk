@@ -3,7 +3,7 @@ package factory
 import (
 	"context"
 
-	"github.com/berachain/offchain-sdk/core/transactor/types"
+	"github.com/berachain/offchain-sdk/v2/core/transactor/types"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"

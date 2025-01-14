@@ -4,8 +4,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/berachain/offchain-sdk/telemetry/datadog"
-	"github.com/berachain/offchain-sdk/telemetry/prometheus"
+	"github.com/berachain/offchain-sdk/v2/telemetry/datadog"
+	"github.com/berachain/offchain-sdk/v2/telemetry/prometheus"
 )
 
 // Config serves as a global telemetry configuration.

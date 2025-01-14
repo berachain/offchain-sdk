@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/alitto/pond"
-	"github.com/berachain/offchain-sdk/log"
+	"github.com/berachain/offchain-sdk/v2/log"
 )
 
 // and other functionality to the pool.

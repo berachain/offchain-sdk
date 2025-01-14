@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/berachain/offchain-sdk/core/transactor/tracker"
-	"github.com/berachain/offchain-sdk/core/transactor/types"
+	"github.com/berachain/offchain-sdk/v2/core/transactor/tracker"
+	"github.com/berachain/offchain-sdk/v2/core/transactor/types"
 
 	"github.com/ethereum/go-ethereum"
 )

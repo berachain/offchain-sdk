@@ -1,4 +1,4 @@
-module github.com/berachain/offchain-sdk
+module github.com/berachain/offchain-sdk/v2
 
 go 1.23.1
 

@@ -5,9 +5,9 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/berachain/offchain-sdk/client/eth"
-	"github.com/berachain/offchain-sdk/client/eth/mocks"
-	tmocks "github.com/berachain/offchain-sdk/telemetry/mocks"
+	"github.com/berachain/offchain-sdk/v2/client/eth"
+	"github.com/berachain/offchain-sdk/v2/client/eth/mocks"
+	tmocks "github.com/berachain/offchain-sdk/v2/telemetry/mocks"
 	"github.com/stretchr/testify/mock"
 )
 

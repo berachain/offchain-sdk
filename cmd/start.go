@@ -7,14 +7,14 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/berachain/offchain-sdk/baseapp"
-	"github.com/berachain/offchain-sdk/client/eth"
-	"github.com/berachain/offchain-sdk/cmd/flags"
-	"github.com/berachain/offchain-sdk/config"
-	"github.com/berachain/offchain-sdk/config/toml"
-	coreapp "github.com/berachain/offchain-sdk/core/app"
-	"github.com/berachain/offchain-sdk/log"
-	"github.com/berachain/offchain-sdk/server"
+	"github.com/berachain/offchain-sdk/v2/baseapp"
+	"github.com/berachain/offchain-sdk/v2/client/eth"
+	"github.com/berachain/offchain-sdk/v2/cmd/flags"
+	"github.com/berachain/offchain-sdk/v2/config"
+	"github.com/berachain/offchain-sdk/v2/config/toml"
+	coreapp "github.com/berachain/offchain-sdk/v2/core/app"
+	"github.com/berachain/offchain-sdk/v2/log"
+	"github.com/berachain/offchain-sdk/v2/server"
 	"github.com/spf13/cobra"
 )
 
@@ -27,7 +27,7 @@ func StartCmd[C any](app coreapp.App[C], defaultAppHome string) *cobra.Command {
 }
 
 // StartCmdWithOptions runs the service passed in.
-func StartCmdWithOptions[C any](
+func StartCmdWithOptions[C any]( //nolint:gocognit // TODO: refactor
 	app coreapp.App[C], defaultAppHome string, _ StartCmdOptions,
 ) *cobra.Command {
 	cmd := &cobra.Command{
@@ -64,9 +64,9 @@ func StartCmdWithOptions[C any](
 				return err
 			}
 
-			ab := baseapp.NewAppBuilder(app.Name())
-
 			logger := log.NewWithCfg(cmd.OutOrStdout(), app.Name(), cfg.Log)
+
+			ab := baseapp.NewAppBuilder(app.Name(), logger)
 			// // Maybe move this to BuildApp?
 			// ethClient := eth.NewHealthCheckedClient(&cfg.Eth)
 			// ab.RegisterEthClient(ethClient)
@@ -95,7 +95,9 @@ func StartCmdWithOptions[C any](
 			}
 
 			// Build the application, then start it.
-			app.Setup(ab, cfg.App, logger)
+			if err = app.Setup(ab, cfg.App, logger); err != nil {
+				return err
+			}
 			if err = app.Start(ctx); err != nil {
 				return err
 			}
