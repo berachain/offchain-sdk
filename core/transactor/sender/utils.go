@@ -20,12 +20,12 @@ func BumpGas(tx *coretypes.Transaction) *coretypes.Transaction {
 	switch tx.Type() {
 	case coretypes.DynamicFeeTxType, coretypes.BlobTxType:
 		// Bump the existing gas tip cap 15% (10% is required but add a buffer to be safe).
-		// bumpedGasTipCap := new(big.Int).Mul(tx.GasTipCap(), multiplier)
-		// bumpedGasTipCap = new(big.Int).Quo(bumpedGasTipCap, quotient)
+		bumpedGasTipCap := new(big.Int).Mul(tx.GasTipCap(), multiplier)
+		bumpedGasTipCap = new(big.Int).Quo(bumpedGasTipCap, quotient)
 
 		// Bump the existing gas fee cap 15% (only 10% required but add a buffer to be safe).
-		// bumpedGasFeeCap := new(big.Int).Mul(tx.GasFeeCap(), multiplier)
-		// bumpedGasFeeCap = new(big.Int).Quo(bumpedGasFeeCap, quotient)
+		bumpedGasFeeCap := new(big.Int).Mul(tx.GasFeeCap(), multiplier)
+		bumpedGasFeeCap = new(big.Int).Quo(bumpedGasFeeCap, quotient)
 
 		if tx.Type() == coretypes.BlobTxType {
 			// Bump the existing blob gas fee cap 15%. // TODO: verify that this is correct.
@@ -33,27 +33,23 @@ func BumpGas(tx *coretypes.Transaction) *coretypes.Transaction {
 			bumpedBlobGasFeeCap = new(big.Int).Quo(bumpedBlobGasFeeCap, quotient)
 
 			innerTx = &coretypes.BlobTx{
-				Nonce: tx.Nonce(),
-				To:    *tx.To(),
-				Gas:   tx.Gas(),
-				Value: uint256.MustFromBig(tx.Value()),
-				Data:  tx.Data(),
-				// GasTipCap:  uint256.MustFromBig(bumpedGasTipCap),
-				// GasFeeCap:  uint256.MustFromBig(bumpedGasFeeCap),
-				GasTipCap:  nil,
-				GasFeeCap:  nil,
+				Nonce:      tx.Nonce(),
+				To:         *tx.To(),
+				Gas:        tx.Gas(),
+				Value:      uint256.MustFromBig(tx.Value()),
+				Data:       tx.Data(),
+				GasTipCap:  uint256.MustFromBig(bumpedGasTipCap),
+				GasFeeCap:  uint256.MustFromBig(bumpedGasFeeCap),
 				BlobFeeCap: uint256.MustFromBig(bumpedBlobGasFeeCap),
 				BlobHashes: tx.BlobHashes(),
 				Sidecar:    tx.BlobTxSidecar(),
 			}
 		} else {
 			innerTx = &coretypes.DynamicFeeTx{
-				ChainID: tx.ChainId(),
-				Nonce:   tx.Nonce(),
-				// GasTipCap: bumpedGasTipCap,
-				// GasFeeCap: bumpedGasFeeCap,
-				GasTipCap: nil,
-				GasFeeCap: nil,
+				ChainID:   tx.ChainId(),
+				Nonce:     tx.Nonce(),
+				GasTipCap: bumpedGasTipCap,
+				GasFeeCap: bumpedGasFeeCap,
 				Gas:       tx.Gas(),
 				To:        tx.To(),
 				Value:     tx.Value(),
