@@ -35,10 +35,10 @@ func BumpGas(tx *coretypes.Transaction, chain eth.Client) *coretypes.Transaction
 	case coretypes.DynamicFeeTxType, coretypes.BlobTxType:
 		// Bump the existing gas tip cap 15% (10% is required but add a buffer to be safe).
 		bumpedGasTipCap := new(big.Int).Mul(gasTipCap, multiplier)
-		bumpedGasTipCap = new(big.Int).Quo(gasFeeCap, quotient)
+		bumpedGasTipCap = new(big.Int).Quo(bumpedGasTipCap, quotient)
 
 		// Bump the existing gas fee cap 15% (only 10% required but add a buffer to be safe).
-		bumpedGasFeeCap := new(big.Int).Mul(tx.GasFeeCap(), multiplier)
+		bumpedGasFeeCap := new(big.Int).Mul(gasFeeCap, multiplier)
 		bumpedGasFeeCap = new(big.Int).Quo(bumpedGasFeeCap, quotient)
 
 		if tx.Type() == coretypes.BlobTxType {
