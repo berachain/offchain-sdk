@@ -3,6 +3,7 @@ package transactor
 import (
 	"context"
 	"errors"
+	"sort"
 	"sync"
 	"time"
 
@@ -229,7 +230,16 @@ func (t *TxrV2) resendStaleTxns(ctx context.Context, chain eth.Client) error {
 
 	if pendingTxs := txPoolContent["pending"]; len(pendingTxs) > 0 {
 		t.logger.Info("🔄 resending stale (pending in txpool) txs", "count", len(pendingTxs))
+
+		// Create a sorted slice of nonces
+		nonces := make([]uint64, 0, len(pendingTxs))
 		for _, tx := range pendingTxs {
+			nonces = append(nonces, tx.Nonce())
+		}
+		sort.Slice(nonces, func(i, j int) bool { return nonces[i] < nonces[j] })
+
+		for _, nonce := range nonces {
+			tx := pendingTxs[nonce]
 			resp := &tracker.Response{Transaction: sender.BumpGas(tx, t.chain)}
 			t.fire(ctx, resp, true, types.CallMsgFromTx(resp.Transaction))
 			t.logger.Info("🔄 resending stale (pending in txpool) tx", "nonce", tx.Nonce())
