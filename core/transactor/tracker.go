@@ -71,7 +71,7 @@ func (t *TxrV2) OnStale(ctx context.Context, resp *tracker.Response, isPending b
 	if isPending {
 		// For a tx that gets stuck in the mempool as pending, it can only be included in a block
 		// by bumping gas. Resend it (same tx data, same nonce) with a bumped gas.
-		resp.Transaction = sender.BumpGas(resp.Transaction)
+		resp.Transaction = sender.BumpGas(resp.Transaction, t.chain)
 		go t.fire(ctx, resp, false)
 	} else if t.cfg.ResendStaleTxs {
 		// Try resending the tx to the chain if configured to do so. Rebuild it (same tx data, new

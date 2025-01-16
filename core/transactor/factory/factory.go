@@ -146,7 +146,7 @@ func (f *Factory) buildTransaction(
 	// bump gas (if necessary)
 	tx := coretypes.NewTx(txData)
 	if isReplacing {
-		tx = sender.BumpGas(tx)
+		tx = sender.BumpGas(tx, f.ethClient)
 	}
 
 	// sign the transaction

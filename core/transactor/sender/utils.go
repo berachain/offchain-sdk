@@ -1,11 +1,14 @@
 package sender
 
 import (
+	"context"
 	"fmt"
 	"math/big"
 
+	"github.com/berachain/offchain-sdk/client/eth"
 	"github.com/holiman/uint256"
 
+	"github.com/ethereum/go-ethereum/common"
 	coretypes "github.com/ethereum/go-ethereum/core/types"
 )
 
@@ -15,13 +18,24 @@ var (
 )
 
 // BumpGas bumps the gas on a tx by a 15% increase.
-func BumpGas(tx *coretypes.Transaction) *coretypes.Transaction {
+func BumpGas(tx *coretypes.Transaction, chain eth.Client) *coretypes.Transaction {
 	var innerTx coretypes.TxData
+
+	gasTipCap, err := chain.SuggestGasTipCap(context.Background())
+	if err != nil {
+		return tx
+	}
+	header, err := chain.HeaderByNumber(context.Background(), nil)
+	if err != nil {
+		return tx
+	}
+	gasFeeCap := new(big.Int).Add(gasTipCap, new(big.Int).Mul(header.BaseFee, common.Big2))
+
 	switch tx.Type() {
 	case coretypes.DynamicFeeTxType, coretypes.BlobTxType:
 		// Bump the existing gas tip cap 15% (10% is required but add a buffer to be safe).
-		bumpedGasTipCap := new(big.Int).Mul(tx.GasTipCap(), multiplier)
-		bumpedGasTipCap = new(big.Int).Quo(bumpedGasTipCap, quotient)
+		bumpedGasTipCap := new(big.Int).Mul(gasTipCap, multiplier)
+		bumpedGasTipCap = new(big.Int).Quo(gasFeeCap, quotient)
 
 		// Bump the existing gas fee cap 15% (only 10% required but add a buffer to be safe).
 		bumpedGasFeeCap := new(big.Int).Mul(tx.GasFeeCap(), multiplier)

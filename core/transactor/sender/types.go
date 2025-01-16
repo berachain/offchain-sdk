@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/berachain/offchain-sdk/client/eth"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	coretypes "github.com/ethereum/go-ethereum/core/types"
@@ -26,7 +27,7 @@ type (
 type (
 	// txReplacementPolicy is a type that takes a tx and returns a replacement tx.
 	txReplacementPolicy interface {
-		GetNew(*coretypes.Transaction, error) (*coretypes.Transaction, error)
+		GetNew(*coretypes.Transaction, error, eth.Client) (*coretypes.Transaction, error)
 	}
 
 	// retryPolicy is used to determine if a transaction should be retried and how long to wait

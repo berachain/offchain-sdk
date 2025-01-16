@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/berachain/offchain-sdk/client/eth"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/txpool"
 	coretypes "github.com/ethereum/go-ethereum/core/types"
@@ -20,7 +21,7 @@ type defaultTxReplacementPolicy struct {
 }
 
 func (d *defaultTxReplacementPolicy) GetNew(
-	tx *coretypes.Transaction, err error,
+	tx *coretypes.Transaction, err error, chain eth.Client,
 ) (*coretypes.Transaction, error) {
 	// If the sender is out of balance, return the error.
 	if errors.Is(err, vm.ErrInsufficientBalance) ||
@@ -40,7 +41,7 @@ func (d *defaultTxReplacementPolicy) GetNew(
 	// Bump the gas according to the replacement policy if a replacement is required.
 	if shouldBumpGas || errors.Is(err, txpool.ErrReplaceUnderpriced) ||
 		(err != nil && strings.Contains(err.Error(), "replacement transaction underpriced")) {
-		tx = BumpGas(tx)
+		tx = BumpGas(tx, chain)
 	}
 
 	return tx, nil

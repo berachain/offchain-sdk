@@ -36,6 +36,7 @@ type TxrV2 struct {
 	dispatcher   *event.Dispatcher[*tracker.Response]
 	tracker      *tracker.Tracker
 	trackerIndex int
+	chain        eth.Client
 
 	preconfirmedStates map[string]types.PreconfirmedState
 	preconfirmedMu     sync.RWMutex
@@ -87,6 +88,7 @@ func (t *TxrV2) RegistryKey() string {
 func (t *TxrV2) Setup(ctx context.Context) error {
 	sCtx := sdk.UnwrapContext(ctx)
 	chain := sCtx.Chain()
+	t.chain = chain
 	t.logger = sCtx.Logger()
 
 	// Register the transactor as a subscriber to the tracker.
@@ -228,7 +230,7 @@ func (t *TxrV2) resendStaleTxns(ctx context.Context, chain eth.Client) error {
 	if pendingTxs := txPoolContent["pending"]; len(pendingTxs) > 0 {
 		t.logger.Info("🔄 resending stale (pending in txpool) txs", "count", len(pendingTxs))
 		for _, tx := range pendingTxs {
-			resp := &tracker.Response{Transaction: sender.BumpGas(tx)}
+			resp := &tracker.Response{Transaction: sender.BumpGas(tx, t.chain)}
 			t.fire(ctx, resp, true, types.CallMsgFromTx(resp.Transaction))
 		}
 	}

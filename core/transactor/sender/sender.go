@@ -61,7 +61,7 @@ func (s *Sender) retryTxWithPolicy(ctx context.Context, tx *coretypes.Transactio
 		s.logger.Error("failed to send tx, retrying...", "hash", currTx, "err", err)
 
 		// Get the replacement tx if necessary.
-		if tx, err = s.txReplacementPolicy.GetNew(tx, err); err != nil {
+		if tx, err = s.txReplacementPolicy.GetNew(tx, err, s.chain); err != nil {
 			s.logger.Error("failed to get replacement tx", "err", err)
 			return err
 		}
