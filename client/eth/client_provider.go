@@ -342,7 +342,7 @@ func (c *ChainProviderImpl) SuggestGasTipCap(ctx context.Context) (*big.Int, err
 	return nil, ErrClientNotFound
 }
 
-// FeeHistory returns the fee history for the given block count, last block, and reward percentiles.
+// FeeHistory returns fee history for the given block count, last block, and reward percentiles.
 func (c *ChainProviderImpl) FeeHistory(
 	ctx context.Context, blockCount uint64, lastBlock *big.Int,
 	rewardPercentiles []float64) (*ethereum.FeeHistory, error) {
@@ -372,8 +372,6 @@ func (c *ChainProviderImpl) TransactionByHash(
 	}
 	return nil, false, ErrClientNotFound
 }
-
-
 
 /*
 TxPoolContentFrom returns the pending and queued transactions of this address.
