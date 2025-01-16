@@ -3,11 +3,11 @@ package baseapp
 import (
 	"context"
 
-	"github.com/berachain/offchain-sdk/client/eth"
-	"github.com/berachain/offchain-sdk/job"
-	"github.com/berachain/offchain-sdk/log"
-	"github.com/berachain/offchain-sdk/server"
-	"github.com/berachain/offchain-sdk/telemetry"
+	"github.com/berachain/offchain-sdk/v2/client/eth"
+	"github.com/berachain/offchain-sdk/v2/job"
+	"github.com/berachain/offchain-sdk/v2/log"
+	"github.com/berachain/offchain-sdk/v2/server"
+	"github.com/berachain/offchain-sdk/v2/telemetry"
 
 	ethdb "github.com/ethereum/go-ethereum/ethdb"
 )
@@ -25,6 +25,9 @@ type BaseApp struct {
 
 	// svr is the server for the baseapp.
 	svr *server.Server
+
+	// chain is the eth client for the baseapp.
+	chain eth.Client
 }
 
 // New creates a new baseapp.
@@ -49,7 +52,8 @@ func New(
 				metrics:  metrics,
 			},
 		),
-		svr: svr,
+		svr:   svr,
+		chain: ethClient,
 	}
 }
 
@@ -85,4 +89,9 @@ func (b *BaseApp) Stop() {
 	if b.svr != nil {
 		b.svr.Stop()
 	}
+}
+
+// Chain returns the eth client for the baseapp.
+func (b *BaseApp) Chain() eth.Client {
+	return b.chain
 }

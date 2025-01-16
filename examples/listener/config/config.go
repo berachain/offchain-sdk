@@ -3,8 +3,8 @@ package config
 import (
 	"time"
 
-	"github.com/berachain/offchain-sdk/telemetry"
-	"github.com/berachain/offchain-sdk/tools/limiter"
+	"github.com/berachain/offchain-sdk/v2/telemetry"
+	"github.com/berachain/offchain-sdk/v2/tools/limiter"
 )
 
 type SubStruct struct {

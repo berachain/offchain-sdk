@@ -6,18 +6,18 @@ import (
 	"sync"
 	"time"
 
-	"github.com/berachain/offchain-sdk/client/eth"
-	"github.com/berachain/offchain-sdk/core/transactor/event"
-	"github.com/berachain/offchain-sdk/core/transactor/factory"
-	"github.com/berachain/offchain-sdk/core/transactor/sender"
-	"github.com/berachain/offchain-sdk/core/transactor/tracker"
-	"github.com/berachain/offchain-sdk/core/transactor/types"
-	"github.com/berachain/offchain-sdk/log"
-	sdk "github.com/berachain/offchain-sdk/types"
-	kmstypes "github.com/berachain/offchain-sdk/types/kms/types"
-	"github.com/berachain/offchain-sdk/types/queue/mem"
-	"github.com/berachain/offchain-sdk/types/queue/sqs"
-	queuetypes "github.com/berachain/offchain-sdk/types/queue/types"
+	"github.com/berachain/offchain-sdk/v2/client/eth"
+	"github.com/berachain/offchain-sdk/v2/core/transactor/event"
+	"github.com/berachain/offchain-sdk/v2/core/transactor/factory"
+	"github.com/berachain/offchain-sdk/v2/core/transactor/sender"
+	"github.com/berachain/offchain-sdk/v2/core/transactor/tracker"
+	"github.com/berachain/offchain-sdk/v2/core/transactor/types"
+	"github.com/berachain/offchain-sdk/v2/log"
+	sdk "github.com/berachain/offchain-sdk/v2/types"
+	kmstypes "github.com/berachain/offchain-sdk/v2/types/kms/types"
+	"github.com/berachain/offchain-sdk/v2/types/queue/mem"
+	"github.com/berachain/offchain-sdk/v2/types/queue/sqs"
+	queuetypes "github.com/berachain/offchain-sdk/v2/types/queue/types"
 
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -111,7 +111,7 @@ func (t *TxrV2) Setup(ctx context.Context) error {
 // Execute implements job.Basic.
 func (t *TxrV2) Execute(context.Context, any) (any, error) {
 	acquired, inFlight := t.noncer.Stats()
-	t.logger.Info(
+	t.logger.Debug(
 		"🧠 system status",
 		"waiting-tx", acquired, "in-flight-tx", inFlight, "pending-requests", t.requests.Len(),
 	)

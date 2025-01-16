@@ -3,7 +3,7 @@ package transactor
 import (
 	"time"
 
-	"github.com/berachain/offchain-sdk/types/queue/sqs"
+	"github.com/berachain/offchain-sdk/v2/types/queue/sqs"
 )
 
 type Config struct {

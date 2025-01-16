@@ -4,8 +4,8 @@ import (
 	"context"
 	"math/big"
 
-	"github.com/berachain/offchain-sdk/job"
-	sdk "github.com/berachain/offchain-sdk/types"
+	"github.com/berachain/offchain-sdk/v2/job"
+	sdk "github.com/berachain/offchain-sdk/v2/types"
 )
 
 // Compile time check to ensure that Listener implements job.Basic.

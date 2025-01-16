@@ -5,9 +5,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/berachain/offchain-sdk/contracts/bindings"
-	"github.com/berachain/offchain-sdk/core/transactor/factory/batcher"
-	"github.com/berachain/offchain-sdk/core/transactor/types"
+	"github.com/berachain/offchain-sdk/v2/contracts/bindings"
+	"github.com/berachain/offchain-sdk/v2/core/transactor/factory/batcher"
+	"github.com/berachain/offchain-sdk/v2/core/transactor/types"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/ethereum/go-ethereum/common"

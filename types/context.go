@@ -3,9 +3,9 @@ package types
 import (
 	"context"
 
-	"github.com/berachain/offchain-sdk/client/eth"
-	"github.com/berachain/offchain-sdk/log"
-	"github.com/berachain/offchain-sdk/telemetry"
+	"github.com/berachain/offchain-sdk/v2/client/eth"
+	"github.com/berachain/offchain-sdk/v2/log"
+	"github.com/berachain/offchain-sdk/v2/telemetry"
 
 	"github.com/ethereum/go-ethereum/ethdb"
 )

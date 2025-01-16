@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/berachain/go-utils/utils"
-	"github.com/berachain/offchain-sdk/client/eth"
+	"github.com/berachain/offchain-sdk/v2/client/eth"
 	"github.com/huandu/skiplist"
 
 	"github.com/ethereum/go-ethereum/common"

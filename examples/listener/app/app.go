@@ -1,15 +1,15 @@
 package app
 
 import (
-	"github.com/berachain/offchain-sdk/log"
-	"github.com/berachain/offchain-sdk/telemetry"
-	"github.com/berachain/offchain-sdk/tools/limiter"
+	"github.com/berachain/offchain-sdk/v2/baseapp"
+	coreapp "github.com/berachain/offchain-sdk/v2/core/app"
+	"github.com/berachain/offchain-sdk/v2/examples/listener/config"
+	ljobs "github.com/berachain/offchain-sdk/v2/examples/listener/jobs"
+	"github.com/berachain/offchain-sdk/v2/log"
+	"github.com/berachain/offchain-sdk/v2/telemetry"
+	"github.com/berachain/offchain-sdk/v2/tools/limiter"
+	jobs "github.com/berachain/offchain-sdk/v2/x/jobs"
 
-	"github.com/berachain/offchain-sdk/baseapp"
-	coreapp "github.com/berachain/offchain-sdk/core/app"
-	"github.com/berachain/offchain-sdk/examples/listener/config"
-	ljobs "github.com/berachain/offchain-sdk/examples/listener/jobs"
-	jobs "github.com/berachain/offchain-sdk/x/jobs"
 	memdb "github.com/ethereum/go-ethereum/ethdb/memorydb"
 )
 
@@ -21,7 +21,7 @@ var _ coreapp.App[config.Config] = &ListenerApp{}
 // The event is defined in the smart contract at: 0x18Df82C7E422A42D47345Ed86B0E935E9718eBda
 // The event is called: NumbreChanged(uint256)
 // The event is emitted when the number is changed in the smart contract.
-// The event is watched by the offchain-sdk and when it is emitted, the execution function is called.
+// The event is watched by the offchain-sdk and when emitted, the execution function is called.
 type ListenerApp struct {
 	*baseapp.BaseApp
 	metrics telemetry.Metrics
@@ -37,21 +37,14 @@ func (app *ListenerApp) Setup(
 	ab coreapp.Builder,
 	config config.Config,
 	logger log.Logger,
-) {
+) error {
 	var err error
 
 	// Set up metrics instance
 	app.metrics, err = telemetry.NewMetrics(&config.Metrics)
 	if err != nil {
 		logger.Error("error setting up metrics", "error", err)
-		return
-	}
-
-	// Spin up Prometheus HTTP server
-	if config.Metrics.Prometheus.Enabled {
-		if err = ab.RegisterPrometheusTelemetry(); err != nil {
-			panic(err)
-		}
+		return err
 	}
 
 	// This job is subscribed to the `NumberChanged(uint256)` event.
@@ -90,9 +83,12 @@ func (app *ListenerApp) Setup(
 	if config.RateLimit.Enabled {
 		// We register a rate limiter with our app.
 		rateLimiter := limiter.New(config.RateLimit)
-		ab.RegisterMiddleware(limiter.Middleware(rateLimiter))
+		if err = ab.RegisterMiddleware(limiter.Middleware(rateLimiter)); err != nil {
+			return err
+		}
 	}
 
 	// And then we setup everything by calling `BuildApp`.
-	app.BaseApp = ab.BuildApp(logger)
+	app.BaseApp = ab.BuildApp()
+	return nil
 }

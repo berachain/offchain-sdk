@@ -7,10 +7,10 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/berachain/offchain-sdk/contracts/bindings"
-	"github.com/berachain/offchain-sdk/core/transactor/factory"
-	"github.com/berachain/offchain-sdk/core/transactor/types"
-	sdk "github.com/berachain/offchain-sdk/types"
+	"github.com/berachain/offchain-sdk/v2/contracts/bindings"
+	"github.com/berachain/offchain-sdk/v2/core/transactor/factory"
+	"github.com/berachain/offchain-sdk/v2/core/transactor/types"
+	sdk "github.com/berachain/offchain-sdk/v2/types"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"

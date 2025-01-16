@@ -2,13 +2,15 @@ package prometheus
 
 import (
 	"fmt"
+	"net/http"
 	"strings"
 	"sync"
 	"time"
 	"unicode"
 
-	"github.com/berachain/offchain-sdk/tools/rwstore"
+	"github.com/berachain/offchain-sdk/v2/tools/rwstore"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 const (
@@ -24,6 +26,8 @@ const (
 	errorMargin50 = 0.05
 	errorMargin90 = 0.01
 	errorMargin99 = 0.001
+
+	timeout = 5 * time.Second
 )
 
 type metrics struct {
@@ -54,11 +58,32 @@ func NewMetrics(cfg *Config) (*metrics, error) { //nolint:revive // only used as
 	p.counterVecs = rwstore.NewRWMap[string, *prometheus.CounterVec]()
 	p.histogramVecs = rwstore.NewRWMap[string, *prometheus.HistogramVec]()
 	p.summaryVecs = rwstore.NewRWMap[string, *prometheus.SummaryVec]()
+
+	p.expose()
 	return p, nil
 }
 
 func (p *metrics) Close() error {
 	return nil
+}
+
+func (p *metrics) expose() {
+	if p.cfg.Port == 0 {
+		return
+	}
+
+	go func() {
+		server := &http.Server{
+			Addr:        fmt.Sprintf(":%d", p.cfg.Port),
+			Handler:     nil, // Use http.DefaultServeMux
+			ReadTimeout: timeout,
+		}
+		http.Handle("/metrics", promhttp.Handler())
+
+		if err := server.ListenAndServe(); err != nil {
+			panic(err)
+		}
+	}()
 }
 
 // Gauge implements the Gauge method of the Metrics interface using GaugeVec.
