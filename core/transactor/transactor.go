@@ -228,7 +228,8 @@ func (t *TxrV2) resendStaleTxns(ctx context.Context, chain eth.Client) error {
 	if pendingTxs := txPoolContent["pending"]; len(pendingTxs) > 0 {
 		t.logger.Info("🔄 resending stale (pending in txpool) txs", "count", len(pendingTxs))
 		for _, tx := range pendingTxs {
-			t.fire(ctx, &tracker.Response{Transaction: sender.BumpGas(tx)}, false)
+			resp := &tracker.Response{Transaction: sender.BumpGas(tx)}
+			t.fire(ctx, resp, true, types.CallMsgFromTx(resp.Transaction))
 		}
 	}
 
