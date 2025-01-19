@@ -99,9 +99,9 @@ func (t *TxrV2) Setup(ctx context.Context) error {
 	t.noncer.Start(ctx, chain)
 
 	// If there are any pending txns at startup, they are likely to be "stuck". Resend them.
-	if err := t.resendStaleTxns(ctx, chain); err != nil {
-		return err
-	}
+	// if err := t.resendStaleTxns(ctx, chain); err != nil {
+	// 	return err
+	// }
 
 	go t.mainLoop(ctx)
 
