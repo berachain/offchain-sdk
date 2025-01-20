@@ -391,7 +391,7 @@ func (it *IERC20ApprovalIterator) Next() bool {
 	}
 }
 
-// Error returns any retrieval or parsing error occurred during filtering.
+// Error returns any retrieval or parsing error that occurred during filtering.
 func (it *IERC20ApprovalIterator) Error() error {
 	return it.fail
 }
@@ -403,7 +403,7 @@ func (it *IERC20ApprovalIterator) Close() error {
 	return nil
 }
 
-// IERC20Approval represents a Approval event raised by the IERC20 contract.
+// IERC20Approval represents an Approval event raised by the IERC20 contract.
 type IERC20Approval struct {
 	Owner   common.Address
 	Spender common.Address
