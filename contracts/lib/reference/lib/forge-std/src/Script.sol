@@ -17,7 +17,6 @@ import {StdUtils} from "./StdUtils.sol";
 import {VmSafe} from "./Vm.sol";
 
 // 📦 BOILERPLATE
-import {ScriptBase} from "./Base.sol";
 
 // ⭐️ SCRIPT
 abstract contract Script is StdChains, StdCheatsSafe, StdUtils, ScriptBase {
