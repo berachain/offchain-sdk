@@ -14,27 +14,40 @@ import (
 
 // BaseApp is the base application.
 type BaseApp struct {
-	// name is the name of the application
+	// name is the name of the application.
 	name string
 
 	// logger is the logger for the baseapp.
 	logger log.Logger
 
-	// jobMgr
-	jobMgr *JobManager
+	// jobMgr manages jobs within the baseapp.
+	jobMgr JobManager
 
 	// svr is the server for the baseapp.
-	svr *server.Server
+	svr Server
 }
 
-// New creates a new baseapp.
+// JobManager defines the interface for a job manager.
+type JobManager interface {
+	Start(ctx context.Context)
+	RunProducers(ctx context.Context)
+	Stop()
+}
+
+// Server defines the interface for a server.
+type Server interface {
+	Start(ctx context.Context) error
+	Stop()
+}
+
+// New creates a new BaseApp instance.
 func New(
 	name string,
 	logger log.Logger,
 	ethClient eth.Client,
 	jobs []job.Basic,
 	db ethdb.KeyValueStore,
-	svr *server.Server,
+	svr Server,
 	metrics telemetry.Metrics,
 ) *BaseApp {
 	return &BaseApp{
@@ -53,36 +66,65 @@ func New(
 	}
 }
 
-// Logger returns the logger for the baseapp.
+// Logger returns a namespaced logger for the baseapp.
 func (b *BaseApp) Logger() log.Logger {
 	return b.logger.With("namespace", "baseapp")
 }
 
-// Start starts the baseapp.
+// Start starts the baseapp and all its components.
 func (b *BaseApp) Start(ctx context.Context) error {
-	b.Logger().Info("attempting to start")
-	defer b.Logger().Info("successfully started")
+	b.Logger().Info("Starting baseapp")
+	defer b.Logger().Info("Baseapp started successfully")
 
-	// Start the job manager and the producers.
+	// Start the job manager and producers.
 	b.jobMgr.Start(ctx)
 	b.jobMgr.RunProducers(ctx)
 
-	if b.svr == nil {
-		b.Logger().Info("no HTTP server registered, skipping")
+	// Start the server if it's provided.
+	if b.svr != nil {
+		if err := b.startServer(ctx); err != nil {
+			return err
+		}
 	} else {
-		go b.svr.Start(ctx)
+		b.Logger().Info("No HTTP server registered, skipping")
 	}
 
 	return nil
 }
 
-// Stop stops the baseapp.
+// Stop gracefully stops the baseapp and its components.
 func (b *BaseApp) Stop() {
-	b.Logger().Info("attempting to stop")
-	defer b.Logger().Info("successfully stopped")
+	b.Logger().Info("Stopping baseapp")
+	defer b.Logger().Info("Baseapp stopped successfully")
 
 	b.jobMgr.Stop()
 	if b.svr != nil {
 		b.svr.Stop()
 	}
+}
+
+// startServer starts the HTTP server in a separate goroutine.
+func (b *BaseApp) startServer(ctx context.Context) error {
+	b.Logger().Info("Starting HTTP server")
+	errChan := make(chan error)
+
+	go func() {
+		if err := b.svr.Start(ctx); err != nil {
+			errChan <- err
+		}
+		close(errChan)
+	}()
+
+	select {
+	case err := <-errChan:
+		if err != nil {
+			b.Logger().Error("Failed to start HTTP server", "error", err)
+			return err
+		}
+	case <-ctx.Done():
+		b.Logger().Warn("Server start canceled", "reason", ctx.Err())
+		return ctx.Err()
+	}
+
+	return nil
 }
