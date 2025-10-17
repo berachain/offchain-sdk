@@ -101,7 +101,9 @@ contract Multicall3 {
         )
     {
         blockNumber = block.number;
-        blockHash = blockhash(block.number);
+        // blockhash(block.number) always returns 0, so use blockhash(block.number - 1) for a valid previous block hash.
+        // Note: block.number is always > 0 except for genesis block, so this is safe in normal usage.
+        blockHash = blockhash(block.number - 1);
         returnData = tryAggregate(requireSuccess, calls);
     }
 
